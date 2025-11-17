@@ -1,0 +1,13 @@
+[tool.ruff]
+line-length = 88
+select = ["E", "F", "I", "B", "C", "RUF"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+addopts = "--strict-markers"
