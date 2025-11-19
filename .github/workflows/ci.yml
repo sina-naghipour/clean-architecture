@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, stage-* ]
   pull_request:
     branches: [ main ]
 
@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -23,16 +23,35 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          # Install the kata package
           pip install -e kata-refactors/
 
       - name: Lint code with ruff
-        run: ruff check kata-refactors/
+        working-directory: ./kata-refactors
+        run: ruff check .
 
       - name: Type check with mypy
-        run: mypy kata-refactors/src
+        working-directory: ./kata-refactors
+        run: mypy src
 
       - name: Run tests with coverage
+        working-directory: ./kata-refactors
+        run: pytest --cov=src --cov-report=html --cov-report=xml --cov-report=term-missing
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: kata-refactors/htmlcov/
+          retention-days: 30
+
+      - name: Check coverage threshold
+        working-directory: ./kata-refactors
         run: |
-          cd kata-refactors
-          pytest --cov=src --cov-report=term-missing
+          python -c "
+          import xml.etree.ElementTree as ET
+          tree = ET.parse('coverage.xml')
+          root = tree.getroot()
+          coverage = float(root.get('line-rate', 0))
+          print(f'Coverage: {coverage:.1%}')
+          assert coverage >= 0.8, f'Coverage {coverage:.1%} is below 80% threshold'
+          "
