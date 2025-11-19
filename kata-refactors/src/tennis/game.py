@@ -47,10 +47,10 @@ class TennisGame:
                 return True
         return False
 
-    def __is_tied(self):
+    def __is_tied(self) -> bool:
         return self.player1.score == self.player2.score
 
-    def score(self):
+    def score(self) -> str:
         if self.__is_win():
             return f"Win for {self.__leading_player().name}"
 
@@ -68,4 +68,8 @@ class TennisGame:
             idiom_player_1 = self.__translate_score_to_idiom(self.player1)
             idiom_player_2 = self.__translate_score_to_idiom(self.player2)
 
+            return f"{idiom_player_1}-{idiom_player_2}"
+        else:
+            idiom_player_1 = self.__translate_score_to_idiom(self.player1)
+            idiom_player_2 = self.__translate_score_to_idiom(self.player2)
             return f"{idiom_player_1}-{idiom_player_2}"

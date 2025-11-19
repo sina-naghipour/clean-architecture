@@ -68,7 +68,7 @@ class TennisGame:
     def __init__(self, player1: Player, player2: Player) -> None:
         """
         Initialize a tennis game between two players.
-        
+
         Args:
             player1: First player in the game
             player2: Second player in the game

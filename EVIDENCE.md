@@ -62,7 +62,7 @@ def test_get_score_most_games(p1_points, p2_points, score, p1_name, p2_name):
 ```python
 test_cases = [
     (0, 0, "Love-All", "player1", "player2"),
-    (3, 3, "Deuce", "player1", "player2"), 
+    (3, 3, "Deuce", "player1", "player2"),
     (4, 3, "Advantage player1", "player1", "player2"),
     (4, 0, "Win for player1", "player1", "player2"),
     (15, 14, "Advantage player1", "player1", "player2"),
@@ -80,7 +80,7 @@ def play_game(TennisGame, player1_score, player2_score, player1_name, player2_na
 
 ## Key Improvements
 - **Clean Architecture**: Player objects vs internal state
-- **Small Methods**: 6 focused methods vs 1 complex method  
+- **Small Methods**: 6 focused methods vs 1 complex method
 - **Type Safety**: Type hints throughout
 - **Testability**: Direct state injection vs point simulation
 - **33 Test Cases**: Full coverage of tennis scoring rules

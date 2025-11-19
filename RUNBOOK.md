@@ -81,7 +81,7 @@ Then create a Pull Request on GitHub with:
 - ≥80% test coverage
 - Test both happy paths and edge cases
 - One intentional failing test scenario (TDD flow)
-- Clear test names: 
+- Clear test names:
 `test_idiom_to_score_translation`
 
 ### Architecture Rules
