@@ -1,13 +1,10 @@
-[tool.ruff]
-line-length = 88
-select = ["E", "F", "I", "B", "C", "RUF"]
+[project]
+name = "kata_refactors"
+version = "0.1.0"
+description = "Kata refactoring exercises"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Sina" }]
 
-[tool.mypy]
-python_version = "3.11"
-strict = true
-ignore_missing_imports = true
-
-[tool.pytest.ini_options]
-minversion = "7.0"
-testpaths = ["tests"]
-addopts = "--strict-markers"
+[tool.setuptools.packages.find]
+where = ["src"]

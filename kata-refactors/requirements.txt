@@ -1,5 +1,5 @@
 ruff
-mypy 
+mypy
 pytest
 pytest-cov
 pre-commit
