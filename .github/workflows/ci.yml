@@ -23,12 +23,16 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          # Install the kata package
+          pip install -e kata-refactors/
 
       - name: Lint code with ruff
-        run: ruff check kata-refactors/ 
+        run: ruff check kata-refactors/
 
       - name: Type check with mypy
         run: mypy kata-refactors/src
 
       - name: Run tests with coverage
-        run: pytest --cov=kata-refactors/src --cov-report=term-missing
+        run: |
+          cd kata-refactors
+          pytest --cov=src --cov-report=term-missing
