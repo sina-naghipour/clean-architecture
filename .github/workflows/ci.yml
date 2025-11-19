@@ -25,7 +25,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Lint code with ruff
-        run: ruff check src tests  # ← Added 'check' subcommand
+        run: ruff check kata-refactors/ 
 
       - name: Type check with mypy
         run: mypy src
