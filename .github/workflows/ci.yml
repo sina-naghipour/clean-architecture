@@ -28,7 +28,7 @@ jobs:
         run: ruff check kata-refactors/ 
 
       - name: Type check with mypy
-        run: mypy src
+        run: mypy kata-refactors/src
 
       - name: Run tests with coverage
-        run: pytest --cov=src --cov-report=term-missing
+        run: pytest --cov=kata-refactors/src --cov-report=term-missing
