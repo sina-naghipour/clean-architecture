@@ -1,0 +1,237 @@
+# Clean Code Notes - Tennis Kata Refactor
+
+## Key Principles Applied
+
+### 1. Meaningful Names
+**Before:**
+```python
+    def score(self):
+        if (self.p1 < 4 and self.p2 < 4) and (self.p1 + self.p2 < 6):
+            ...
+```
+After:
+```python
+    def score(self):
+        if self.__is_win():
+            return f"Win for {self.__leading_player().name}"
+```-
+2. Small Functions with Single Responsibility
+
+Before: one method handling all scoring logic
+```python
+
+    def score(self):
+        if (self.p1 < 4 and self.p2 < 4) and (self.p1 + self.p2 < 6):
+            p = ["Love", "Fifteen", "Thirty", "Forty"]
+            s = p[self.p1]
+            return s + "-All" if (self.p1 == self.p2) else s + "-" + p[self.p2]
+        else:
+            if self.p1 == self.p2:
+                return "Deuce"
+            s = self.p1_n if self.p1 > self.p2 else self.p2_n
+            return (
+                "Advantage " + s
+                if ((self.p1 - self.p2) * (self.p1 - self.p2) == 1)
+                else "Win for " + s
+            )
+```
+After: Multiple focused methods
+```python
+    def __leading_player(self) -> Player:
+        if self.player1.score > self.player2.score:
+            return self.player1
+        else:
+            return self.player2
+
+    def __is_win(self) -> bool:
+        if self.player1.score > 3 or self.player2.score > 3:
+            if abs(self.player1.score - self.player2.score) >= 2:
+                return True
+            else:
+                return False
+        else:
+            return False
+
+    def __is_advantage(self) -> bool:
+        if self.player1.score >= 3 and self.player2.score >= 3:
+            if abs(self.player1.score - self.player2.score) == 1:
+                return True
+        return False
+
+    def __is_tied(self):
+        return self.player1.score == self.player2.score
+```
+3. Type Hints & Documentation
+```python
+
+class TennisGame:
+    def __init__(self, player1: Player, player2: Player) -> None:
+        """
+        Initialize a tennis game between two players.
+        
+        Args:
+            player1: First player in the game
+            player2: Second player in the game
+        """
+        self.player1 = player1
+        self.player2 = player2
+
+    def score(self) -> str:
+        """Calculate and return the current game score."""
+        if self._is_deuce():
+            return "Deuce"
+        # ... rest of scoring logic
+```
+Architecture Principles Demonstrated
+1. Dependency Inversion
+
+Domain logic independent of UI/framework:
+```python
+
+# Core business logic has no external dependencies
+class TennisGame:
+    # Pure Python, no framework ties
+    pass
+
+# Easy to test without mocks
+def test_tennis_game():
+    player1 = Player("Alice", 3)
+    player2 = Player("Bob", 3)
+    game = TennisGame(player1, player2)
+    assert game.score() == "Deuce"
+```
+2. Single Responsibility Principle
+```python
+
+# Player class only handles player state
+class Player:
+    def __init__(self, name: str, score: int = 0):
+        self.name = name
+        self.score = score
+
+
+# TennisGame class only handles game logic
+class TennisGame:
+    SCORE_MAP = {0: "Love", 1: "Fifteen", 2: "Thirty", 3: "Forty"}
+
+    def __init__(self, player1: Player, player2: Player):
+        self.player1 = player1
+        self.player2 = player2
+        ...
+```
+3. Test-Driven Development Flow
+python
+```
+
+class TestTennis(unittest.TestCase):
+    def test_score_games(self):
+        for testcase in test_cases:
+            (p1_points, p2_points, score, p1_name, p2_name) = testcase
+            game = play_game(TennisGame, p1_points, p2_points, p1_name, p2_name)
+            with self.subTest(f"{TennisGame.__name__} - {testcase}"):
+                self.assertEqual(score, game.score())
+
+```
+
+nearly all possible use cases are produced and tested.
+
+```python
+test_cases = [
+    (0, 0, "Love-All", "player1", "player2"),
+    (1, 1, "Fifteen-All", "player1", "player2"),
+    (2, 2, "Thirty-All", "player1", "player2"),
+    (3, 3, "Deuce", "player1", "player2"),
+    (4, 4, "Deuce", "player1", "player2"),
+    (1, 0, "Fifteen-Love", "player1", "player2"),
+    (0, 1, "Love-Fifteen", "player1", "player2"),
+    (2, 0, "Thirty-Love", "player1", "player2"),
+    (0, 2, "Love-Thirty", "player1", "player2"),
+    (3, 0, "Forty-Love", "player1", "player2"),
+    (0, 3, "Love-Forty", "player1", "player2"),
+    (4, 0, "Win for player1", "player1", "player2"),
+    (0, 4, "Win for player2", "player1", "player2"),
+    (2, 1, "Thirty-Fifteen", "player1", "player2"),
+    (1, 2, "Fifteen-Thirty", "player1", "player2"),
+    (3, 1, "Forty-Fifteen", "player1", "player2"),
+    (1, 3, "Fifteen-Forty", "player1", "player2"),
+    (4, 1, "Win for player1", "player1", "player2"),
+    (1, 4, "Win for player2", "player1", "player2"),
+    (3, 2, "Forty-Thirty", "player1", "player2"),
+    (2, 3, "Thirty-Forty", "player1", "player2"),
+    (4, 2, "Win for player1", "player1", "player2"),
+    (2, 4, "Win for player2", "player1", "player2"),
+    (4, 3, "Advantage player1", "player1", "player2"),
+    (3, 4, "Advantage player2", "player1", "player2"),
+    (5, 4, "Advantage player1", "player1", "player2"),
+    (4, 5, "Advantage player2", "player1", "player2"),
+    (15, 14, "Advantage player1", "player1", "player2"),
+    (14, 15, "Advantage player2", "player1", "player2"),
+    (6, 4, "Win for player1", "player1", "player2"),
+    (4, 6, "Win for player2", "player1", "player2"),
+    (16, 14, "Win for player1", "player1", "player2"),
+    (14, 16, "Win for player2", "player1", "player2"),
+]
+```
+
+Code Quality Improvements
+Before Refactor Issues:
+
+    Large, complex score() method
+
+    Magic numbers and unclear conditions
+
+    Mixed levels of abstraction
+
+    Hard to test individual scenarios
+
+After Refactor Benefits:
+
+    Small, testable methods
+
+    Clear business rules
+
+    Easy to extend (add new scoring rules)
+
+    Self-documenting code
+
+
+Tooling Impact
+Pre-commit Hooks
+
+    Before: Inconsistent formatting, type errors caught late
+
+    After: Consistent style, early error detection
+
+Type Checking
+
+    Before: Runtime type errors
+
+    After: Compile-time safety, better IDE support
+
+Test Coverage
+
+    Before: Unknown test gaps
+
+    After: Measured quality with ≥80% coverage guarantee
+
+Key Takeaways
+
+    Names Matter: Clear names reduce cognitive load
+
+    Small Functions: Easier to test, understand, and maintain
+
+    Type Safety: Catches errors early and documents intent
+
+    Test Coverage: Confidence to refactor and extend
+
+    Architecture Boundaries: Enables team scaling and maintenance
+
+Before/After Metrics
+
+    Method complexity: Reduced complexity of a single function 'score'
+
+    Test coverage: Increased to 100%
+
+    Code clarity: Self-documenting with type hints
+
+    Maintainability: Easy to add new scoring rules

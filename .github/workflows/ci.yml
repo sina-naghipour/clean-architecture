@@ -35,13 +35,45 @@ jobs:
 
       - name: Run tests with coverage
         working-directory: ./kata-refactors
-        run: pytest --cov=src --cov-report=html --cov-report=xml --cov-report=term-missing
+        run: pytest --cov=src --cov-report=html --cov-report=xml --cov-report=term-missing -v
 
       - name: Upload coverage reports
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: kata-refactors/htmlcov/
+          retention-days: 30
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            kata-refactors/coverage.xml
+            kata-refactors/.coverage
+          retention-days: 30
+
+      - name: Upload linting reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-quality-reports
+          path: |
+            kata-refactors/.ruff_cache/
+          retention-days: 14
+
+      - name: Generate test summary
+        working-directory: ./kata-refactors
+        run: |
+          pytest --cov=src --cov-report=term-missing > test-summary.txt
+          echo "=== Test Summary ===" >> test-summary.txt
+          echo "Coverage report generated" >> test-summary.txt
+          date >> test-summary.txt
+
+      - name: Upload test summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-summary
+          path: kata-refactors/test-summary.txt
           retention-days: 30
 
       - name: Check coverage threshold
