@@ -1,0 +1,1162 @@
+openapi: 3.1.0
+info:
+  title: Ecommerce API
+  version: "1.0.0"
+  description: Ecommerce API, With Microservice Architecture.
+servers:
+  - url: http://localhost:8000/api
+tags:
+  - name: Auth
+    description: Authentication & token endpoints
+  - name: Products
+    description: Product catalog management
+  - name: Cart
+    description: Per-user shopping cart
+  - name: Orders
+    description: Order lifecycle
+  - name: Profile
+    description: User profile and addresses
+
+security:
+  - bearerAuth: []
+
+paths:
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+            examples:
+              example:
+                value:
+                  email: "alice@example.com"
+                  password: "S3cureP@ss"
+                  name: "Alice"
+      responses:
+        "201":
+          description: User created
+          headers:
+            Location:
+              description: URI of created user
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+              examples:
+                success:
+                  value:
+                    id: "user_123"
+                    email: "alice@example.com"
+                    name: "Alice"
+        "400": 
+          $ref: "#/components/responses/BadRequest"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login user (returns access + refresh tokens)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            examples:
+              example:
+                value:
+                  email: "alice@example.com"
+                  password: "S3cureP@ss"
+      responses:
+        "200":
+          description: Tokens returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                  refreshToken:
+                    type: string
+              examples:
+                success:
+                  value:
+                    accessToken: "eyJhbGciOi..."
+                    refreshToken: "rft_abcdef"
+        "400": 
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /auth/refresh-token:
+    post:
+      tags: [Auth]
+      summary: Refresh access token using refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        "200":
+          description: New access token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken: { type: string }
+        "400": 
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout user (revoke refresh token)
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Logged out
+        "400": 
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+
+  /products:
+    get:
+      tags: [Products]
+      summary: List products (supports paging & filtering)
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/pageSize"
+        - in: query
+          name: q
+          schema:
+            type: string
+          description: Full-text search across name & description
+      responses:
+        "200":
+          description: Paginated product list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductList"
+              examples:
+                success:
+                  value:
+                    items:
+                      - id: "prod_1"
+                        name: "Laptop"
+                        price: 1299.99
+                        stock: 5
+                    total: 1
+                    page: 1
+                    pageSize: 20
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      tags: [Products]
+      summary: Create product (admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductRequest"
+            examples:
+              example:
+                value:
+                  name: "Wireless Mouse"
+                  price: 29.99
+                  stock: 100
+                  description: "Ergonomic mouse"
+      responses:
+        "201":
+          description: Product created
+          headers:
+            Location:
+              description: URI of created product
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+              examples:
+                success:
+                  value:
+                    id: "prod_42"
+                    name: "Wireless Mouse"
+                    price: 29.99
+                    stock: 100
+                    description: "Ergonomic mouse"
+        "400": 
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /products/{productId}:
+    parameters:
+      - $ref: "#/components/parameters/ProductId"
+    get:
+      tags: [Products]
+      summary: Get product details
+      responses:
+        "200":
+          description: Product details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+              examples:
+                success:
+                  value:
+                    id: "prod_42"
+                    name: "Wireless Mouse"
+                    price: 29.99
+                    stock: 100
+                    description: "Ergonomic mouse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    put:
+      tags: [Products]
+      summary: Replace product (full update) — admin only
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductRequest"
+      responses:
+        "200":
+          description: Product replaced
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+        "400": 
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    patch:
+      tags: [Products]
+      summary: Partially update product (admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductPatch"
+      responses:
+        "200":
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+        "400": 
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      tags: [Products]
+      summary: Delete product (admin)
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Product deleted
+        "400": 
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /products/{productId}/inventory:
+    parameters:
+      - $ref: "#/components/parameters/ProductId"
+    patch:
+      tags: [Products]
+      summary: Update product stock (admin) — idempotent
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InventoryUpdate"
+            examples:
+              example:
+                value:
+                  stock: 120
+      responses:
+        "200":
+          description: Stock updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  stock: { type: integer }
+              examples:
+                success:
+                  value:
+                    id: "prod_42"
+                    stock: 120
+        "400": 
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+
+  /cart:
+    get:
+      tags: [Cart]
+      summary: Get current user's cart
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Cart returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CartResponse"
+              examples:
+                success:
+                  value:
+                    id: "cart_123"
+                    items:
+                      - id: "item_1"
+                        productId: "prod_42"
+                        name: "Wireless Mouse"
+                        quantity: 2
+                        unitPrice: 29.99
+                    total: 59.98
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      tags: [Cart]
+      summary: Clear cart
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Cart cleared
+        "400": 
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /cart/items:
+    post:
+      tags: [Cart]
+      summary: Add item to cart
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CartItemRequest"
+            examples:
+              example:
+                value:
+                  productId: "prod_42"
+                  quantity: 2
+      responses:
+        "201":
+          description: Item added to cart
+          headers:
+            Location:
+              description: URI of created cart item
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CartItemResponse"
+              examples:
+                success:
+                  value:
+                    id: "item_1"
+                    productId: "prod_42"
+                    quantity: 2
+        "400": 
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /cart/items/{itemId}:
+    parameters:
+      - $ref: "#/components/parameters/ItemId"
+    patch:
+      tags: [Cart]
+      summary: Update cart item quantity (partial, idempotent)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CartItemUpdate"
+      responses:
+        "200":
+          description: Item updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CartItemResponse"
+        "400": 
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      tags: [Cart]
+      summary: Remove cart item
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Item removed
+        "400": 
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+
+  /orders:
+    post:
+      tags: [Orders]
+      summary: Create order (checkout current cart)
+      security:
+        - bearerAuth: []
+      requestBody:
+        description: Optional override (billing/shipping) and payment method token
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderCreate"
+            examples:
+              example:
+                value:
+                  billingAddressId: "addr_1"
+                  shippingAddressId: "addr_1"
+                  paymentMethodToken: "pm_tok_abc"
+      responses:
+        "201":
+          description: Order created
+          headers:
+            Location:
+              description: URI of created order
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+              examples:
+                success:
+                  value:
+                    id: "order_1001"
+                    status: "created"
+                    total: 59.98
+        "400": 
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    get:
+      tags: [Orders]
+      summary: List user's orders (paginated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/pageSize"
+      responses:
+        "200":
+          description: Orders list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderList"
+              examples:
+                success:
+                  value:
+                    items:
+                      - id: "order_1001"
+                        status: "created"
+                        total: 59.98
+                    total: 1
+                    page: 1
+                    pageSize: 20
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /orders/{orderId}:
+    parameters:
+      - $ref: "#/components/parameters/OrderId"
+    get:
+      tags: [Orders]
+      summary: Get order details
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+              examples:
+                success:
+                  value:
+                    id: "order_1001"
+                    status: "created"
+                    total: 59.98
+                    items:
+                      - productId: "prod_42"
+                        name: "Wireless Mouse"
+                        quantity: 2
+                        unitPrice: 29.99
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+
+  /profile:
+    get:
+      tags: [Profile]
+      summary: Get user profile
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Profile returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+              examples:
+                success:
+                  value:
+                    id: "user_123"
+                    email: "alice@example.com"
+                    name: "Alice"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    patch:
+      tags: [Profile]
+      summary: Partially update profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileUpdate"
+      responses:
+        "200":
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400": 
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /profile/password:
+    patch:
+      tags: [Profile]
+      summary: Change password
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasswordChange"
+      responses:
+        "200":
+          description: Password changed
+        "400": 
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /profile/addresses:
+    get:
+      tags: [Profile]
+      summary: List user addresses
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Addresses returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AddressResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      tags: [Profile]
+      summary: Create new address
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddressRequest"
+      responses:
+        "201":
+          description: Address created
+          headers:
+            Location:
+              description: URI of created address
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AddressResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /profile/addresses/{addressId}:
+    parameters:
+      - $ref: "#/components/parameters/AddressId"
+    patch:
+      tags: [Profile]
+      summary: Update address
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddressRequest"
+      responses:
+        "200":
+          description: Address updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AddressResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      tags: [Profile]
+      summary: Delete address
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Address deleted
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    ProductId:
+      name: productId
+      in: path
+      required: true
+      schema:
+        type: string
+    ItemId:
+      name: itemId
+      in: path
+      required: true
+      schema:
+        type: string
+    OrderId:
+      name: orderId
+      in: path
+      required: true
+      schema:
+        type: string
+    AddressId:
+      name: addressId
+      in: path
+      required: true
+      schema:
+        type: string
+    page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    pageSize:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+          examples:
+            badRequest:
+              value:
+                type: "https://example.com/errors/bad-request"
+                title: "Bad Request"
+                status: 400
+                detail: "Malformed JSON body."
+                instance: "/products"
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+          examples:
+            unauthorized:
+              value:
+                type: "https://example.com/errors/unauthorized"
+                title: "Unauthorized"
+                status: 401
+                detail: "Missing or invalid Authorization header."
+                instance: "/auth/login"
+    Forbidden:
+      description: Forbidden
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+          examples:
+            forbidden:
+              value:
+                type: "https://example.com/errors/forbidden"
+                title: "Forbidden"
+                status: 403
+                detail: "Insufficient permissions."
+                instance: "/products"
+    NotFound:
+      description: Not Found
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+          examples:
+            notFound:
+              value:
+                type: "https://example.com/errors/not-found"
+                title: "Not Found"
+                status: 404
+                detail: "Resource not found."
+                instance: "/products/prod_999"
+    Conflict:
+      description: Conflict
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+          examples:
+            conflict:
+              value:
+                type: "https://example.com/errors/conflict"
+                title: "Conflict"
+                status: 409
+                detail: "Duplicate resource."
+                instance: "/auth/register"
+    UnprocessableEntity:
+      description: Validation error
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+          examples:
+            validation:
+              value:
+                type: "https://example.com/errors/validation"
+                title: "Validation failed"
+                status: 422
+                detail: "Field 'email' is required."
+                instance: "/auth/register"
+    InternalError:
+      description: Internal Server Error
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+          examples:
+            serverError:
+              value:
+                type: "https://example.com/errors/internal"
+                title: "Internal Server Error"
+                status: 500
+                detail: "Unexpected server error."
+                instance: "/orders"
+
+  schemas:
+    ProblemDetails:
+      title: ProblemDetails
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+      required:
+        - type
+        - title
+        - status
+
+    RegisterRequest:
+      type: object
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        name: { type: string }
+      required: [email, password, name]
+
+    LoginRequest:
+      type: object
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+      required: [email, password]
+
+    UserResponse:
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string, format: email }
+        name: { type: string }
+
+    PasswordChange:
+      type: object
+      properties:
+        oldPassword: { type: string }
+        newPassword: { type: string, minLength: 8 }
+      required: [oldPassword, newPassword]
+
+    ProductRequest:
+      type: object
+      properties:
+        name: { type: string }
+        price: { type: number, minimum: 0 }
+        stock: { type: integer, minimum: 0 }
+        description: { type: string }
+      required: [name, price]
+
+    ProductPatch:
+      type: object
+      description: "Partial product update — only supplied properties are modified"
+      additionalProperties: false
+      properties:
+        name: { type: string }
+        price: { type: number, minimum: 0 }
+        stock: { type: integer, minimum: 0 }
+        description: { type: string }
+
+    ProductResponse:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        price: { type: number }
+        stock: { type: integer }
+        description: { type: string }
+
+    ProductList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductResponse"
+        total: { type: integer }
+        page: { type: integer }
+        pageSize: { type: integer }
+
+    InventoryUpdate:
+      type: object
+      properties:
+        stock: { type: integer, minimum: 0 }
+      required: [stock]
+
+    CartItemRequest:
+      type: object
+      properties:
+        productId: { type: string }
+        quantity: { type: integer, minimum: 1 }
+      required: [productId, quantity]
+
+    CartItemUpdate:
+      type: object
+      properties:
+        quantity: { type: integer, minimum: 1 }
+      required: [quantity]
+
+    CartItemResponse:
+      type: object
+      properties:
+        id: { type: string }
+        productId: { type: string }
+        quantity: { type: integer }
+        unitPrice: { type: number }
+
+    CartResponse:
+      type: object
+      properties:
+        id: { type: string }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CartItemResponse"
+        total: { type: number }
+
+    OrderCreate:
+      type: object
+      properties:
+        billingAddressId: { type: string }
+        shippingAddressId: { type: string }
+        paymentMethodToken: { type: string }
+
+    OrderResponse:
+      type: object
+      properties:
+        id: { type: string }
+        status:
+          type: string
+          enum: [created, paid, shipped, canceled]
+        total: { type: number }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              productId: { type: string }
+              name: { type: string }
+              quantity: { type: integer }
+              unitPrice: { type: number }
+
+    OrderList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderResponse"
+        total: { type: integer }
+        page: { type: integer }
+        pageSize: { type: integer }
+
+    ProfileUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        phone: { type: string }
+
+    AddressRequest:
+      type: object
+      properties:
+        line: { type: string }
+        city: { type: string }
+        postalCode: { type: string }
+        country: { type: string }
+      required: [line, city, postalCode, country]
+
+    AddressResponse:
+      allOf:
+        - $ref: "#/components/schemas/AddressRequest"
+        - type: object
+          properties:
+            id: { type: string }
+
+
+    Address:
+      allOf:
+        - $ref: "#/components/schemas/AddressRequest"
+        - type: object
+          properties:
+            id: { type: string }

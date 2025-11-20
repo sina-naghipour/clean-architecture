@@ -1,0 +1,50 @@
+# ADR-<ID>: <Title of Decision>
+
+**Status:** `<Proposed | Accepted | Deprecated | Superseded | Rejected>`  
+**Date:** `<YYYY-MM-DD>`  
+**Decision Makers:** `<List of people or roles involved>`  
+**Related ADRs:** `<IDs or links to related ADRs, if any>`  
+
+---
+
+## Context
+Explain the **problem or situation** that requires a decision. Include background, constraints, and why this decision is relevant.
+
+Questions to answer here:  
+- What are we trying to solve?  
+- What alternatives exist?  
+- Why is a decision needed now?  
+
+---
+
+## Decision
+State the **chosen solution clearly**. Include enough detail so someone reading later understands exactly what was decided.
+
+Questions to answer here:  
+- What approach are we taking?  
+- What technologies, patterns, or methods will be used?  
+- How does this decision solve the problem from the context?  
+
+---
+
+## Consequences
+Describe the **implications** of this decision. Include positive and negative outcomes, technical debt, and any trade-offs.
+
+Questions to answer here:  
+- What benefits do we gain?  
+- What costs, risks, or limitations are introduced?  
+- How does this affect future decisions or system components?  
+
+---
+
+## Alternatives Considered
+(Optional, but recommended) List the **other approaches considered** and why they were rejected.
+
+Questions to answer here:  
+- Alternative A – why it was not chosen  
+- Alternative B – why it was not chosen  
+
+---
+
+## References
+(Optional) Include links to documentation, RFCs, standards, or other resources that informed the decision.
