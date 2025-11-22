@@ -1,264 +1,151 @@
 import pytest
-from authentication.tools import (
-    encode_password,
-    verify_password,
-    validate_token,
-    create_token,
-    refresh_token,
-    revoke_token,
-    get_token_payload
-)
+from authentication.tools import PasswordTools, TokenTools
+from datetime import datetime, timedelta
+import jwt
 
+class TestPasswordTools:
+    def setup_method(self):
+        self.password_tools = PasswordTools()
 
-class TestEncodePassword:
-    
-    def test_encode_password_success(self):
-        result = encode_password("my_secure_password")
+    def test_encode_password_valid(self):
+        password = "securepassword123"
+        hashed = self.password_tools.encode_password(password)
         
-        assert result is not None
-        assert isinstance(result, str)
-        assert result != "my_secure_password"
-        assert len(result) > 0
-    
-    def test_encode_password_empty_string(self):
-        result = encode_password("")
-        
-        assert result is not None
-        assert isinstance(result, str)
-        assert len(result) > 0
-    
+        assert hashed is not None
+        assert isinstance(hashed, str)
+        assert hashed != password
+
     def test_encode_password_none(self):
-        with pytest.raises(ValueError):
-            encode_password(None)
-    
-    def test_encode_password_special_characters(self):
-        complex_password = "P@ssw0rd!@#$%^&*()"
-        result = encode_password(complex_password)
-        
-        assert result is not None
-        assert isinstance(result, str)
-        assert result != complex_password
+        with pytest.raises(ValueError, match="password cannot be None"):
+            self.password_tools.encode_password(None)
 
+    def test_verify_password_correct(self):
+        password = "securepassword123"
+        hashed = self.password_tools.encode_password(password)
+        
+        assert self.password_tools.verify_password(password, hashed) is True
 
-class TestVerifyPassword:
-    
-    def test_verify_password_success(self):
-        plain_password = "test_password"
-        hashed_password = encode_password(plain_password)
-        result = verify_password(plain_password, hashed_password)
+    def test_verify_password_incorrect(self):
+        password = "securepassword123"
+        wrong_password = "wrongpassword"
+        hashed = self.password_tools.encode_password(password)
         
-        assert result is True
-    
-    def test_verify_password_wrong_password(self):
-        hashed_password = encode_password("correct_password")
-        result = verify_password("wrong_password", hashed_password)
-        
-        assert result is False
-    
-    def test_verify_password_empty_password(self):
-        hashed_password = encode_password("some_password")
-        result = verify_password("", hashed_password)
-        
-        assert result is False
-    
+        assert self.password_tools.verify_password(wrong_password, hashed) is False
+
     def test_verify_password_none_password(self):
-        hashed_password = encode_password("some_password")
-        
-        with pytest.raises(ValueError):
-            verify_password(None, hashed_password)
-    
+        with pytest.raises(ValueError, match="password cannot be None"):
+            self.password_tools.verify_password(None, "somehash")
+
     def test_verify_password_invalid_hash(self):
-        with pytest.raises(ValueError):
-            verify_password("password", "invalid_hash")
+        with pytest.raises(ValueError, match="Invalid hashed password"):
+            self.password_tools.verify_password("password", "")
+
+    def test_verify_password_malformed_hash(self):
+        with pytest.raises(ValueError, match="Invalid hashed password format"):
+            self.password_tools.verify_password("password", "invalid_hash_format")
 
 
-class TestCreateToken:
-    
-    def test_create_token_success(self):
-        payload = {"user_id": 123, "username": "testuser"}
-        token = create_token(payload)
+class TestTokenTools:
+    def setup_method(self):
+        self.token_tools = TokenTools()
+        self.sample_payload = {"user_id": 123, "username": "testuser"}
+
+    def test_create_access_token_valid(self):
+        token = self.token_tools.create_access_token(self.sample_payload)
         
         assert token is not None
         assert isinstance(token, str)
-        assert len(token) > 0
-    
-    def test_create_token_empty_payload(self):
-        token = create_token({})
+
+    def test_create_access_token_none_payload(self):
+        with pytest.raises(ValueError, match="user data cannot be None"):
+            self.token_tools.create_access_token(None)
+
+    def test_create_refresh_token_valid(self):
+        token = self.token_tools.create_refresh_token(self.sample_payload)
         
         assert token is not None
         assert isinstance(token, str)
-    
-    def test_create_token_none_payload(self):
-        with pytest.raises(ValueError):
-            create_token(None)
-    
-    def test_create_token_with_expiry(self):
-        payload = {"user_id": 123}
-        expiry_hours = 24
-        token = create_token(payload, expiry_hours=expiry_hours)
-        
-        assert token is not None
 
+    def test_validate_token_valid_access(self):
+        token = self.token_tools.create_access_token(self.sample_payload)
+        assert self.token_tools.validate_token(token, "access") is True
 
-class TestValidateToken:
-    
-    def test_validate_token_success(self):
-        payload = {"user_id": 123, "username": "testuser"}
-        token = create_token(payload)
-        result = validate_token(token)
-        
-        assert result is True
-    
-    def test_validate_token_invalid(self):
-        result = validate_token("invalid.token.here")
-        
-        assert result is False
-    
-    def test_validate_token_expired(self):
-        payload = {"user_id": 123}
-        token = create_token(payload, expiry_hours=-1)
-        result = validate_token(token)
-        
-        assert result is False
-    
-    def test_validate_token_empty_string(self):
-        result = validate_token("")
-        
-        assert result is False
-    
+    def test_validate_token_valid_refresh(self):
+        token = self.token_tools.create_refresh_token(self.sample_payload)
+        assert self.token_tools.validate_token(token, "refresh") is True
+
+    def test_validate_token_wrong_type(self):
+        token = self.token_tools.create_access_token(self.sample_payload)
+        assert self.token_tools.validate_token(token, "refresh") is False
+
     def test_validate_token_none(self):
-        with pytest.raises(ValueError):
-            validate_token(None)
+        with pytest.raises(ValueError, match="Token cannot be None"):
+            self.token_tools.validate_token(None)
 
+    def test_validate_token_invalid(self):
+        assert self.token_tools.validate_token("invalid_token") is False
 
-class TestGetTokenPayload:
-    
-    def test_get_token_payload_success(self):
-        original_payload = {"user_id": 123, "username": "testuser", "role": "admin"}
-        token = create_token(original_payload)
-        extracted_payload = get_token_payload(token)
+    def test_get_token_payload_valid(self):
+        token = self.token_tools.create_access_token(self.sample_payload)
+        payload = self.token_tools.get_token_payload(token)
         
-        assert extracted_payload is not None
-        assert extracted_payload["user_id"] == original_payload["user_id"]
-        assert extracted_payload["username"] == original_payload["username"]
-        assert extracted_payload["role"] == original_payload["role"]
-    
-    def test_get_token_payload_invalid_token(self):
-        with pytest.raises(ValueError):
-            get_token_payload("invalid.token.here")
-    
-    def test_get_token_payload_expired_token(self):
-        payload = {"user_id": 123}
-        token = create_token(payload, expiry_hours=-1)
-        with pytest.raises(ValueError):
-            get_token_payload(token)
-    
-    def test_get_token_payload_empty_string(self):
-        with pytest.raises(ValueError):
-            get_token_payload("")
-    
+        assert payload == self.sample_payload
+        assert "expiration" not in payload
+        assert "issued_at" not in payload
+        assert "type" not in payload
+
     def test_get_token_payload_none(self):
-        with pytest.raises(ValueError):
-            get_token_payload(None)
+        with pytest.raises(ValueError, match="Token cannot be None"):
+            self.token_tools.get_token_payload(None)
 
+    def test_get_token_payload_empty(self):
+        with pytest.raises(ValueError, match="Token cannot be empty"):
+            self.token_tools.get_token_payload("")
 
-class TestRefreshToken:
+    def test_get_token_payload_expired(self):
+        # Create an expired token manually
+        expired_time = datetime.now() - timedelta(hours=1)
+        issued_time = datetime.now() - timedelta(hours=2)
     
-    def test_refresh_token_success(self):
-        original_payload = {"user_id": 123, "username": "testuser"}
-        original_token = create_token(original_payload)
-        new_token = refresh_token(original_token)
+        expired_payload = {
+            **self.sample_payload,
+            'expiration': expired_time.timestamp(),
+            'issued_at': issued_time.timestamp(),
+            'type': 'access'
+        }
+        expired_token = jwt.encode(expired_payload, 'random-secret-key', 'HS256')
         
-        assert new_token is not None
-        assert isinstance(new_token, str)
-        assert new_token != original_token
-        new_payload = get_token_payload(new_token)
-        
-        assert new_payload["user_id"] == original_payload["user_id"]
-        assert new_payload["username"] == original_payload["username"]
-    
-    def test_refresh_token_invalid_token(self):
-        with pytest.raises(ValueError):
-            refresh_token("invalid.token.here")
-    
-    def test_refresh_token_expired_token(self):
-        payload = {"user_id": 123}
-        expired_token = create_token(payload, expiry_hours=-1)
-        with pytest.raises(ValueError):
-            refresh_token(expired_token)
-    
-    def test_refresh_token_empty_string(self):
-        with pytest.raises(ValueError):
-            refresh_token("")
+        with pytest.raises(ValueError, match="Token has expired"):
+            self.token_tools.get_token_payload(expired_token)
 
+    def test_refresh_access_token_valid(self):
+        refresh_token = self.token_tools.create_refresh_token(self.sample_payload)
+        new_access_token = self.token_tools.refresh_access_token(refresh_token)
+        
+        assert new_access_token is not None
+        assert isinstance(new_access_token, str)
+        assert self.token_tools.validate_token(new_access_token, "access") is True
 
-class TestRevokeToken:
-    
-    def test_revoke_token_success(self):
-        token = create_token({"user_id": 123})
-        result = revoke_token(token)
-        
-        assert result is True
-        assert validate_token(token) is False
-    
-    def test_revoke_token_already_revoked(self):
-        token = create_token({"user_id": 123})
-        revoke_token(token)
-        result = revoke_token(token)
-        
-        assert result is False
-    
-    def test_revoke_token_invalid_token(self):
-        result = revoke_token("invalid.token.here")
-        
-        assert result is False
-    
-    def test_revoke_token_empty_string(self):
-        result = revoke_token("")
-        
-        assert result is False
-    
-    def test_revoke_token_none(self):
-        with pytest.raises(ValueError):
-            revoke_token(None)
+    def test_refresh_access_token_empty(self):
+        with pytest.raises(ValueError, match="Refresh token cannot be empty"):
+            self.token_tools.refresh_access_token("")
 
+    def test_refresh_access_token_invalid(self):
+        with pytest.raises(ValueError, match="Invalid or expired refresh token"):
+            self.token_tools.refresh_access_token("invalid_token")
 
-class TestAuthenticationFlow:
-    
-    def test_complete_auth_flow(self):
-        password = "secure_password"
-        hashed_password = encode_password(password)
+    def test_refresh_access_token_wrong_type(self):
+        access_token = self.token_tools.create_access_token(self.sample_payload)
+        with pytest.raises(ValueError, match="Invalid or expired refresh token"):
+            self.token_tools.refresh_access_token(access_token)
+
+    def test_token_payload_structure(self):
+        token = self.token_tools.create_access_token(self.sample_payload)
+        decoded = jwt.decode(token, 'random-secret-key', 'HS256')
         
-        assert verify_password(password, hashed_password) is True
-        
-        payload = {"user_id": 123, "username": "testuser"}
-        token = create_token(payload)
-        
-        assert validate_token(token) is True
-        
-        extracted_payload = get_token_payload(token)
-        
-        assert extracted_payload["user_id"] == payload["user_id"]
-        
-        new_token = refresh_token(token)
-        
-        assert validate_token(new_token) is True
-        assert revoke_token(new_token) is True
-        assert validate_token(new_token) is False
-    
-    def test_failed_auth_flow_wrong_password(self):
-        correct_password = "correct_password"
-        wrong_password = "wrong_password"
-        hashed_password = encode_password(correct_password)
-        
-        assert verify_password(wrong_password, hashed_password) is False
-    
-    def test_failed_auth_flow_expired_token(self):
-        payload = {"user_id": 123}
-        expired_token = create_token(payload, expiry_hours=-1)
-        
-        assert validate_token(expired_token) is False
-        with pytest.raises(ValueError):
-            get_token_payload(expired_token)
-        with pytest.raises(ValueError):
-            refresh_token(expired_token)
+        assert 'expiration' in decoded
+        assert 'issued_at' in decoded
+        assert 'type' in decoded
+        assert decoded['type'] == 'access'
+        assert decoded['user_id'] == 123
+        assert decoded['username'] == 'testuser'

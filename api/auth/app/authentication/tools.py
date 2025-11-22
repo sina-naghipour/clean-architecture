@@ -1,0 +1,104 @@
+import bcrypt
+import jwt
+from datetime import datetime, timedelta
+
+class PasswordTools:
+    def encode_password(self, plain_password: str) -> str:
+        if plain_password is None:
+            raise ValueError('password cannot be None.')
+        
+        salt = bcrypt.gensalt()
+        hashed = bcrypt.hashpw(plain_password.encode('utf-8'), salt).decode('utf-8')
+        
+        return hashed
+
+    def verify_password(self, plain_password: str, hashed_password: str) -> bool:
+        if plain_password is None:
+            raise ValueError('password cannot be None.')
+       
+        if not hashed_password or not isinstance(hashed_password, str):
+            raise ValueError("Invalid hashed password")
+        
+        try:
+            return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+        except (ValueError, TypeError):
+            raise ValueError('Invalid hashed password format')
+
+class TokenTools:
+    def create_access_token(self, user_payload: dict) -> str:
+        if user_payload is None:
+            raise ValueError('user data cannot be None.')
+        
+        expiration = datetime.now() + timedelta(seconds=280)
+        token_payload = {
+            **user_payload,
+            'expiration': expiration.timestamp(),
+            'issued_at': datetime.now().timestamp(),
+            'type': 'access'
+        }
+        return jwt.encode(token_payload, 'random-secret-key', algorithm='HS256')
+
+    def create_refresh_token(self, user_payload: dict) -> str:
+        expiration = datetime.utcnow() + timedelta(seconds=280)
+        token_payload = {
+            **user_payload,
+            'expiration': expiration.timestamp(),
+            'issued_at': datetime.now().timestamp(),
+            'type': 'refresh'
+        }
+        return jwt.encode(token_payload, 'random-secret-key', algorithm='HS256')
+
+    def validate_token(self, token: str, token_type: str = "access") -> bool:
+        if token is None:
+            raise ValueError("Token cannot be None")
+        
+        try:
+            payload = jwt.decode(token, 'random-secret-key', algorithms=['HS256'])
+            
+            if token_type and payload.get('type') != token_type:
+                return False
+                
+            return True
+        except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+            return False
+
+    def get_token_payload(self, token: str) -> dict:
+        if token is None:
+            raise ValueError("Token cannot be None")
+        
+        if not token:
+            raise ValueError("Token cannot be empty")
+        
+        try:
+            payload = jwt.decode(token, 'random-secret-key', algorithms=['HS256'])
+            # clean_payload is only the user's data
+            clean_payload = {
+                k: v for k, v in payload.items() 
+                if k not in ['expiration', 'issued_at', 'type']
+            }
+            return clean_payload
+
+        except jwt.ExpiredSignatureError:
+            raise ValueError("Token has expired")
+
+        except jwt.InvalidTokenError:
+            raise ValueError("Invalid token")
+
+    def refresh_access_token(self, refresh_token: str) -> str:
+        if not refresh_token:
+            raise ValueError("Refresh token cannot be empty")
+        
+        if not self.validate_token(refresh_token, "refresh"):
+            raise ValueError("Invalid or expired refresh token")
+        
+        payload = self.get_token_payload(refresh_token)
+        user_id = payload.get('user_id')
+        
+        if not user_id:
+            raise ValueError("Invalid refresh token payload")
+        
+        user_data = {'user_id': user_id}
+        
+        new_access_token = self.create_access_token(user_data)
+        
+        return new_access_token
