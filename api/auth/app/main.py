@@ -1,50 +1,92 @@
-import time
-import asyncio
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 import logging
-from typing import Optional, Dict, Any
-from fastapi import FastAPI, Response, status
-from pydantic import BaseModel
 import uvicorn
+from contextlib import asynccontextmanager
 
-START_TIME = time.time()
-_is_ready = False
+from routes.auth_routes import router as auth_router
 
-class HealthResponse(BaseModel):
-    status: str
-    uptime: float
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('auth_service.log')
+    ]
+)
 
-class ReadyResponse(BaseModel):
-    status: str
-    details: Optional[Dict[str, Any]] = None
+logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Auth Service - Health & Readiness")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Starting Authentication Service...")
+    logger.info("Service is starting up")
+    
+    yield
+    
+    logger.info("Shutting down Authentication Service...")
+    logger.info("Service is shutting down")
 
-async def perform_startup_checks() -> (bool, Dict[str, Any]):
-    await asyncio.sleep(0)
-    return True, {"note": "no checks implemented"}
+app = FastAPI(
+    title="Ecommerce API - Authentication Service",
+    description="Authentication microservice for Ecommerce API",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+    lifespan=lifespan
+)
 
-@app.on_event("startup")
-async def on_startup():
-    global _is_ready
-    try:
-        ok, details = await perform_startup_checks()
-        _is_ready = ok
-        if not ok:
-            logging.error("Startup checks failed: %s", details)
-    except Exception:
-        _is_ready = False
-        logging.exception("Startup checks raised an exception")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@app.get("/health", response_model=HealthResponse, tags=["monitoring"])
-async def health():
-    return HealthResponse(status="ok", uptime=time.time() - START_TIME)
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Global exception handler: {str(exc)}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "type": "https://example.com/errors/internal",
+            "title": "Internal Server Error",
+            "status": 500,
+            "detail": "An unexpected error occurred",
+            "instance": str(request.url)
+        },
+        media_type="application/problem+json"
+    )
 
-@app.get("/ready", response_model=ReadyResponse, tags=["monitoring"])
-async def ready(response: Response):
-    if _is_ready:
-        return ReadyResponse(status="ok", details=None)
-    response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-    return ReadyResponse(status="failed", details={"reason": "startup checks incomplete or failed"})
+@app.get("/health", tags=["Health"])
+async def health_check():
+    """Health check endpoint for service monitoring"""
+    return {
+        "status": "healthy",
+        "service": "authentication",
+        "timestamp": "2024-01-01T00:00:00Z"
+    }
+
+@app.get("/", tags=["Root"])
+async def root():
+    """Root endpoint with service information"""
+    return {
+        "message": "Ecommerce Authentication Service",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "health": "/health"
+    }
+
+app.include_router(auth_router, prefix="/api")
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        log_level="info"
+    )

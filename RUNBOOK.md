@@ -147,3 +147,11 @@ pre-commit install
 pytest --cov=src
 python -c "from tennis.game import TennisGame; print('✓ Setup complete')"
 ```
+
+## Running Each API Service
+
+during development you could head over to app folder of any service and run this command in order to run each service separate.
+
+```bash
+python main.py
+```
