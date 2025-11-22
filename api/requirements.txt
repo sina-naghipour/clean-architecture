@@ -1,2 +1,5 @@
 schemathesis>=4.5.4
 pytest
+pre-commit
+ruff
+pylint

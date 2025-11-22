@@ -3,8 +3,13 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
+<<<<<<< HEAD
 api/.api-venv
 api/auth/.auth-venv
+=======
+/api/.api-venv
+/api/auth/.auth-venv
+>>>>>>> feat/authentication
 # C extensions
 *.c
 
