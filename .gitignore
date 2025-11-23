@@ -8,6 +8,7 @@ api/.api-venv
 api/auth/.auth-venv
 api/products/.venv-products
 api/cart/.venv-cart
+api/orders/.venv-orders
 =======
 
 >>>>>>> feat/authentication
