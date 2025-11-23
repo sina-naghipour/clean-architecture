@@ -1,7 +1,13 @@
 import bcrypt
 import jwt
+import os
 from datetime import datetime, timedelta
 from decorators.auth_tools_decorators import TokenToolsDecorators, PasswordToolsDecorators, PasswordErrorHandler, TokenErrorHandler
+
+# Environment variables with defaults
+JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'random-secret-key')
+ACCESS_TOKEN_EXPIRE_SECONDS = int(os.getenv('ACCESS_TOKEN_EXPIRE_SECONDS', '280'))
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv('REFRESH_TOKEN_EXPIRE_DAYS', '7'))
 
 class PasswordTools:
     def __init__(self):
@@ -39,32 +45,32 @@ class TokenTools:
         if user_payload is None:
             raise ValueError('user data cannot be None.')
         
-        expiration = datetime.now() + timedelta(seconds=280)
+        expiration = datetime.now() + timedelta(seconds=ACCESS_TOKEN_EXPIRE_SECONDS)
         token_payload = {
             **user_payload,
             'expiration': expiration.timestamp(),
             'issued_at': datetime.now().timestamp(),
             'type': 'access'
         }
-        return jwt.encode(token_payload, 'random-secret-key', algorithm='HS256')
+        return jwt.encode(token_payload, JWT_SECRET_KEY, algorithm='HS256')
 
     @TokenToolsDecorators.handle_creation_error
     def create_refresh_token(self, user_payload: dict) -> str:
-        expiration = datetime.now() + timedelta(days=7)
+        expiration = datetime.now() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
         token_payload = {
             **user_payload,
             'expiration': expiration.timestamp(),
             'issued_at': datetime.now().timestamp(),
             'type': 'refresh'
         }
-        return jwt.encode(token_payload, 'random-secret-key', algorithm='HS256')
+        return jwt.encode(token_payload, JWT_SECRET_KEY, algorithm='HS256')
 
     def validate_token(self, token: str, token_type: str = "access") -> bool:
         if token is None:
             raise ValueError("Token cannot be None")
         
         try:
-            payload = jwt.decode(token, 'random-secret-key', algorithms=['HS256'])
+            payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=['HS256'])
             
             if token_type and payload.get('type') != token_type:
                 return False
@@ -83,7 +89,7 @@ class TokenTools:
         if not token:
             raise ValueError("Token cannot be empty")
         
-        payload = jwt.decode(token, 'random-secret-key', algorithms=['HS256'])
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=['HS256'])
         
         expiration_timestamp = payload.get('expiration')
         if expiration_timestamp and datetime.now().timestamp() > expiration_timestamp:

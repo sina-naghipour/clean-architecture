@@ -155,3 +155,19 @@ during development you could head over to app folder of any service and run this
 ```bash
 python main.py
 ```
+
+## Testing Each Service
+
+run `pytest` inside the app directory of any service.
+
+```bash 
+(.auth-venv) PS D:\codes\remote\New Stages\clean-architecture\api\auth\app> pytest -v
+```
+
+## Virtual Environment
+
+create a virtual enviroment for any service you desire to develop to have isolated environments.
+
+```bash
+python -m venv .venv-ServiceName
+```

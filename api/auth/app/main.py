@@ -4,8 +4,20 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 import uvicorn
 from contextlib import asynccontextmanager
+import os
 
 from routes.auth_routes import router as auth_router
+
+# Load environment variables
+HOST = os.getenv('HOST', '0.0.0.0')
+PORT = int(os.getenv('PORT', '8000'))
+RELOAD = os.getenv('RELOAD', 'True').lower() == 'true'
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'info')
+ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
+
+# CORS origins from environment
+CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000')
+ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ORIGINS.split(',')]
 
 logging.basicConfig(
     level=logging.INFO,
@@ -21,7 +33,8 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting Authentication Service...")
-    logger.info("Service is starting up")
+    logger.info(f"Environment: {ENVIRONMENT}")
+    logger.info(f"Host: {HOST}, Port: {PORT}")
     
     yield
     
@@ -40,7 +53,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -67,7 +80,8 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "authentication",
-        "timestamp": "2024-01-01T00:00:00Z"
+        "timestamp": "2024-01-01T00:00:00Z",
+        "environment": ENVIRONMENT
     }
 
 @app.get("/", tags=["Root"])
@@ -76,6 +90,7 @@ async def root():
     return {
         "message": "Ecommerce Authentication Service",
         "version": "1.0.0",
+        "environment": ENVIRONMENT,
         "docs": "/docs",
         "health": "/health"
     }
@@ -85,8 +100,8 @@ app.include_router(auth_router, prefix="/api")
 if __name__ == "__main__":
     uvicorn.run(
         "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-        log_level="info"
+        host=HOST,
+        port=PORT,
+        reload=RELOAD,
+        log_level=LOG_LEVEL
     )

@@ -158,7 +158,7 @@ class TestAuthAPIErrorScenarios:
     
     @pytest_asyncio.fixture
     async def client(self):
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             yield client
 
     @pytest.mark.asyncio
