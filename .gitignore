@@ -7,9 +7,9 @@ __pycache__/
 api/.api-venv
 api/auth/.auth-venv
 api/products/.venv-products
+api/cart/.venv-cart
 =======
-/api/.api-venv
-/api/auth/.auth-venv
+
 >>>>>>> feat/authentication
 # C extensions
 *.c
