@@ -1,4 +1,5 @@
 import logging
+import os
 from fastapi import APIRouter, Request, Depends, Query
 from services.product_services import ProductService
 from database import models
@@ -7,6 +8,10 @@ from decorators.product_routes_decorators import ProductErrorDecorators
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix='/products', tags=['products'])
+
+# Environment variables with defaults
+DEFAULT_PAGE_SIZE = int(os.getenv('DEFAULT_PAGE_SIZE', '20'))
+MAX_PAGE_SIZE = int(os.getenv('MAX_PAGE_SIZE', '100'))
 
 # Dependency injection functions
 def get_product_service() -> ProductService:
@@ -36,7 +41,7 @@ async def list_products(
     request: Request,
     product_service: ProductService = Depends(get_product_service),
     page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(20, ge=1, le=100, description="Page size"),
+    page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE, description="Page size"),
     q: str = Query(None, description="Search query"),
 ) -> models.ProductList:
     query_params = models.ProductQueryParams(

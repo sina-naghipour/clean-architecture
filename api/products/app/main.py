@@ -5,16 +5,22 @@ import logging
 import uvicorn
 from contextlib import asynccontextmanager
 import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 from routes.product_routes import router as product_router
 
+# Environment variables with defaults
 HOST = os.getenv('HOST', '0.0.0.0')
 PORT = int(os.getenv('PORT', '8001'))
 RELOAD = os.getenv('RELOAD', 'True').lower() == 'true'
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'info')
 ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
-
 CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000')
+LOG_FILE = os.getenv('LOG_FILE', 'product_service.log')
+
 ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ORIGINS.split(',')]
 
 logging.basicConfig(
@@ -22,7 +28,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler('product_service.log')
+        logging.FileHandler(LOG_FILE)
     ]
 )
 
