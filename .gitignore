@@ -6,6 +6,7 @@ __pycache__/
 <<<<<<< HEAD
 api/.api-venv
 api/auth/.auth-venv
+api/products/.venv-products
 =======
 /api/.api-venv
 /api/auth/.auth-venv
