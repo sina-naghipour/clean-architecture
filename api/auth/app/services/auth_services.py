@@ -40,7 +40,7 @@ class AuthService:
         
         response = JSONResponse(
             status_code=201,
-            content=mock_user.dict(),
+            content=mock_user.model_dump(),
             headers={"Location": f"/api/users/{mock_user.id}"}
         )
         return response
