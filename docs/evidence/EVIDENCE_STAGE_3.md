@@ -1,57 +1,131 @@
 # Evidence: Authentication Service
 
 ## 1. Domain Models & Data Contracts
-**File**: `database/models.py:1-50`
+**File**: `auth/app/database/models.py:57-65`
 
 ```python
-class RegisterRequest(BaseModel):
-    email: EmailStr
-    password: str = Field(..., min_length=8, description="Password must be at least 8 characters long")
-    name: str = Field(..., min_length=1, description="Name is required")
+class ProfileUpdateRequest(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, description="Name cannot be empty")
+    phone: Optional[str] = Field(None, min_length=1, description="Phone cannot be empty")
 
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str = Field(..., min_length=1, description="Password is required")
-
-class UserResponse(BaseModel):
-    id: str
-    email: EmailStr
-    name: str
-    model_config = ConfigDict(from_attributes=True)
+    @field_validator('*', mode='before')
+    def empty_string_to_none(cls, v):
+        if v == "":
+            return None
+        return v
 ```
 
-## 2. Business Logic - Authentication Services
-**File**: `services/auth_services.py:15-45`
+**File**: `products/app/database/models.py:32-46`
 
 ```python
-class AuthService:
-    def __init__(self, logger):
-        self.logger = logger
+class ProductResponse(BaseModel):
+    id: str
+    name: str
+    price: float
+    stock: int
+    description: Optional[str]
 
-    async def register_user(
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProductList(BaseModel):
+    items: List[ProductResponse]
+    total: int
+    page: int
+    page_size: int
+```
+
+## 2. Business Logic
+**File**: `cart/app/services/cart_services.py:126-170`
+
+```python
+    async def update_cart_item(
         self,
         request: Request,
-        register_data: models.RegisterRequest,
-        password_tools: PasswordTools
-    ) -> models.UserResponse:
-        self.logger.info(f"Registration attempt for email: {register_data.email}")
+        user_id: str,
+        item_id: str,
+        update_data: models.CartItemUpdate
+    ):
+        self.logger.info(f"Update item attempt for user: {user_id}, item: {item_id}")
         
-        user_exists = False
+        cart_data = self.carts.get(user_id)
         
-        if user_exists:
+        if not cart_data:
             return create_problem_response(
-                status_code=409,
-                error_type="conflict",
-                title="Conflict",
-                detail="Duplicate resource.",
+                status_code=404,
+                error_type="not-found",
+                title="Not Found",
+                detail="Cart not found",
                 instance=str(request.url)
             )
         
-        hashed_password = password_tools.encode_password(register_data.password)
+        # Find the item
+        target_item = None
+        for item in cart_data['items']:
+            if item['id'] == item_id:
+                target_item = item
+                break
+        
+        if not target_item:
+            return create_problem_response(
+                status_code=404,
+                error_type="not-found",
+                title="Not Found",
+                detail="Cart item not found",
+                instance=str(request.url)
+            )
+        
+        # Update quantity
+        target_item['quantity'] = update_data.quantity
+        target_item['updated_at'] = datetime.now()
+        cart_data['updated_at'] = datetime.now()
+        
+        response_item = models.CartItemResponse(**target_item)
+        
+        self.logger.info(f"Item updated successfully: {item_id}")
+        return response_item
 ```
 
-## 3. Core Authentication Tools
-**File**: `authentication/tools.py:15-35`
+**File**: `product/app/services/product_services.py:7-40`
+
+```python
+class ProductService:
+    def __init__(self, logger):
+        self.logger = logger
+        # Mock data storage
+        self.products = {}
+        self.next_id = 1
+
+    async def create_product(
+        self,
+        request: Request,
+        product_data: models.ProductRequest
+    ):
+        self.logger.info(f"Product creation attempt: {product_data.name}")
+        
+        for product in self.products.values():
+            if product['name'].lower() == product_data.name.lower():
+                return create_problem_response(
+                    status_code=409,
+                    error_type="conflict",
+                    title="Conflict",
+                    detail="Product with this name already exists",
+                    instance=str(request.url)
+                )
+        
+        # Create product
+        product_id = f"prod_{self.next_id}"
+        
+        product = models.ProductResponse(
+            id=product_id,
+            name=product_data.name,
+            price=product_data.price,
+            stock=product_data.stock,
+            description=product_data.description
+        )
+```
+## 3. Core Tools
+**File**: `authentication/tools.py:12-37`
 
 ```python
 class PasswordTools:
@@ -67,179 +141,130 @@ class PasswordTools:
         hashed = bcrypt.hashpw(plain_password.encode('utf-8'), salt).decode('utf-8')
         return hashed
 
-class TokenTools:
-    def __init__(self):
-        pass
-
-    @TokenToolsDecorators.handle_creation_error
-    def create_access_token(self, user_payload: dict) -> str:
-        if user_payload is None:
-            raise ValueError('user data cannot be None.')
+    def verify_password(self, plain_password: str, hashed_password: str) -> bool:
+        if plain_password is None:
+            raise ValueError('password cannot be None.')
+       
+        if not hashed_password or not isinstance(hashed_password, str):
+            raise ValueError("Invalid hashed password")
+        
+        try:
+            return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+        except (ValueError, TypeError) as e:
+            raise ValueError('Invalid hashed password format')
+        except Exception as e:
+            PasswordErrorHandler.handle_verify_error(e)
 ```
 
 ## 4. Error Handling & Decorators
-**File**: `decorators/auth_routes_decorators.py:15-45`
+**File**: `profile/app/decorators/profile_routes_decorators.py:15-45`
 
 ```python
-class AuthErrorDecorators:
+class ProfileErrorDecorators:
+    
     @staticmethod
-    def handle_register_errors(func: Callable) -> Callable:
+    def handle_get_errors(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(
             request: Request,
-            register_data: Any,
-            password_tools: PasswordTools = Depends(lambda: PasswordTools()),
-            auth_service: AuthService = Depends(lambda: AuthService()),
-            *args, **kwargs
+            user_id: str,
+            profile_service: ProfileService = Depends(),
         ) -> Any:
             try:
-                return await func(request, register_data, password_tools, auth_service, *args, **kwargs)
+                return await func(request, user_id, profile_service)
             except Exception as e:
-                AuthErrorDecorators._handle_register_exception(e, request)
+                return ProfileErrorDecorators._handle_get_exception(e, request)
+        return wrapper
+    
+    @staticmethod
+    def handle_update_errors(func: Callable) -> Callable:
+        @wraps(func)
+        async def wrapper(
+            request: Request,
+            profile_data: Any,
+            user_id: str,
+            profile_service: ProfileService = Depends(),
+        ) -> Any:
+            try:
+                return await func(request, profile_data, user_id, profile_service)
+            except Exception as e:
+                return ProfileErrorDecorators._handle_update_exception(e, request)
         return wrapper
 ```
 
 ## 5. API Routes with Dependency Injection
-**File**: `routes/auth_routes.py:35-65`
+**File**: `orders/routes/order_routes.py:23-55`
 
 ```python
 @router.post(
-    '/register',
-    response_model=models.UserResponse,
+    '',
+    response_model=models.OrderResponse,
     status_code=201,
-    summary="Register new user"
+    summary="Create order (checkout current cart)"
 )
-@AuthErrorDecorators.handle_register_errors
-async def register_user(
+@OrderErrorDecorators.handle_create_errors
+async def create_order(
     request: Request,
-    register_data: models.RegisterRequest,
-    password_tools: PasswordTools = Depends(get_password_tools),
-    auth_service: AuthService = Depends(get_auth_service),
-) -> models.UserResponse:
-    return await auth_service.register_user(request, register_data, password_tools)
+    order_data: models.OrderCreate,
+    user_id: str = Depends(get_user_id),
+    order_service: OrderService = Depends(get_order_service),
+) -> models.OrderResponse:
+    return await order_service.create_order(request, order_data, user_id)
+
+@router.get(
+    '',
+    response_model=models.OrderList,
+    summary="List user's orders (paginated)"
+)
+@OrderErrorDecorators.handle_list_errors
+async def list_orders(
+    request: Request,
+    user_id: str = Depends(get_user_id),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE, description="Page size"),
+    order_service: OrderService = Depends(get_order_service),
+) -> models.OrderList:
+    query_params = models.OrderQueryParams(
+        page=page,
+        page_size=page_size
+    )
+    return await order_service.list_orders(request, user_id, query_params)
 ```
 
 ## 6. Comprehensive Test Coverage
-**File**: `tests/test_auth_contract.py:25-45`
+an example of a test coverage.
 
-```python
-@pytest.mark.asyncio
-async def test_register_user_contract(self, client):
-    register_data = {
-        "email": "contract@test.com",
-        "password": "SecurePass123!",
-        "name": "Contract Test User"
-    }
-    
-    response = await client.post("/api/auth/register", json=register_data)
-    
-    assert response.status_code in [201, 409]
-    
-    if response.status_code == 201:
-        data = response.json()
-        assert "id" in data
-        assert "email" in data
-        assert "name" in data
-        assert data["email"] == register_data["email"]
-        assert data["name"] == register_data["name"]
-```
-
-## 7. Password Security & Validation
-**File**: `database/models.py:15-45`
-
-```python
-@field_validator('password')
-def password_strength(cls, v):
-    if len(v) < 8:
-        raise ValueError('Password must be at least 8 characters long')
-    
-    if not any(c.isupper() for c in v):
-        raise ValueError('Password must contain at least one uppercase letter')
-    
-    if not any(c.islower() for c in v):
-        raise ValueError('Password must contain at least one lowercase letter')
-    
-    if not any(c.isdigit() for c in v):
-        raise ValueError('Password must contain at least one digit')
-    
-    special_chars = "!@#$%^&*()_+-=[]{}|;:,.<>?"
-    if not any(c in special_chars for c in v):
-        raise ValueError('Password must contain at least one special character')
-```
-
-## 8. Token Management & JWT
-**File**: `authentication/tools.py:55-85`
-
-```python
-def validate_token(self, token: str, token_type: str = "access") -> bool:
-    if token is None:
-        raise ValueError("Token cannot be None")
-    
-    try:
-        payload = jwt.decode(token, 'random-secret-key', algorithms=['HS256'])
-        
-        if token_type and payload.get('type') != token_type:
-            return False
-            
-        return True
-    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
-        return False
-    except Exception as e:
-        return TokenErrorHandler.handle_validation_error(e)
-```
-
-## 9. Service Layer Testing
-**File**: `tests/test_auth_services.py:45-75`
-
-```python
-@pytest.mark.asyncio
-async def test_register_user_success(
-    self, auth_service, mock_request, mock_password_tools
-):
-    register_data = models.RegisterRequest(
-        email="test@example.com",
-        password="SecurePass123!",
-        name="Test User"
-    )
-
-    result = await auth_service.register_user(
-        mock_request, register_data, mock_password_tools
-    )
-
-    assert isinstance(result, JSONResponse)
-    assert result.status_code == 201
-    assert "Location" in result.headers
-```
-
-## 10. Tool Layer Testing
-**File**: `tests/test_auth_tools.py:15-35`
-
-```python
-def test_encode_password_valid(self):
-    password = "securepassword123"
-    hashed = self.password_tools.encode_password(password)
-    
-    assert hashed is not None
-    assert isinstance(hashed, str)
-    assert hashed != password
-
-def test_verify_password_correct(self):
-    password = "securepassword123"
-    hashed = self.password_tools.encode_password(password)
-    
-    assert self.password_tools.verify_password(password, hashed) is True
+```bash
+---------- coverage: platform win32, python 3.12.4-final-0 -----------
+Name                                   Stmts   Miss  Cover
+----------------------------------------------------------
+__init__.py                                0      0   100%
+database\__init__.py                       0      0   100%
+database\models.py                        39      1    97%
+decorators\__init__.py                     0      0   100%
+decorators\cart_routes_decorators.py      89     39    56%
+main.py                                   45      8    82%
+routes\__init__.py                         0      0   100%
+routes\cart_routes.py                     37      1    97%
+services\__init__.py                       0      0   100%
+services\cart_helpers.py                   4      0   100%
+services\cart_services.py                110      2    98%
+tests\__init__.py                          0      0   100%
+tests\test_cart_contract.py              138      8    94%
+tests\test_cart_services.py              147      0   100%
+----------------------------------------------------------
+TOTAL                                    609     59    90%
 ```
 
 ## Key Architecture Patterns
 
 ### 1. **Clean Separation of Concerns**
 - **Domain Layer**: Pydantic models in `database/models.py`
-- **Business Logic**: `AuthService` class in `services/auth_services.py`
-- **Infrastructure**: Password & Token tools in `authentication/tools.py`
-- **Presentation**: FastAPI routes in `routes/auth_routes.py`
+- **Business Logic**: `Service` classes in `services/service-name_services.py`
+- **Presentation**: FastAPI routes in `routes/service-name_routes.py`
 
 ### 2. **Error Handling Strategy**
-- **Decorator Pattern**: Centralized error handling in `AuthErrorDecorators`
+- **Decorator Pattern**: Centralized error handling in `ErrorDecorators`
 - **Problem Details**: RFC 7807 compliant error responses
 - **Type Safety**: Pydantic validation throughout
 
@@ -255,11 +280,6 @@ def test_verify_password_correct(self):
 - **Tool Testing**: Core algorithm validation
 - **Mock Dependencies**: Proper dependency injection for testing
 
-### 5. **Modern Python Practices**
-- **Pydantic v2**: Modern data validation with `ConfigDict`
-- **FastAPI Dependencies**: Clean dependency injection
-- **Async/Await**: Proper async pattern usage
-- **Type Hints**: Comprehensive type annotations throughout
 
 ## Architecture Benefits
 
@@ -268,5 +288,3 @@ def test_verify_password_correct(self):
 3. **Scalability**: Stateless services allow horizontal scaling
 4. **Security**: Multiple layers of validation and proper error handling
 5. **Standards Compliance**: Follows RESTful patterns and RFC specifications
-
-This architecture demonstrates a production-ready authentication system with proper separation of concerns, comprehensive testing, and enterprise-grade security practices.
