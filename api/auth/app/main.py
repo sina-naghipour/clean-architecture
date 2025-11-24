@@ -86,7 +86,6 @@ async def health_check():
 
 @app.get("/", tags=["Root"])
 async def root():
-    """Root endpoint with service information"""
     return {
         "message": "Ecommerce Authentication Service",
         "version": "1.0.0",

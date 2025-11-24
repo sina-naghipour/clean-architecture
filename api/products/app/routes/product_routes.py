@@ -9,7 +9,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix='/products', tags=['products'])
 
-# Environment variables with defaults
 DEFAULT_PAGE_SIZE = int(os.getenv('DEFAULT_PAGE_SIZE', '20'))
 MAX_PAGE_SIZE = int(os.getenv('MAX_PAGE_SIZE', '100'))
 
