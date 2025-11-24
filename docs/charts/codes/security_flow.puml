@@ -1,0 +1,60 @@
+@startuml SecurityFlow
+actor "Public User" as public
+actor "Authenticated User" as user
+actor "Admin User" as admin
+participant "API Gateway" as gateway
+participant "JWT Middleware" as jwt
+participant "Role Checker" as roles
+
+== Public Access ==
+public -> gateway: GET /products
+gateway -> gateway: public_endpoint?
+gateway --> public: 200 OK + products
+
+== User Authentication ==
+user -> gateway: POST /auth/login
+gateway -> jwt: validate_credentials()
+jwt --> gateway: user_token
+gateway --> user: 200 OK + JWT tokens
+
+== User Access ==
+user -> gateway: GET /cart\n+ Bearer token
+gateway -> jwt: verify_token()
+jwt --> gateway: token_valid
+gateway -> roles: check_permissions()
+roles --> gateway: user_role = "user"
+gateway -> gateway: route_to_cart_service()
+gateway --> user: 200 OK + cart_data
+
+== Admin Access ==
+admin -> gateway: POST /products\n+ Bearer token
+gateway -> jwt: verify_token()
+jwt --> gateway: token_valid
+gateway -> roles: check_permissions()
+roles --> gateway: user_role = "admin"
+gateway -> gateway: route_to_product_service()
+gateway --> admin: 201 Created + product
+
+== Unauthorized Access ==
+user -> gateway: POST /products\n+ Bearer token
+gateway -> jwt: verify_token()
+jwt --> gateway: token_valid
+gateway -> roles: check_permissions()
+roles --> gateway: user_role = "user" ≠ "admin"
+gateway --> user: 403 Forbidden
+
+== Invalid Token ==
+user -> gateway: GET /profile\n+ Invalid token
+gateway -> jwt: verify_token()
+jwt --> gateway: token_invalid
+gateway --> user: 401 Unauthorized
+
+note right of roles
+  Role-Based Access Control
+  User roles: user, admin
+  Public endpoints: /products, /auth/*
+  Protected endpoints require valid JWT
+  Admin endpoints require admin role
+end note
+
+@enduml

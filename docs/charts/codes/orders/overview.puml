@@ -1,0 +1,54 @@
+@startuml OrderServiceArchitecture
+!define RECTANGLE class
+skinparam class {
+    BackgroundColor White
+    BorderColor Black
+    ArrowColor Black
+}
+
+rectangle "Order Service" as order_service {
+  rectangle "FastAPI Application" as fastapi
+  rectangle "Order Router" as router
+  rectangle "Order Service Layer" as service
+  rectangle "Data Models" as models
+  rectangle "Error Decorators" as decorators
+  rectangle "Mock Storage" as storage
+}
+
+rectangle "External Dependencies" as deps {
+  rectangle "Authentication Service" as auth
+  rectangle "Cart Service" as cart
+  rectangle "Payment Service" as payment
+  rectangle "API Gateway" as gateway
+}
+
+rectangle "Infrastructure" as infra {
+  rectangle "Docker Container" as docker
+  rectangle "Uvicorn Server" as uvicorn
+  rectangle "Port 8003" as port
+}
+
+gateway --> order_service : HTTP/REST
+auth --> order_service : User Validation
+cart --> order_service : Cart Data
+payment --> order_service : Payment Processing
+
+fastapi --> router : Routes
+router --> service : Business Logic
+service --> models : Data Structures
+service --> decorators : Error Handling
+service --> storage : In-Memory Data
+
+docker ..> order_service : Hosts
+uvicorn ..> order_service : Serves
+port ..> order_service : Listens
+
+note right of order_service
+  Order Microservice
+  Port: 8003
+  In-memory storage
+  Order lifecycle management
+  Cart integration
+end note
+
+@enduml

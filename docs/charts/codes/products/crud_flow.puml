@@ -1,0 +1,68 @@
+@startuml ProductCRUDFlow
+actor "Admin" as admin
+participant "Client" as client
+participant "Product Router" as router
+participant "Product Service" as service
+participant "Mock Storage" as storage
+
+== Create Product ==
+admin -> client: Add new product
+client -> router: POST /api/products
+router -> service: create_product()
+service -> storage: check_duplicate_name()
+storage --> service: name_available
+service -> storage: create_product()
+storage --> service: product_created
+service --> router: 201 Created + product
+router --> client: Product created
+client --> admin: Success confirmation
+
+== Get Product ==
+admin -> client: View product details
+client -> router: GET /api/products/{id}
+router -> service: get_product()
+service -> storage: find_product()
+storage --> service: product_data
+service --> router: ProductResponse
+router --> client: Product data
+client --> admin: Display product
+
+== List Products ==
+admin -> client: Browse products
+client -> router: GET /api/products?q=search
+router -> service: list_products()
+service -> storage: get_all_products()
+storage --> service: all_products
+service -> service: filter_by_search()
+service -> service: paginate_results()
+service --> router: ProductList
+router --> client: Paginated results
+client --> admin: Product catalog
+
+== Update Product ==
+admin -> client: Edit product
+client -> router: PUT /api/products/{id}
+router -> service: update_product()
+service -> storage: find_product()
+storage --> service: product_exists
+service -> storage: check_name_conflict()
+storage --> service: name_available
+service -> storage: update_product()
+storage --> service: product_updated
+service --> router: updated_product
+router --> client: Update success
+client --> admin: Changes saved
+
+== Delete Product ==
+admin -> client: Remove product
+client -> router: DELETE /api/products/{id}
+router -> service: delete_product()
+service -> storage: find_product()
+storage --> service: product_exists
+service -> storage: delete_product()
+storage --> service: product_deleted
+service --> router: 204 No Content
+router --> client: Delete success
+client --> admin: Product removed
+
+@enduml

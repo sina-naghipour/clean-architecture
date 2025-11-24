@@ -1,0 +1,52 @@
+@startuml CartServiceArchitecture
+!define RECTANGLE class
+skinparam class {
+    BackgroundColor White
+    BorderColor Black
+    ArrowColor Black
+}
+
+rectangle "Cart Service" as cart_service {
+  rectangle "FastAPI Application" as fastapi
+  rectangle "Cart Router" as router
+  rectangle "Cart Service Layer" as service
+  rectangle "Data Models" as models
+  rectangle "Error Decorators" as decorators
+  rectangle "Mock Storage" as storage
+}
+
+rectangle "External Dependencies" as deps {
+  rectangle "Authentication Service" as auth
+  rectangle "Product Service" as products
+  rectangle "API Gateway" as gateway
+}
+
+rectangle "Infrastructure" as infra {
+  rectangle "Docker Container" as docker
+  rectangle "Uvicorn Server" as uvicorn
+  rectangle "Port 8002" as port
+}
+
+gateway --> cart_service : HTTP/REST
+auth --> cart_service : User Validation
+products --> cart_service : Product Info
+
+fastapi --> router : Routes
+router --> service : Business Logic
+service --> models : Data Structures
+service --> decorators : Error Handling
+service --> storage : In-Memory Data
+
+docker ..> cart_service : Hosts
+uvicorn ..> cart_service : Serves
+port ..> cart_service : Listens
+
+note right of cart_service
+  Cart Microservice
+  Port: 8002
+  In-memory storage
+  JWT-based auth
+  Product validation
+end note
+
+@enduml

@@ -1,0 +1,50 @@
+@startuml OrderCreationFlow
+
+actor User as user
+participant "Client" as client
+participant "Order Router" as router
+participant "Order Service" as service
+participant "Mock Cart" as cart
+participant "Order Storage" as storage
+
+== Order Creation ==
+
+user -> client: Checkout cart
+client -> router: POST /api/orders\n+ Auth header
+router -> service: create_order()
+
+service -> cart: get_user_cart(user_id)
+cart --> service: cart_data
+
+alt Cart empty
+  service --> router: 400 Bad Request\n"Empty cart"
+  router --> client: Error response
+  client --> user: Checkout failed
+else Cart has items
+  service -> service: calculate_total(cart)
+  service -> service: create_order_items(cart)
+  service -> storage: save_order(order_data)
+  storage --> service: order_created
+  service -> cart: clear_user_cart(user_id)
+  cart --> service: cart_cleared
+  service --> router: 201 Created + order
+  router --> client: Order created
+  client --> user: Order confirmation
+end
+
+== Order Data Structure ==
+
+note over service
+**Order Data Structure:**
+- ID: order_1, order_2, ...
+- Status: CREATED
+- Total: calculated from cart
+- Items: from cart items
+- Addresses: from request
+- User ID: from auth
+- Timestamp: creation time
+end note
+
+service -> service: format_order_response(\n  id="order_1",\n  status="created", \n  total=1059.97,\n  items=[...],\n  created_at=ISO_string\n)
+
+@enduml

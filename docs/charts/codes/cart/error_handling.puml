@@ -1,0 +1,58 @@
+@startuml CartErrorHandling
+participant "Client" as client
+participant "Cart Router" as router
+participant "Error Decorators" as decorators
+participant "Cart Service" as service
+participant "Response Formatter" as formatter
+
+== Successful Request ==
+client -> router: POST /api/cart/items\nValid data
+router -> decorators: @handle_add_item_errors
+decorators -> service: add_cart_item()
+service --> decorators: CartItemResponse
+decorators --> router: success_response
+router --> client: 201 Created
+
+== Validation Error ==
+client -> router: POST /api/cart/items\nEmpty product_id
+router -> decorators: @handle_add_item_errors
+decorators -> service: add_cart_item()
+service --> decorators: ValueError\n"Product ID cannot be empty"
+decorators -> decorators: _handle_item_exception()
+decorators --> router: HTTPException(400)
+router --> client: 400 Bad Request
+
+== Product Not Found ==
+client -> router: POST /api/cart/items\nInvalid product
+router -> decorators: @handle_add_item_errors
+decorators -> service: add_cart_item()
+service --> decorators: ProblemResponse(404)
+decorators --> router: error_response
+router --> client: 404 Not Found
+
+== Cart Not Found ==
+client -> router: GET /api/cart\nNo cart exists
+router -> decorators: @handle_get_cart_errors
+decorators -> service: get_cart()
+service --> decorators: ProblemResponse(404)
+decorators --> router: error_response
+router --> client: 404 Not Found
+
+== Internal Error ==
+client -> router: Any endpoint
+router -> decorators: Error wrapper
+decorators -> service: business_logic()
+service --> decorators: Exception
+decorators -> formatter: create_problem_response()
+formatter --> decorators: JSONResponse(500)
+decorators --> router: internal_error
+router --> client: 500 Internal Error
+
+note right of decorators
+  Centralized Error Handling
+  Decorator pattern
+  Consistent error responses
+  Problem+JSON format (RFC 7807)
+end note
+
+@enduml

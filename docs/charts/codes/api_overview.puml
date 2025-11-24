@@ -1,0 +1,66 @@
+@startuml EcommerceArchitecture
+!define RECTANGLE class
+skinparam class {
+    BackgroundColor White
+    BorderColor Black
+    ArrowColor Black
+}
+
+rectangle "Ecommerce API Gateway" as gateway {
+  rectangle "FastAPI Application" as fastapi
+  rectangle "Authentication Service" as auth
+  rectangle "Product Service" as products
+  rectangle "Order Service" as orders
+  rectangle "Cart Service" as cart
+  rectangle "Profile Service" as profile
+}
+
+rectangle "External Clients" as clients {
+  rectangle "Web Frontend" as web
+  rectangle "Mobile App" as mobile
+  rectangle "Admin Dashboard" as admin
+  rectangle "API Tests" as tests
+}
+
+rectangle "Data Storage" as storage {
+  database "User Database" as user_db
+  database "Product Database" as product_db
+  database "Order Database" as order_db
+  database "Cart Database" as cart_db
+}
+
+rectangle "Infrastructure" as infra {
+  rectangle "Docker Container" as docker
+  rectangle "Uvicorn Server" as uvicorn
+  rectangle "Load Balancer" as lb
+}
+
+web --> gateway : HTTP/REST
+mobile --> gateway : HTTP/REST
+admin --> gateway : HTTP/REST
+tests --> gateway : HTTP/REST
+
+gateway --> auth : JWT Validation
+gateway --> products : Product Operations
+gateway --> orders : Order Management
+gateway --> cart : Cart Operations
+gateway --> profile : User Management
+
+auth --> user_db : User Data
+products --> product_db : Product Catalog
+orders --> order_db : Order History
+cart --> cart_db : Cart Sessions
+profile --> user_db : Profile Data
+
+docker ..> gateway : Hosts
+uvicorn ..> gateway : Serves
+lb ..> gateway : Distributes Load
+
+note right of gateway
+  Microservices Architecture
+  JWT-based Authentication
+  RESTful API Design
+  Problem+JSON Error Format
+end note
+
+@enduml

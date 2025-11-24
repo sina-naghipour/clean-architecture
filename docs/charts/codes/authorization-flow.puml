@@ -1,0 +1,66 @@
+@startuml AuthenticationFlow
+actor User as user
+participant "Client" as client
+participant "API Gateway" as gateway
+participant "Auth Service" as auth
+participant "JWT Validator" as jwt
+participant "User Database" as db
+
+== Registration ==
+user -> client: Fill registration form
+client -> gateway: POST /auth/register
+gateway -> auth: register_user()
+auth -> db: check_existing_user()
+db --> auth: user_exists? 
+alt User exists
+  auth --> gateway: 409 Conflict
+  gateway --> client: Error - User exists
+else User new
+  auth -> auth: validate_password()
+  auth -> db: create_user()
+  db --> auth: user_data
+  auth --> gateway: 201 Created
+  gateway --> client: User created + Location header
+  client --> user: Registration success
+end
+
+== Login ==
+user -> client: Enter credentials
+client -> gateway: POST /auth/login
+gateway -> auth: login_user()
+auth -> db: verify_credentials()
+db --> auth: user_valid
+auth -> jwt: create_access_token()
+jwt --> auth: access_token
+auth -> jwt: create_refresh_token()
+jwt --> auth: refresh_token
+auth --> gateway: 200 OK + tokens
+gateway --> client: Authentication success
+client --> user: Login complete
+
+== Protected Access ==
+user -> client: Access protected resource
+client -> gateway: GET /profile\n+ Bearer token
+gateway -> jwt: validate_token()
+jwt --> gateway: token_valid?
+alt Token valid
+  gateway -> profile: get_user_profile()
+  profile --> gateway: user_data
+  gateway --> client: 200 OK + profile
+  client --> user: Profile data
+else Token invalid
+  gateway --> client: 401 Unauthorized
+  client --> user: Authentication required
+end
+
+== Token Refresh ==
+client -> gateway: POST /auth/refresh-token
+gateway -> auth: refresh_token()
+auth -> jwt: validate_refresh_token()
+jwt --> auth: refresh_valid
+auth -> jwt: create_access_token()
+jwt --> auth: new_access_token
+auth --> gateway: 200 OK + new_token
+gateway --> client: Token refreshed
+
+@enduml

@@ -1,0 +1,84 @@
+@startuml APIEndpoints
+left to right direction
+
+package "Authentication API" as auth {
+  [POST /auth/register] as register
+  [POST /auth/login] as login
+  [POST /auth/refresh-token] as refresh
+  [POST /auth/logout] as logout
+}
+
+package "Product API" as products {
+  [GET /products] as list_products
+  [POST /products] as create_product
+  [GET /products/{id}] as get_product
+  [PUT /products/{id}] as update_product
+  [PATCH /products/{id}] as patch_product
+  [DELETE /products/{id}] as delete_product
+  [PATCH /products/{id}/inventory] as update_stock
+}
+
+package "Cart API" as cart {
+  [GET /cart] as get_cart
+  [DELETE /cart] as clear_cart
+  [POST /cart/items] as add_item
+  [PATCH /cart/items/{id}] as update_item
+  [DELETE /cart/items/{id}] as remove_item
+}
+
+package "Order API" as orders {
+  [POST /orders] as create_order
+  [GET /orders] as list_orders
+  [GET /orders/{id}] as get_order
+}
+
+package "Profile API" as profile {
+  [GET /profile] as get_profile
+  [PATCH /profile] as update_profile
+  [PATCH /profile/password] as change_password
+  [GET /profile/addresses] as list_addresses
+  [POST /profile/addresses] as create_address
+  [PATCH /profile/addresses/{id}] as update_address
+  [DELETE /profile/addresses/{id}] as delete_address
+}
+
+register --> login
+login --> refresh
+refresh --> logout
+
+list_products --> create_product
+create_product --> get_product
+get_product --> update_product
+update_product --> patch_product
+patch_product --> delete_product
+delete_product --> update_stock
+
+get_cart --> clear_cart
+clear_cart --> add_item
+add_item --> update_item
+update_item --> remove_item
+
+create_order --> list_orders
+list_orders --> get_order
+
+get_profile --> update_profile
+update_profile --> change_password
+change_password --> list_addresses
+list_addresses --> create_address
+create_address --> update_address
+update_address --> delete_address
+
+note top of register
+  Public endpoint
+  No authentication required
+  Returns 201 Created
+  Location header for new resource
+end note
+
+note top of create_product
+  Admin only
+  Requires bearer token
+  Role-based access control
+end note
+
+@enduml

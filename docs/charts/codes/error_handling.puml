@@ -1,0 +1,56 @@
+@startuml ErrorHandling
+participant "Client" as client
+participant "FastAPI Router" as router
+participant "Error Handler" as handler
+participant "Service Layer" as service
+participant "Validation" as validation
+
+== Successful Request ==
+client -> router: POST /auth/register\nValid JSON
+router -> service: process_request()
+service -> validation: validate_data()
+validation --> service: data_valid
+service --> router: UserResponse
+router --> client: 201 Created
+
+== Validation Error ==
+client -> router: POST /auth/register\nInvalid email
+router -> service: process_request()
+service -> validation: validate_data()
+validation --> service: ValidationError\n"Invalid email format"
+service --> handler: raise HTTPException(422)
+handler -> handler: format_problem_json()
+handler --> router: Problem+JSON response
+router --> client: 422 Unprocessable Entity\n+ Error details
+
+== Authentication Error ==
+client -> router: GET /profile\nNo token
+router -> handler: check_authentication()
+handler --> router: HTTPException(401)
+router --> client: 401 Unauthorized\n+ Problem details
+
+== Resource Conflict ==
+client -> router: POST /auth/register\nExisting email
+router -> service: process_request()
+service -> service: check_duplicate()
+service --> handler: HTTPException(409)
+handler --> router: Problem+JSON
+router --> client: 409 Conflict
+
+== Internal Error ==
+client -> router: GET /products
+router -> service: get_products()
+service -> service: database_error()
+service --> handler: Exception
+handler -> handler: log_error()
+handler --> router: HTTPException(500)
+router --> client: 500 Internal Error
+
+note right of handler
+  Centralized Error Handling
+  Consistent Problem+JSON format
+  RFC 7807 compliant
+  Structured error responses
+end note
+
+@enduml

@@ -1,0 +1,66 @@
+@startuml CartServiceFlow
+actor User as user
+participant "Client" as client
+participant "Cart Router" as router
+participant "Cart Service" as service
+participant "Mock Storage" as storage
+participant "Product Data" as products
+
+== Add Item to Cart ==
+user -> client: Add product to cart
+client -> router: POST /api/cart/items\n+ Auth header
+router -> service: add_cart_item()
+service -> products: get_product_info()
+products --> service: product details
+service -> storage: find_user_cart()
+storage --> service: cart_data
+alt Cart exists
+  service -> storage: update_existing_item()
+else New cart
+  service -> storage: create_new_cart()
+  service -> storage: add_new_item()
+end
+storage --> service: updated_cart
+service --> router: 201 Created + item
+router --> client: Success response
+client --> user: Item added
+
+== Get Cart ==
+user -> client: View cart
+client -> router: GET /api/cart\n+ Auth header
+router -> service: get_cart()
+service -> storage: find_user_cart()
+storage --> service: cart_data
+service -> service: calculate_total()
+service --> router: CartResponse
+router --> client: Cart data
+client --> user: Display cart
+
+== Update Item ==
+user -> client: Change quantity
+client -> router: PATCH /api/cart/items/{id}
+router -> service: update_cart_item()
+service -> storage: find_cart_item()
+storage --> service: item_found?
+alt Item exists
+  service -> storage: update_quantity()
+  storage --> service: updated_item
+  service --> router: updated_item
+else Item not found
+  service --> router: 404 Error
+end
+router --> client: Result
+
+== Clear Cart ==
+user -> client: Clear all items
+client -> router: DELETE /api/cart
+router -> service: clear_cart()
+service -> storage: find_user_cart()
+storage --> service: cart_data
+service -> storage: remove_all_items()
+storage --> service: empty_cart
+service --> router: 204 No Content
+router --> client: Success
+client --> user: Cart cleared
+
+@enduml

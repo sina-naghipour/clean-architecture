@@ -1,0 +1,97 @@
+@startuml DataModels
+class User {
+  + id: String
+  + email: String
+  + name: String
+  + password_hash: String
+  + created_at: DateTime
+  + updated_at: DateTime
+}
+
+class Product {
+  + id: String
+  + name: String
+  + price: Decimal
+  + stock: Integer
+  + description: String
+  + created_at: DateTime
+  + updated_at: DateTime
+}
+
+class Cart {
+  + id: String
+  + user_id: String
+  + created_at: DateTime
+  + updated_at: DateTime
+}
+
+class CartItem {
+  + id: String
+  + cart_id: String
+  + product_id: String
+  + quantity: Integer
+  + unit_price: Decimal
+}
+
+class Order {
+  + id: String
+  + user_id: String
+  + status: String
+  + total: Decimal
+  + billing_address_id: String
+  + shipping_address_id: String
+  + created_at: DateTime
+  + updated_at: DateTime
+}
+
+class OrderItem {
+  + id: String
+  + order_id: String
+  + product_id: String
+  + quantity: Integer
+  + unit_price: Decimal
+}
+
+class Address {
+  + id: String
+  + user_id: String
+  + line: String
+  + city: String
+  + postal_code: String
+  + country: String
+  + created_at: DateTime
+  + updated_at: DateTime
+}
+
+User "1" -- "*" Address : has
+User "1" -- "1" Cart : owns
+Cart "1" -- "*" CartItem : contains
+CartItem "*" -- "1" Product : references
+User "1" -- "*" Order : places
+Order "1" -- "*" OrderItem : contains
+OrderItem "*" -- "1" Product : references
+Order "1" -- "1" Address : billing_address
+Order "1" -- "1" Address : shipping_address
+
+note top of User
+  Core user entity
+  Email must be unique
+  Password is hashed
+  Timestamp tracking
+end note
+
+note right of Product
+  Product catalog
+  Price in decimal
+  Stock management
+  Soft delete capable
+end note
+
+note bottom of Order
+  Order lifecycle
+  Status: created/paid/shipped/canceled
+  Total calculated from items
+  Address references
+end note
+
+@enduml
