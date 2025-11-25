@@ -32,8 +32,8 @@ class TestOrderAPIContract:
         assert data["status"] == "ready"
 
     @pytest.mark.asyncio
-    async def test_root_endpoint(self, client):
-        response = await client.get("/")
+    async def test_info_endpoint(self, client):
+        response = await client.get("/info")
         
         assert response.status_code == 200
         data = response.json()
@@ -51,7 +51,7 @@ class TestOrderAPIContract:
             "payment_method_token": "pm_tok_abc"
         }
         
-        response = await client.post("/api/orders", json=order_data, headers={"Authorization": "Bearer test_token"})
+        response = await client.post("/", json=order_data, headers={"Authorization": "Bearer test_token"})
         
         assert response.status_code in [201, 400, 404]
         
@@ -75,13 +75,13 @@ class TestOrderAPIContract:
             "shipping_address_id": "addr_1"
         }
         
-        response = await client.post("/api/orders", json=order_data, headers={"Authorization": "Bearer empty_cart_user"})
+        response = await client.post("/", json=order_data, headers={"Authorization": "Bearer empty_cart_user"})
         
         assert response.status_code == 400
 
     @pytest.mark.asyncio
     async def test_list_orders_contract(self, client):
-        response = await client.get("/api/orders", headers={"Authorization": "Bearer test_token"})
+        response = await client.get("/", headers={"Authorization": "Bearer test_token"})
         
         assert response.status_code == 200
         
@@ -94,7 +94,7 @@ class TestOrderAPIContract:
 
     @pytest.mark.asyncio
     async def test_list_orders_pagination_contract(self, client):
-        response = await client.get("/api/orders?page=2&page_size=5", headers={"Authorization": "Bearer test_token"})
+        response = await client.get("/?page=2&page_size=5", headers={"Authorization": "Bearer test_token"})
         
         assert response.status_code == 200
         
@@ -109,12 +109,12 @@ class TestOrderAPIContract:
             "shipping_address_id": "addr_1"
         }
         
-        create_response = await client.post("/api/orders", json=order_data, headers={"Authorization": "Bearer test_token"})
+        create_response = await client.post("/", json=order_data, headers={"Authorization": "Bearer test_token"})
         
         if create_response.status_code == 201:
             order_id = create_response.json()["id"]
             
-            response = await client.get(f"/api/orders/{order_id}", headers={"Authorization": "Bearer test_token"})
+            response = await client.get(f"/{order_id}", headers={"Authorization": "Bearer test_token"})
             
             assert response.status_code in [200, 404]
             
@@ -128,7 +128,7 @@ class TestOrderAPIContract:
 
     @pytest.mark.asyncio
     async def test_get_order_not_found_contract(self, client):
-        response = await client.get("/api/orders/non_existent_order", headers={"Authorization": "Bearer test_token"})
+        response = await client.get("/non_existent_order", headers={"Authorization": "Bearer test_token"})
         
         assert response.status_code == 404
 
@@ -143,7 +143,7 @@ class TestOrderAPIErrorScenarios:
     @pytest.mark.asyncio
     async def test_malformed_json_contract(self, client):
         response = await client.post(
-            "/api/orders",
+            "/",
             content="{invalid json",
             headers={
                 "Content-Type": "application/json",
@@ -155,7 +155,7 @@ class TestOrderAPIErrorScenarios:
     @pytest.mark.asyncio
     async def test_unsupported_media_type_contract(self, client):
         response = await client.post(
-            "/api/orders",
+            "/",
             content="billing_address_id=addr_1",
             headers={
                 "Content-Type": "application/x-www-form-urlencoded",
@@ -166,12 +166,12 @@ class TestOrderAPIErrorScenarios:
 
     @pytest.mark.asyncio
     async def test_method_not_allowed_contract(self, client):
-        response = await client.put("/api/orders", headers={"Authorization": "Bearer test_token"})
+        response = await client.put("/", headers={"Authorization": "Bearer test_token"})
         assert response.status_code == 405
 
     @pytest.mark.asyncio
     async def test_unauthorized_access_contract(self, client):
-        response = await client.get("/api/orders")
+        response = await client.get("/")
         assert response.status_code == 422
 
     @pytest.mark.asyncio
