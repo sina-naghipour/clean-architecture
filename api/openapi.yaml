@@ -3,17 +3,8 @@ info:
   title: Ecommerce API
   version: "1.0.0"
   description: Ecommerce API, With Microservice Architecture.
-  contact:
-    name: API Support
-    email: support@example.com
-  license:
-    name: MIT
-    url: https://opensource.org/licenses/MIT
 servers:
   - url: http://localhost:8000/api
-    description: Development server
-  - url: https://api.example.com/api
-    description: Production server
 tags:
   - name: Auth
     description: Authentication & token endpoints
@@ -30,74 +21,6 @@ security:
   - bearerAuth: []
 
 paths:
-
-  /info:
-    get:
-      tags: [Auth, Products, Cart, Orders, Profile]
-      summary: Get API and services information
-      description: Returns comprehensive information about the API and all microservices
-      responses:
-        "200":
-          description: API information retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiInfo"
-              examples:
-                success:
-                  value:
-                    api:
-                      title: "Ecommerce API"
-                      version: "1.0.0"
-                      description: "Ecommerce API, With Microservice Architecture."
-                      servers:
-                        - url: "http://localhost:8000/api"
-                          description: "Development server"
-                        - url: "https://api.example.com/api"
-                          description: "Production server"
-                    services:
-                      auth:
-                        message: "Ecommerce Authentication Service"
-                        version: "1.0.0"
-                        environment: "development"
-                        endpoints:
-                          docs: "/docs"
-                          health: "/health"
-                      cart:
-                        message: "Ecommerce Cart Service"
-                        version: "1.0.0"
-                        environment: "development"
-                        endpoints:
-                          docs: "/docs"
-                          health: "/health"
-                          ready: "/ready"
-                      orders:
-                        message: "Ecommerce Order Service"
-                        version: "1.0.0"
-                        environment: "development"
-                        endpoints:
-                          docs: "/docs"
-                          health: "/health"
-                          ready: "/ready"
-                      products:
-                        message: "Ecommerce Product Service"
-                        version: "1.0.0"
-                        environment: "development"
-                        endpoints:
-                          docs: "/docs"
-                          health: "/health"
-                      profile:
-                        message: "Ecommerce Profile Service"
-                        version: "1.0.0"
-                        environment: "development"
-                        endpoints:
-                          docs: "/docs"
-                          health: "/health"
-                          ready: "/ready"
-                    timestamp: "2024-01-01T00:00:00Z"
-                    uptime: 3600
-        "500":
-          $ref: "#/components/responses/InternalError"
 
   /auth/register:
     post:
@@ -226,6 +149,7 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "500":
           $ref: "#/components/responses/InternalError"
+
 
   /products:
     get:
@@ -463,6 +387,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+
   /cart:
     get:
       tags: [Cart]
@@ -603,6 +528,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+
   /orders:
     post:
       tags: [Orders]
@@ -713,6 +639,7 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
+
 
   /profile:
     get:
@@ -891,6 +818,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+
 components:
 
   securitySchemes:
@@ -1041,87 +969,6 @@ components:
                 instance: "/orders"
 
   schemas:
-    ApiInfo:
-      type: object
-      properties:
-        api:
-          $ref: "#/components/schemas/ApiMetadata"
-        services:
-          $ref: "#/components/schemas/ServiceInfoMap"
-        timestamp:
-          type: string
-          format: date-time
-        uptime:
-          type: integer
-        status:
-          type: string
-          enum: [healthy, degraded, unhealthy]
-
-    ApiMetadata:
-      type: object
-      properties:
-        title:
-          type: string
-        version:
-          type: string
-        description:
-          type: string
-        servers:
-          type: array
-          items:
-            $ref: "#/components/schemas/ServerInfo"
-
-    ServerInfo:
-      type: object
-      properties:
-        url:
-          type: string
-        description:
-          type: string
-
-    ServiceInfoMap:
-      type: object
-      properties:
-        auth:
-          $ref: "#/components/schemas/ServiceInfo"
-        cart:
-          $ref: "#/components/schemas/ServiceInfo"
-        orders:
-          $ref: "#/components/schemas/ServiceInfo"
-        products:
-          $ref: "#/components/schemas/ServiceInfo"
-        profile:
-          $ref: "#/components/schemas/ServiceInfo"
-
-    ServiceInfo:
-      type: object
-      properties:
-        message:
-          type: string
-        version:
-          type: string
-        environment:
-          type: string
-          enum: [development, staging, production]
-        endpoints:
-          $ref: "#/components/schemas/ServiceEndpoints"
-        status:
-          type: string
-          enum: [healthy, unhealthy, unknown]
-        lastChecked:
-          type: string
-          format: date-time
-
-    ServiceEndpoints:
-      type: object
-      properties:
-        docs:
-          type: string
-        health:
-          type: string
-        ready:
-          type: string
-
     ProblemDetails:
       title: ProblemDetails
       type: object
@@ -1300,6 +1147,14 @@ components:
       required: [line, city, postalCode, country]
 
     AddressResponse:
+      allOf:
+        - $ref: "#/components/schemas/AddressRequest"
+        - type: object
+          properties:
+            id: { type: string }
+
+
+    Address:
       allOf:
         - $ref: "#/components/schemas/AddressRequest"
         - type: object
