@@ -8,7 +8,7 @@ from decorators.auth_routes_decorators import AuthErrorDecorators
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix='/auth', tags=['auth'])
+router = APIRouter(tags=['auth'])
 
 # Dependency injection functions
 def get_token_tools() -> TokenTools:

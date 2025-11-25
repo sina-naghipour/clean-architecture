@@ -7,7 +7,7 @@ from decorators.order_routes_decorators import OrderErrorDecorators
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix='/orders', tags=['orders'])
+router = APIRouter(tags=['orders'])
 
 DEFAULT_PAGE_SIZE = int(os.getenv('DEFAULT_PAGE_SIZE', '20'))
 MAX_PAGE_SIZE = int(os.getenv('MAX_PAGE_SIZE', '100'))
@@ -21,7 +21,7 @@ def get_user_id(authorization: str = Header(...)) -> str:
     raise ValueError("Invalid authorization header")
 
 @router.post(
-    '',
+    '/',
     response_model=models.OrderResponse,
     status_code=201,
     summary="Create order (checkout current cart)"
@@ -36,7 +36,7 @@ async def create_order(
     return await order_service.create_order(request, order_data, user_id)
 
 @router.get(
-    '',
+    '/',
     response_model=models.OrderList,
     summary="List user's orders (paginated)"
 )

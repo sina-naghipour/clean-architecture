@@ -84,7 +84,7 @@ async def health_check():
         "environment": ENVIRONMENT
     }
 
-@app.get("/", tags=["Root"])
+@app.get("/info", tags=["Root"])
 async def root():
     return {
         "message": "Ecommerce Authentication Service",
@@ -94,7 +94,7 @@ async def root():
         "health": "/health"
     }
 
-app.include_router(auth_router, prefix="/api")
+app.include_router(auth_router)
 
 if __name__ == "__main__":
     uvicorn.run(

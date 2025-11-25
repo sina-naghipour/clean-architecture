@@ -7,7 +7,7 @@ from decorators.profile_routes_decorators import ProfileErrorDecorators
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix='/profile', tags=['profile'])
+router = APIRouter(tags=['profile'])
 
 def get_profile_service() -> ProfileService:
     return ProfileService(logger=logger)
@@ -18,7 +18,7 @@ def get_user_id(authorization: str = Header(...)) -> str:
     raise ValueError("Invalid authorization header")
 
 @router.get(
-    '',
+    '/',
     response_model=models.UserResponse,
     summary="Get user profile"
 )
@@ -31,7 +31,7 @@ async def get_profile(
     return await profile_service.get_profile(request, user_id)
 
 @router.patch(
-    '',
+    '/',
     response_model=models.UserResponse,
     summary="Partially update profile"
 )

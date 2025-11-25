@@ -7,7 +7,7 @@ from decorators.product_routes_decorators import ProductErrorDecorators
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix='/products', tags=['products'])
+router = APIRouter(tags=['products'])
 
 DEFAULT_PAGE_SIZE = int(os.getenv('DEFAULT_PAGE_SIZE', '20'))
 MAX_PAGE_SIZE = int(os.getenv('MAX_PAGE_SIZE', '100'))
@@ -17,7 +17,7 @@ def get_product_service() -> ProductService:
     return ProductService(logger=logger)
 
 @router.post(
-    '',
+    '/',
     response_model=models.ProductResponse,
     status_code=201,
     summary="Create product"
@@ -31,7 +31,7 @@ async def create_product(
     return await product_service.create_product(request, product_data)
 
 @router.get(
-    '',
+    '/',
     response_model=models.ProductList,
     summary="List products (supports paging & filtering)"
 )

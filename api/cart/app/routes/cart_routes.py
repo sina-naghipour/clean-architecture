@@ -7,7 +7,7 @@ from decorators.cart_routes_decorators import CartErrorDecorators
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix='/cart', tags=['cart'])
+router = APIRouter(tags=['cart'])
 
 DEFAULT_PAGE_SIZE = int(os.getenv('DEFAULT_PAGE_SIZE', '20'))
 MAX_PAGE_SIZE = int(os.getenv('MAX_PAGE_SIZE', '100'))
@@ -24,7 +24,7 @@ def get_user_id(authorization: str = Header(...)) -> str:
     raise ValueError("Invalid authorization header")
 
 @router.get(
-    '',
+    '/',
     response_model=models.CartResponse,
     summary="Get current user's cart"
 )
@@ -38,7 +38,7 @@ async def get_cart(
     return await cart_service.get_cart(request, user_id)
 
 @router.delete(
-    '',
+    '/',
     status_code=204,
     summary="Clear cart"
 )

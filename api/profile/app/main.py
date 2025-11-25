@@ -92,7 +92,7 @@ async def readiness_check():
         "timestamp": "2024-01-01T00:00:00Z"
     }
 
-@app.get("/", tags=["Root"])
+@app.get("/info", tags=["Root"])
 async def root():
     return {
         "message": "Ecommerce Profile Service",
@@ -103,7 +103,7 @@ async def root():
         "ready": "/ready"
     }
 
-app.include_router(profile_router, prefix="/api")
+app.include_router(profile_router)
 
 if __name__ == "__main__":
     uvicorn.run(
