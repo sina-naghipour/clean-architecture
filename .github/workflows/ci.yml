@@ -122,10 +122,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Docker Compose
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y docker-compose-plugin
+      - name: Set up Docker
+        uses: docker/setup-docker-action@v3
+        with:
+          version: latest
 
       - name: Start all services
         working-directory: ./api
