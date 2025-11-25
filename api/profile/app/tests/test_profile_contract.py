@@ -33,7 +33,7 @@ class TestProfileAPIContract:
 
     @pytest.mark.asyncio
     async def test_root_endpoint(self, client):
-        response = await client.get("/")
+        response = await client.get("/info")
         
         assert response.status_code == 200
         data = response.json()
@@ -45,7 +45,7 @@ class TestProfileAPIContract:
 
     @pytest.mark.asyncio
     async def test_get_profile_contract(self, client):
-        response = await client.get("/api/profile", headers={"Authorization": "Bearer test_token"})
+        response = await client.get("/", headers={"Authorization": "Bearer test_token"})
         
         assert response.status_code == 200
         data = response.json()
@@ -60,7 +60,7 @@ class TestProfileAPIContract:
             "phone": "+1234567890"
         }
         
-        response = await client.patch("/api/profile", json=profile_data, headers={"Authorization": "Bearer test_token"})
+        response = await client.patch("/", json=profile_data, headers={"Authorization": "Bearer test_token"})
         
         assert response.status_code == 200
         data = response.json()
@@ -75,13 +75,13 @@ class TestProfileAPIContract:
             "new_password": "new_secure_password"
         }
         
-        response = await client.patch("/api/profile/password", json=password_data, headers={"Authorization": "Bearer test_token"})
+        response = await client.patch("/password", json=password_data, headers={"Authorization": "Bearer test_token"})
         
         assert response.status_code == 200
 
     @pytest.mark.asyncio
     async def test_list_addresses_contract(self, client):
-        response = await client.get("/api/profile/addresses", headers={"Authorization": "Bearer test_token"})
+        response = await client.get("/addresses", headers={"Authorization": "Bearer test_token"})
         
         assert response.status_code == 200
         data = response.json()
@@ -96,7 +96,7 @@ class TestProfileAPIContract:
             "country": "USA"
         }
         
-        response = await client.post("/api/profile/addresses", json=address_data, headers={"Authorization": "Bearer test_token"})
+        response = await client.post("/addresses", json=address_data, headers={"Authorization": "Bearer test_token"})
         
         assert response.status_code in [201, 400]
         
@@ -117,13 +117,13 @@ class TestProfileAPIContract:
             "country": "USA"
         }
         
-        response = await client.patch("/api/profile/addresses/addr_1", json=address_data, headers={"Authorization": "Bearer test_token"})
+        response = await client.patch("/addresses/addr_1", json=address_data, headers={"Authorization": "Bearer test_token"})
         
         assert response.status_code in [200, 404]
 
     @pytest.mark.asyncio
     async def test_delete_address_contract(self, client):
-        response = await client.delete("/api/profile/addresses/addr_1", headers={"Authorization": "Bearer test_token"})
+        response = await client.delete("/addresses/addr_1", headers={"Authorization": "Bearer test_token"})
         
         assert response.status_code in [204, 404]
 
@@ -138,7 +138,7 @@ class TestProfileAPIErrorScenarios:
     @pytest.mark.asyncio
     async def test_malformed_json_contract(self, client):
         response = await client.patch(
-            "/api/profile",
+            "/",
             content="{invalid json",
             headers={
                 "Content-Type": "application/json",
@@ -149,7 +149,7 @@ class TestProfileAPIErrorScenarios:
 
     @pytest.mark.asyncio
     async def test_unauthorized_access_contract(self, client):
-        response = await client.get("/api/profile")
+        response = await client.get("/")
         assert response.status_code == 422
 
     @pytest.mark.asyncio

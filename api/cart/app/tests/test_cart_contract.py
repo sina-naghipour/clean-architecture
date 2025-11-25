@@ -33,7 +33,7 @@ class TestCartAPIContract:
 
     @pytest.mark.asyncio
     async def test_root_endpoint(self, client):
-        response = await client.get("/")
+        response = await client.get("/info")
         
         assert response.status_code == 200
         data = response.json()
@@ -51,9 +51,9 @@ class TestCartAPIContract:
             "quantity": 2
         }
         
-        await client.post("/api/cart/items", json=item_data, headers={"Authorization": "Bearer test_token"})
+        await client.post("/items", json=item_data, headers={"Authorization": "Bearer test_token"})
         
-        response = await client.get("/api/cart", headers={"Authorization": "Bearer test_token"})
+        response = await client.get("/", headers={"Authorization": "Bearer test_token"})
         
         assert response.status_code in [200, 404]
         
@@ -67,7 +67,7 @@ class TestCartAPIContract:
 
     @pytest.mark.asyncio
     async def test_get_cart_not_found_contract(self, client):
-        response = await client.get("/api/cart", headers={"Authorization": "Bearer unknown_user"})
+        response = await client.get("/", headers={"Authorization": "Bearer unknown_user"})
         
         assert response.status_code == 404
 
@@ -78,7 +78,7 @@ class TestCartAPIContract:
             "quantity": 1
         }
         
-        response = await client.post("/api/cart/items", json=item_data, headers={"Authorization": "Bearer test_token"})
+        response = await client.post("/items", json=item_data, headers={"Authorization": "Bearer test_token"})
         print(f'here : {response.json()}')
         assert response.status_code in [201, 404]
         
@@ -93,7 +93,7 @@ class TestCartAPIContract:
             assert data["quantity"] == item_data["quantity"]
             
             assert "Location" in response.headers
-            assert "/api/cart/items/" in response.headers["Location"]
+            assert "/items/" in response.headers["Location"]
 
     @pytest.mark.asyncio
     async def test_add_cart_item_validation_contract(self, client):
@@ -102,7 +102,7 @@ class TestCartAPIContract:
             "quantity": 0
         }
         
-        response = await client.post("/api/cart/items", json=invalid_data, headers={"Authorization": "Bearer test_token"})
+        response = await client.post("/items", json=invalid_data, headers={"Authorization": "Bearer test_token"})
         
         assert response.status_code == 422
 
@@ -113,7 +113,7 @@ class TestCartAPIContract:
             "quantity": 1
         }
         
-        response = await client.post("/api/cart/items", json=item_data, headers={"Authorization": "Bearer test_token"})
+        response = await client.post("/items", json=item_data, headers={"Authorization": "Bearer test_token"})
         
         assert response.status_code == 404
 
@@ -125,7 +125,7 @@ class TestCartAPIContract:
             "quantity": 1
         }
         
-        add_response = await client.post("/api/cart/items", json=item_data, headers={"Authorization": "Bearer test_token"})
+        add_response = await client.post("/items", json=item_data, headers={"Authorization": "Bearer test_token"})
         
         if add_response.status_code == 201:
             item_id = add_response.json()["id"]
@@ -134,7 +134,7 @@ class TestCartAPIContract:
                 "quantity": 3
             }
             
-            response = await client.patch(f"/api/cart/items/{item_id}", json=update_data, headers={"Authorization": "Bearer test_token"})
+            response = await client.patch(f"/items/{item_id}", json=update_data, headers={"Authorization": "Bearer test_token"})
             
             assert response.status_code in [200, 404]
             
@@ -148,7 +148,7 @@ class TestCartAPIContract:
             "quantity": 2
         }
         
-        response = await client.patch("/api/cart/items/non_existent_item", json=update_data, headers={"Authorization": "Bearer test_token"})
+        response = await client.patch("/items/non_existent_item", json=update_data, headers={"Authorization": "Bearer test_token"})
         
         assert response.status_code == 404
 
@@ -160,12 +160,12 @@ class TestCartAPIContract:
             "quantity": 1
         }
         
-        add_response = await client.post("/api/cart/items", json=item_data, headers={"Authorization": "Bearer test_token"})
+        add_response = await client.post("/items", json=item_data, headers={"Authorization": "Bearer test_token"})
         
         if add_response.status_code == 201:
             item_id = add_response.json()["id"]
             
-            response = await client.delete(f"/api/cart/items/{item_id}", headers={"Authorization": "Bearer test_token"})
+            response = await client.delete(f"//items/{item_id}", headers={"Authorization": "Bearer test_token"})
             
             assert response.status_code in [204, 404]
 
@@ -178,9 +178,9 @@ class TestCartAPIContract:
         ]
         
         for item in items:
-            await client.post("/api/cart/items", json=item, headers={"Authorization": "Bearer test_token"})
+            await client.post("/items", json=item, headers={"Authorization": "Bearer test_token"})
         
-        response = await client.delete("/api/cart", headers={"Authorization": "Bearer test_token"})
+        response = await client.delete("/", headers={"Authorization": "Bearer test_token"})
         
         assert response.status_code in [204, 404]
 
@@ -195,7 +195,7 @@ class TestCartAPIErrorScenarios:
     @pytest.mark.asyncio
     async def test_malformed_json_contract(self, client):
         response = await client.post(
-            "/api/cart/items",
+            "/items",
             content="{invalid json",
             headers={
                 "Content-Type": "application/json",
@@ -207,7 +207,7 @@ class TestCartAPIErrorScenarios:
     @pytest.mark.asyncio
     async def test_unsupported_media_type_contract(self, client):
         response = await client.post(
-            "/api/cart/items",
+            "/items",
             content="product_id=prod_1&quantity=1",
             headers={
                 "Content-Type": "application/x-www-form-urlencoded",
@@ -218,12 +218,12 @@ class TestCartAPIErrorScenarios:
 
     @pytest.mark.asyncio
     async def test_method_not_allowed_contract(self, client):
-        response = await client.put("/api/cart", headers={"Authorization": "Bearer test_token"})
+        response = await client.put("/", headers={"Authorization": "Bearer test_token"})
         assert response.status_code == 405
 
     @pytest.mark.asyncio
     async def test_unauthorized_access_contract(self, client):
-        response = await client.get("/api/cart")
+        response = await client.get("/")
         assert response.status_code == 422  # Missing authorization header
 
     @pytest.mark.asyncio

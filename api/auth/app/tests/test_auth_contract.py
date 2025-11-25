@@ -23,7 +23,7 @@ class TestAuthAPIContract:
 
     @pytest.mark.asyncio
     async def test_root_endpoint(self, client):
-        response = await client.get("/")
+        response = await client.get("/info")
         
         assert response.status_code == 200
         data = response.json()
@@ -40,7 +40,7 @@ class TestAuthAPIContract:
             "name": "Contract Test User"
         }
         
-        response = await client.post("/api/auth/register", json=register_data)
+        response = await client.post("/register", json=register_data)
         
         assert response.status_code in [201, 409]
         
@@ -63,7 +63,7 @@ class TestAuthAPIContract:
             "name": ""
         }
         
-        response = await client.post("/api/auth/register", json=invalid_data)
+        response = await client.post("/register", json=invalid_data)
         
         assert response.status_code == 422
 
@@ -74,7 +74,7 @@ class TestAuthAPIContract:
             "password": "CorrectPassword123!"
         }
         
-        response = await client.post("/api/auth/login", json=login_data)
+        response = await client.post("/login", json=login_data)
         
         assert response.status_code in [200, 401]
         
@@ -92,7 +92,7 @@ class TestAuthAPIContract:
             "password": "WrongPassword"
         }
         
-        response = await client.post("/api/auth/login", json=login_data)
+        response = await client.post("/login", json=login_data)
         
         if response.status_code == 401:
             data = response.json()
@@ -109,7 +109,7 @@ class TestAuthAPIContract:
             "refreshToken": "mock_refresh_token"
         }
         
-        response = await client.post("/api/auth/refresh-token", json=refresh_data)
+        response = await client.post("/refresh-token", json=refresh_data)
         
         assert response.status_code in [200, 400, 401]
         
@@ -120,21 +120,21 @@ class TestAuthAPIContract:
 
     @pytest.mark.asyncio
     async def test_get_current_user_contract(self, client):
-        response = await client.get("/api/auth/me")
+        response = await client.get("/me")
         assert response.status_code == 401  # Changed from 422 to 401
         
-        response = await client.get("/api/auth/me", headers={"Authorization": "Invalid"})
+        response = await client.get("/me", headers={"Authorization": "Invalid"})
         assert response.status_code == 401  # Changed from 422 to 401
         
-        response = await client.get("/api/auth/me", headers={"Authorization": "Bearer invalid_token"})
+        response = await client.get("/me", headers={"Authorization": "Bearer invalid_token"})
         assert response.status_code in [200, 401]
 
     @pytest.mark.asyncio
     async def test_logout_contract(self, client):
-        response = await client.post("/api/auth/logout")
+        response = await client.post("/logout")
         assert response.status_code == 401  # Changed from 422 to 401
         
-        response = await client.post("/api/auth/logout", headers={"Authorization": "Bearer mock_token"})
+        response = await client.post("/logout", headers={"Authorization": "Bearer mock_token"})
         assert response.status_code in [204, 401]
 
     @pytest.mark.asyncio
@@ -143,7 +143,7 @@ class TestAuthAPIContract:
             "email": "test@example.com",
             "password": "WrongPassword"
         }
-        response = await client.post("/api/auth/login", json=login_data)
+        response = await client.post("/login", json=login_data)
         
         if response.status_code == 401:
             data = response.json()
@@ -164,7 +164,7 @@ class TestAuthAPIErrorScenarios:
     @pytest.mark.asyncio
     async def test_malformed_json_contract(self, client):
         response = await client.post(
-            "/api/auth/register",
+            "/register",
             content="{invalid json",
             headers={"Content-Type": "application/json"}
         )
@@ -173,7 +173,7 @@ class TestAuthAPIErrorScenarios:
     @pytest.mark.asyncio
     async def test_unsupported_media_type_contract(self, client):
         response = await client.post(
-            "/api/auth/register",
+            "/register",
             content="email=test@test.com",
             headers={"Content-Type": "application/x-www-form-urlencoded"}
         )
@@ -181,7 +181,7 @@ class TestAuthAPIErrorScenarios:
 
     @pytest.mark.asyncio
     async def test_method_not_allowed_contract(self, client):
-        response = await client.put("/api/auth/register")
+        response = await client.put("/register")
         assert response.status_code == 405
 
     @pytest.mark.asyncio
