@@ -83,3 +83,24 @@ now that we created this Repository of users where we can access data through it
 
 important to note that we should separate error handling logic from our business logic.
 
+
+for `mongoDB` databases, request and response overview will look something like this.
+
+```text
+HTTP Request
+    -> Routes (URL decoding, auth)
+    -> Pydantic (Validation)
+    -> Services (Business Logic)
+    -> Repository (Data Access)
+    -> Motor (Async MongoDB Driver)
+    -> Database (Persistence)
+```
+
+```text
+HTTP Response
+    -> Motor (BSON to dict)
+    -> Repositories (Data Assembly)
+    -> Services (Enrichment)
+    -> Pydantic (Serialization - ObjectId to str, datetime formatting)
+    -> Routes (HTTP Response)
+```
