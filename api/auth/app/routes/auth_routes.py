@@ -5,6 +5,9 @@ from authentication.tools import PasswordTools, TokenTools
 from services.auth_services import AuthService
 from database import pydantic_models
 from decorators.auth_routes_decorators import AuthErrorDecorators
+from repository.user_repository import UserRepository
+from database.connection import get_db
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +20,11 @@ def get_token_tools() -> TokenTools:
 def get_password_tools() -> PasswordTools:
     return PasswordTools()
 
-def get_auth_service() -> AuthService:
-    return AuthService(logger=logger)
+async def get_user_repository(db_session: AsyncSession = Depends(get_db)) -> UserRepository:
+    return UserRepository(db_session)
+
+async def get_auth_service(user_repository: UserRepository = Depends(get_user_repository)) -> AuthService:
+    return AuthService(logger=logger, user_repository=user_repository)
 
 async def get_token_from_header(authorization: str = Header(None)) -> str:
     if not authorization or not authorization.startswith("Bearer "):

@@ -26,7 +26,7 @@ def user_repository(mock_db_session):
 def sample_user_data():
     return {
         "email": "test@example.com",
-        "password_hash": "hashed_password_123",
+        "password": "hashed_password_123",
         "name": "Test User"
     }
 

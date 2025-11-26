@@ -76,4 +76,7 @@ sqlalchemy.url = postgresql://postgres:toor@localhost:5432/auth
 
 now we have a database with `users` table in it, and alembic watching every database strcutural change and saving it as a history tree.
 
-now we want to be able to do `CRUD` on this database, in layer view, `SQLAlchemy (ORM)`.
+now we want to be able to do `CRUD` on this database, in layer view, `Repository (Data Access)`.
+
+now that we created this Repository of users where we can access data through it, we need to change our `AuthService` so that instead of static behavior, work with this `Repository` and do `dynamic` interaction with it based on user's request.
+

@@ -84,14 +84,14 @@ class AccessTokenResponse(BaseModel):
 
 class UserCreate(BaseModel):
     email: EmailStr
-    password_hash: str
+    password: str
     name: str
 
 
 class UserInDB(BaseModel):
     id: str
     email: EmailStr
-    password_hash: str
+    password: str
     name: str
     created_at: datetime
     updated_at: datetime

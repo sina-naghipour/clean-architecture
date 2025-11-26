@@ -90,7 +90,7 @@ class AuthErrorDecorators:
     @staticmethod
     def _handle_register_exception(error: Exception, request: Request) -> None:
         error_str = str(error).lower()
-        
+        print('here_register : ',error_str)
         if "duplicate" in error_str or "already exists" in error_str:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
