@@ -3,7 +3,7 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from typing import Dict
 from authentication.tools import PasswordTools, TokenTools
-from database import models
+from database import pydantic_models
 
 class AuthService:
     def __init__(self, logger):
@@ -12,9 +12,9 @@ class AuthService:
     async def register_user(
         self,
         request: Request,
-        register_data: models.RegisterRequest,
+        register_data: pydantic_models.User,
         password_tools: PasswordTools
-    ) -> models.UserResponse:
+    ) -> pydantic_models.UserResponse:
         self.logger.info(f"Registration attempt for email: {register_data.email}")
         
         user_exists = False
@@ -30,7 +30,7 @@ class AuthService:
         
         hashed_password = password_tools.encode_password(register_data.password)
         
-        mock_user = models.UserResponse(
+        mock_user = pydantic_models.UserResponse(
             id="user_123",
             email=register_data.email,
             name=register_data.name
@@ -48,7 +48,7 @@ class AuthService:
     async def login_user(
         self,
         request: Request,
-        login_data: models.LoginRequest,
+        login_data: pydantic_models.LoginRequest,
         password_tools: PasswordTools,
         token_tools: TokenTools
     ) -> Dict[str, str]:
@@ -91,7 +91,7 @@ class AuthService:
     async def refresh_token(
         self,
         request: Request,
-        refresh_data: models.RefreshTokenRequest,
+        refresh_data: pydantic_models.RefreshTokenRequest,
         token_tools: TokenTools
     ) -> Dict[str, str]:
         self.logger.info("Refresh token request received")
@@ -124,7 +124,7 @@ class AuthService:
         request: Request,
         token: str,
         token_tools: TokenTools
-    ) -> models.UserResponse:
+    ) -> pydantic_models.UserResponse:
         if not token_tools.validate_token(token):
             return create_problem_response(
                 status_code=401,
@@ -148,7 +148,7 @@ class AuthService:
                 instance=str(request.url)
             )
         
-        user_data = models.UserResponse(
+        user_data = pydantic_models.UserResponse(
             id=user_id,
             email=email,
             name=name

@@ -3,7 +3,7 @@ from fastapi import APIRouter, Request, Depends, Header
 from typing import Dict
 from authentication.tools import PasswordTools, TokenTools
 from services.auth_services import AuthService
-from database import models
+from database import pydantic_models
 from decorators.auth_routes_decorators import AuthErrorDecorators
 
 logger = logging.getLogger(__name__)
@@ -31,17 +31,17 @@ async def get_token_from_header(authorization: str = Header(None)) -> str:
 
 @router.post(
     '/register',
-    response_model=models.UserResponse,
+    response_model=pydantic_models.UserResponse,
     status_code=201,
     summary="Register new user"
 )
 @AuthErrorDecorators.handle_register_errors
 async def register_user(
     request: Request,
-    register_data: models.RegisterRequest,
+    register_data: pydantic_models.User,
     password_tools: PasswordTools = Depends(get_password_tools),
     auth_service: AuthService = Depends(get_auth_service),
-) -> models.UserResponse:
+) -> pydantic_models.UserResponse:
     return await auth_service.register_user(request, register_data, password_tools)
 
 @router.post(
@@ -52,7 +52,7 @@ async def register_user(
 @AuthErrorDecorators.handle_login_errors
 async def login_user(
     request: Request,
-    login_data: models.LoginRequest,
+    login_data: pydantic_models.LoginRequest,
     password_tools: PasswordTools = Depends(get_password_tools),
     token_tools: TokenTools = Depends(get_token_tools),
     auth_service: AuthService = Depends(get_auth_service),
@@ -67,7 +67,7 @@ async def login_user(
 @AuthErrorDecorators.handle_token_errors
 async def refresh_token(
     request: Request,
-    refresh_data: models.RefreshTokenRequest,
+    refresh_data: pydantic_models.RefreshTokenRequest,
     token_tools: TokenTools = Depends(get_token_tools),
     auth_service: AuthService = Depends(get_auth_service),
 ) -> Dict[str, str]:
@@ -89,7 +89,7 @@ async def logout(
 
 @router.get(
     '/me',
-    response_model=models.UserResponse,
+    response_model=pydantic_models.UserResponse,
     summary="Get current user profile"
 )
 @AuthErrorDecorators.handle_profile_errors
@@ -98,5 +98,5 @@ async def get_current_user(
     token: str = Depends(get_token_from_header),
     token_tools: TokenTools = Depends(get_token_tools),
     auth_service: AuthService = Depends(get_auth_service),
-) -> models.UserResponse:
+) -> pydantic_models.UserResponse:
     return await auth_service.get_current_user(request, token, token_tools)

@@ -3,7 +3,7 @@ from typing import Optional
 from datetime import datetime
 
 
-class RegisterRequest(BaseModel):
+class User(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8, description="Password must be at least 8 characters long")
     name: str = Field(..., min_length=1, description="Name is required")
