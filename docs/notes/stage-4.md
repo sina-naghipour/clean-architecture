@@ -80,3 +80,6 @@ now we want to be able to do `CRUD` on this database, in layer view, `Repository
 
 now that we created this Repository of users where we can access data through it, we need to change our `AuthService` so that instead of static behavior, work with this `Repository` and do `dynamic` interaction with it based on user's request.
 
+
+important to note that we should separate error handling logic from our business logic.
+
