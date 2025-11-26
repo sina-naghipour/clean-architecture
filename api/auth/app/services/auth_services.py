@@ -113,12 +113,12 @@ class AuthService:
     async def refresh_token(
         self,
         request: Request,
-        refresh_data: pydantic_models.RefreshTokenRequest,
+        data: pydantic_models.RefreshTokenRequest,
         token_tools: TokenTools
     ) -> Dict[str, str]:
         self.logger.info("Refresh token request received")
         
-        new_access_token = token_tools.refresh_access_token(refresh_data.refresh_token)
+        new_access_token = token_tools.refresh_access_token(data.refresh_token)
         
         self.logger.info("Access token refreshed successfully")
         return {"accessToken": new_access_token}

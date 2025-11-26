@@ -73,11 +73,11 @@ async def login_user(
 @AuthErrorDecorators.handle_token_errors
 async def refresh_token(
     request: Request,
-    refresh_data: pydantic_models.RefreshTokenRequest,
+    data: pydantic_models.RefreshTokenRequest,
     token_tools: TokenTools = Depends(get_token_tools),
     auth_service: AuthService = Depends(get_auth_service),
 ) -> Dict[str, str]:
-    return await auth_service.refresh_token(request, refresh_data, token_tools)
+    return await auth_service.refresh_token(request, data, token_tools)
 
 @router.post(
     '/logout',
