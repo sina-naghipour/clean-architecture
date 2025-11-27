@@ -52,7 +52,7 @@ class ProductDB:
     def get_indexes(cls):
         return [
             IndexModel([("name", ASCENDING)]),
-            IndexModel([("name", TEXT)]),  # For text search
+            IndexModel([("name", TEXT)]),
             IndexModel([("price", ASCENDING)]),
             IndexModel([("stock", ASCENDING)]),
             IndexModel([("created_at", ASCENDING)])

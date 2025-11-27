@@ -2,14 +2,14 @@ from .product_helpers import create_problem_response
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from app.database import pydantic_models
+from app.repositories.product_repository import ProductRepository
+from app.database.database_models import ProductDB
 from datetime import datetime
 
 class ProductService:
     def __init__(self, logger):
         self.logger = logger
-        # Mock data storage
-        self.products = {}
-        self.next_id = 1
+        self.product_repository = ProductRepository()
 
     async def create_product(
         self,
@@ -18,45 +18,38 @@ class ProductService:
     ):
         self.logger.info(f"Product creation attempt: {product_data.name}")
         
-        for product in self.products.values():
-            if product['name'].lower() == product_data.name.lower():
-                return create_problem_response(
-                    status_code=409,
-                    error_type="conflict",
-                    title="Conflict",
-                    detail="Product with this name already exists",
-                    instance=str(request.url)
-                )
-        
-        # Create product
-        product_id = f"prod_{self.next_id}"
-        
-        product = pydantic_models.ProductResponse(
-            id=product_id,
+        product_db = ProductDB(
             name=product_data.name,
             price=product_data.price,
             stock=product_data.stock,
             description=product_data.description
         )
         
-        # Store in mock database
-        self.products[product_id] = {
-            'id': product_id,
-            'name': product_data.name,
-            'price': product_data.price,
-            'stock': product_data.stock,
-            'description': product_data.description,
-            'created_at': datetime.now(),
-            'updated_at': datetime.now()
-        }
-        self.next_id += 1
+        created_product = await self.product_repository.create_product(product_db)
         
-        self.logger.info(f"Product created successfully: {product_id}")
+        if not created_product:
+            return create_problem_response(
+                status_code=409,
+                error_type="conflict",
+                title="Conflict",
+                detail="Product with this name already exists",
+                instance=str(request.url)
+            )
+        
+        product_response = pydantic_models.ProductResponse(
+            id=created_product.id,
+            name=created_product.name,
+            price=created_product.price,
+            stock=created_product.stock,
+            description=created_product.description
+        )
+        
+        self.logger.info(f"Product created successfully: {created_product.id}")
         
         response = JSONResponse(
             status_code=201,
-            content=product.model_dump(),
-            headers={"Location": f"/api/products/{product_id}"}
+            content=product_response.model_dump(),
+            headers={"Location": f"/api/products/{created_product.id}"}
         )
         return response
 
@@ -67,9 +60,9 @@ class ProductService:
     ):
         self.logger.info(f"Product retrieval attempt: {product_id}")
         
-        product_data = self.products.get(product_id)
+        product_db = await self.product_repository.get_product_by_id(product_id)
         
-        if not product_data:
+        if not product_db:
             return create_problem_response(
                 status_code=404,
                 error_type="not-found",
@@ -78,10 +71,16 @@ class ProductService:
                 instance=str(request.url)
             )
         
-        product = pydantic_models.ProductResponse(**product_data)
+        product_response = pydantic_models.ProductResponse(
+            id=product_db.id,
+            name=product_db.name,
+            price=product_db.price,
+            stock=product_db.stock,
+            description=product_db.description
+        )
         
         self.logger.info(f"Product retrieved successfully: {product_id}")
-        return product
+        return product_response
 
     async def list_products(
         self,
@@ -90,31 +89,36 @@ class ProductService:
     ):
         self.logger.info(f"Products listing attempt - Page: {query_params.page}, Size: {query_params.page_size}")
         
-        # Mock implementation
-        all_products = list(self.products.values())
+        skip = (query_params.page - 1) * query_params.page_size
+        limit = query_params.page_size
         
-        if query_params.q:
-            search_term = query_params.q.lower()
-            all_products = [
-                p for p in all_products 
-                if search_term in p['name'].lower() or 
-                   (p['description'] and search_term in p['description'].lower())
-            ]
+        products_db = await self.product_repository.list_products(
+            skip=skip,
+            limit=limit,
+            search_query=query_params.q
+        )
         
-        start_idx = (query_params.page - 1) * query_params.page_size
-        end_idx = start_idx + query_params.page_size
-        paginated_products = all_products[start_idx:end_idx]
+        total = await self.product_repository.count_products(search_query=query_params.q)
         
-        items = [pydantic_models.ProductResponse(**product) for product in paginated_products]
+        items = [
+            pydantic_models.ProductResponse(
+                id=product.id,
+                name=product.name,
+                price=product.price,
+                stock=product.stock,
+                description=product.description
+            )
+            for product in products_db
+        ]
         
         product_list = pydantic_models.ProductList(
             items=items,
-            total=len(all_products),
+            total=total,
             page=query_params.page,
             page_size=query_params.page_size
         )
         
-        self.logger.info(f"Products listed successfully - Found: {len(all_products)}")
+        self.logger.info(f"Products listed successfully - Found: {total}")
         return product_list
 
     async def update_product(
@@ -125,44 +129,31 @@ class ProductService:
     ):
         self.logger.info(f"Product update attempt: {product_id}")
         
-        product_data = self.products.get(product_id)
+        update_dict = {
+            "name": update_data.name,
+            "price": update_data.price,
+            "stock": update_data.stock,
+            "description": update_data.description
+        }
         
-        if not product_data:
+        updated_product_db = await self.product_repository.update_product(product_id, update_dict)
+        
+        if not updated_product_db:
             return create_problem_response(
                 status_code=404,
                 error_type="not-found",
                 title="Not Found",
-                detail="Product not found",
+                detail="Product not found or name conflict",
                 instance=str(request.url)
             )
         
-        for pid, product in self.products.items():
-            if pid != product_id and product['name'].lower() == update_data.name.lower():
-                return create_problem_response(
-                    status_code=409,
-                    error_type="conflict",
-                    title="Conflict",
-                    detail="Product with this name already exists",
-                    instance=str(request.url)
-                )
-        
-        # Update product
         updated_product = pydantic_models.ProductResponse(
-            id=product_id,
-            name=update_data.name,
-            price=update_data.price,
-            stock=update_data.stock,
-            description=update_data.description
+            id=updated_product_db.id,
+            name=updated_product_db.name,
+            price=updated_product_db.price,
+            stock=updated_product_db.stock,
+            description=updated_product_db.description
         )
-        
-        self.products[product_id] = {
-            **self.products[product_id],
-            'name': update_data.name,
-            'price': update_data.price,
-            'stock': update_data.stock,
-            'description': update_data.description,
-            'updated_at': datetime.now()
-        }
         
         self.logger.info(f"Product updated successfully: {product_id}")
         return updated_product
@@ -175,39 +166,29 @@ class ProductService:
     ):
         self.logger.info(f"Product patch attempt: {product_id}")
         
-        product_data = self.products.get(product_id)
+        patch_dict = patch_data.model_dump(exclude_unset=True)
         
-        if not product_data:
+        patched_product_db = await self.product_repository.patch_product(product_id, patch_dict)
+        
+        if not patched_product_db:
             return create_problem_response(
                 status_code=404,
                 error_type="not-found",
                 title="Not Found",
-                detail="Product not found",
+                detail="Product not found or name conflict",
                 instance=str(request.url)
             )
         
-        # Apply partial updates
-        update_dict = patch_data.model_dump(exclude_unset=True)
-        
-        if 'name' in update_dict:
-            for pid, product in self.products.items():
-                if pid != product_id and product['name'].lower() == update_dict['name'].lower():
-                    return create_problem_response(
-                        status_code=409,
-                        error_type="conflict",
-                        title="Conflict",
-                        detail="Product with this name already exists",
-                        instance=str(request.url)
-                    )
-        
-        # Merge updates with existing data
-        merged_data = {**product_data, **update_dict, 'updated_at': datetime.now()}
-        
-        updated_product = pydantic_models.ProductResponse(**merged_data)
-        self.products[product_id] = merged_data
+        patched_product = pydantic_models.ProductResponse(
+            id=patched_product_db.id,
+            name=patched_product_db.name,
+            price=patched_product_db.price,
+            stock=patched_product_db.stock,
+            description=patched_product_db.description
+        )
         
         self.logger.info(f"Product patched successfully: {product_id}")
-        return updated_product
+        return patched_product
 
     async def delete_product(
         self,
@@ -216,7 +197,9 @@ class ProductService:
     ):
         self.logger.info(f"Product deletion attempt: {product_id}")
         
-        if product_id not in self.products:
+        deleted = await self.product_repository.delete_product(product_id)
+        
+        if not deleted:
             return create_problem_response(
                 status_code=404,
                 error_type="not-found",
@@ -224,8 +207,6 @@ class ProductService:
                 detail="Product not found",
                 instance=str(request.url)
             )
-        
-        del self.products[product_id]
         
         self.logger.info(f"Product deleted successfully: {product_id}")
         return None
@@ -238,9 +219,12 @@ class ProductService:
     ):
         self.logger.info(f"Inventory update attempt: {product_id}")
         
-        product_data = self.products.get(product_id)
+        updated_product_db = await self.product_repository.update_inventory(
+            product_id, 
+            inventory_data.stock
+        )
         
-        if not product_data:
+        if not updated_product_db:
             return create_problem_response(
                 status_code=404,
                 error_type="not-found",
@@ -249,16 +233,9 @@ class ProductService:
                 instance=str(request.url)
             )
         
-        # Update stock
-        self.products[product_id] = {
-            **self.products[product_id],
-            'stock': inventory_data.stock,
-            'updated_at': datetime.now()
-        }
-        
         response_data = pydantic_models.InventoryResponse(
-            id=product_id,
-            stock=inventory_data.stock
+            id=updated_product_db.id,
+            stock=updated_product_db.stock
         )
         
         self.logger.info(f"Inventory updated successfully: {product_id} -> Stock: {inventory_data.stock}")

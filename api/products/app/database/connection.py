@@ -63,7 +63,7 @@ class MongoDBConnection:
             raise
 
     def get_collection(self, collection_name: str = None):
-        if not self.db:
+        if self.db is None:
             self.logger.error("Attempted to get collection without active database connection")
             raise Exception("Database not connected. Call connect() first.")
         
@@ -81,7 +81,7 @@ class MongoDBConnection:
 db_connection = MongoDBConnection()
 
 def get_db():
-    if not db_connection.db:
+    if db_connection.db is None:
         db_connection.connect()
     return db_connection.db
 

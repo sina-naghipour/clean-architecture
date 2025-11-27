@@ -11,7 +11,7 @@ class TestProductDBModel:
             stock=100,
             description="Test description"
         )
-        
+
         assert product.name == "Test Product"
         assert product.price == 29.99
         assert product.stock == 100

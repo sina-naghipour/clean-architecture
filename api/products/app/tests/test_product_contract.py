@@ -35,7 +35,7 @@ class TestProductAPIContract:
     @pytest.mark.asyncio
     async def test_create_product_contract(self, client):
         product_data = {
-            "name": "Test Product",
+            "name": f"Test Product {id(self)}",
             "price": 29.99,
             "stock": 100,
             "description": "Test product description"
@@ -73,9 +73,8 @@ class TestProductAPIContract:
 
     @pytest.mark.asyncio
     async def test_list_products_contract(self, client):
-        # First create a product to ensure there's data
         product_data = {
-            "name": "Test Product for List",
+            "name": f"Test Product for List {id(self)}",
             "price": 39.99,
             "stock": 50,
             "description": "Test product for listing"
@@ -96,10 +95,9 @@ class TestProductAPIContract:
 
     @pytest.mark.asyncio
     async def test_list_products_pagination_contract(self, client):
-        # First create some products
         for i in range(3):
             product_data = {
-                "name": f"Test Product {i}",
+                "name": f"Test Product {i} {id(self)}",
                 "price": 10.99 + i,
                 "stock": 10 * (i + 1),
                 "description": f"Test product {i}"
@@ -117,7 +115,7 @@ class TestProductAPIContract:
     @pytest.mark.asyncio
     async def test_get_product_contract(self, client):
         product_data = {
-            "name": "Test Product for Get",
+            "name": f"Test Product for Get {id(self)}",
             "price": 39.99,
             "stock": 50,
             "description": "Test product for get operation"
@@ -128,23 +126,17 @@ class TestProductAPIContract:
         if create_response.status_code == 201:
             product_id = create_response.json()["id"]
             
-            response = await client.get(f"//{product_id}")
+            response = await client.get(f"/{product_id}")
             
-            print(f'responssss {response}')
             assert response.status_code in [200, 404]
             
             if response.status_code == 200:
                 data = response.json()
-                if data["total"] == 0:
-                    assert "items" in data
-                    assert "total" in data
-                    assert "page" in data
-                    assert "page_size" in data
-                else:
-                    assert "id" in data
-                    assert "name" in data
-                    assert "price" in data
-                    assert "stock" in data
+                assert "id" in data
+                assert "name" in data
+                assert "price" in data
+                assert "stock" in data
+                assert "description" in data
 
     @pytest.mark.asyncio
     async def test_get_product_not_found_contract(self, client):
@@ -154,9 +146,8 @@ class TestProductAPIContract:
 
     @pytest.mark.asyncio
     async def test_update_product_contract(self, client):
-        # First create a product to update
         product_data = {
-            "name": "Test Product for Update",
+            "name": f"Test Product for Update {id(self)}",
             "price": 49.99,
             "stock": 75,
             "description": "Test product for update operation"
@@ -168,7 +159,7 @@ class TestProductAPIContract:
             product_id = create_response.json()["id"]
             
             update_data = {
-                "name": "Updated Product",
+                "name": f"Updated Product {id(self)}",
                 "price": 59.99,
                 "stock": 100,
                 "description": "Updated description"
@@ -186,9 +177,8 @@ class TestProductAPIContract:
 
     @pytest.mark.asyncio
     async def test_patch_product_contract(self, client):
-        # First create a product to patch
         product_data = {
-            "name": "Test Product for Patch",
+            "name": f"Test Product for Patch {id(self)}",
             "price": 69.99,
             "stock": 25,
             "description": "Test product for patch operation"
@@ -213,9 +203,8 @@ class TestProductAPIContract:
 
     @pytest.mark.asyncio
     async def test_delete_product_contract(self, client):
-        # First create a product to delete
         product_data = {
-            "name": "Test Product for Delete",
+            "name": f"Test Product for Delete {id(self)}",
             "price": 79.99,
             "stock": 10,
             "description": "Test product for delete operation"
@@ -232,9 +221,8 @@ class TestProductAPIContract:
 
     @pytest.mark.asyncio
     async def test_update_inventory_contract(self, client):
-        # First create a product to update inventory
         product_data = {
-            "name": "Test Product for Inventory",
+            "name": f"Test Product for Inventory {id(self)}",
             "price": 89.99,
             "stock": 30,
             "description": "Test product for inventory operation"
