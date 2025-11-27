@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 from main import app
 from services.product_services import ProductService
-from database import models
+from app.database import pydantic_models
 
 
 class TestProductService:
@@ -36,7 +36,7 @@ class TestProductService:
     async def test_create_product_success(
         self, product_service, mock_request
     ):
-        product_data = models.ProductRequest(
+        product_data = pydantic_models.ProductRequest(
             name="Test Product",
             price=29.99,
             stock=100,
@@ -60,7 +60,7 @@ class TestProductService:
         self, product_service, mock_request
     ):
         # Create first product
-        product_data = models.ProductRequest(
+        product_data = pydantic_models.ProductRequest(
             name="Duplicate Product",
             price=39.99,
             stock=50,
@@ -69,7 +69,7 @@ class TestProductService:
         await product_service.create_product(mock_request, product_data)
 
         # Try to create duplicate
-        duplicate_data = models.ProductRequest(
+        duplicate_data = pydantic_models.ProductRequest(
             name="Duplicate Product",
             price=49.99,
             stock=25,
@@ -88,7 +88,7 @@ class TestProductService:
         self, product_service, mock_request
     ):
         # First create a product
-        product_data = models.ProductRequest(
+        product_data = pydantic_models.ProductRequest(
             name="Test Product for Get",
             price=59.99,
             stock=75,
@@ -101,7 +101,7 @@ class TestProductService:
             mock_request, product_id
         )
 
-        assert isinstance(result, models.ProductResponse)
+        assert isinstance(result, pydantic_models.ProductResponse)
         assert result.id == product_id
         assert result.name == "Test Product for Get"
         
@@ -125,7 +125,7 @@ class TestProductService:
     ):
         # Create some test products
         for i in range(3):
-            product_data = models.ProductRequest(
+            product_data = pydantic_models.ProductRequest(
                 name=f"Test Product {i}",
                 price=10 + i + .99,
                 stock=10 * (i + 1),
@@ -133,7 +133,7 @@ class TestProductService:
             )
             await product_service.create_product(mock_request, product_data)
 
-        query_params = models.ProductQueryParams(
+        query_params = pydantic_models.ProductQueryParams(
             page=1,
             page_size=20
         )
@@ -142,7 +142,7 @@ class TestProductService:
             mock_request, query_params
         )
 
-        assert isinstance(result, models.ProductList)
+        assert isinstance(result, pydantic_models.ProductList)
         assert len(result.items) == 3
         assert result.total == 3
         assert result.page == 1
@@ -153,13 +153,13 @@ class TestProductService:
         self, product_service, mock_request
     ):
         # Create test products
-        product_data1 = models.ProductRequest(
+        product_data1 = pydantic_models.ProductRequest(
             name="Laptop Computer",
             price=999.99,
             stock=5,
             description="High-performance laptop"
         )
-        product_data2 = models.ProductRequest(
+        product_data2 = pydantic_models.ProductRequest(
             name="Wireless Mouse",
             price=29.99,
             stock=20,
@@ -169,7 +169,7 @@ class TestProductService:
         await product_service.create_product(mock_request, product_data1)
         await product_service.create_product(mock_request, product_data2)
 
-        query_params = models.ProductQueryParams(
+        query_params = pydantic_models.ProductQueryParams(
             page=1,
             page_size=20,
             q="laptop"
@@ -179,7 +179,7 @@ class TestProductService:
             mock_request, query_params
         )
 
-        assert isinstance(result, models.ProductList)
+        assert isinstance(result, pydantic_models.ProductList)
         assert len(result.items) == 1
         assert "Laptop" in result.items[0].name
 
@@ -188,7 +188,7 @@ class TestProductService:
         self, product_service, mock_request
     ):
         # First create a product
-        product_data = models.ProductRequest(
+        product_data = pydantic_models.ProductRequest(
             name="Product to Update",
             price=79.99,
             stock=30,
@@ -197,7 +197,7 @@ class TestProductService:
         await product_service.create_product(mock_request, product_data)
         product_id = "prod_1"
 
-        update_data = models.ProductRequest(
+        update_data = pydantic_models.ProductRequest(
             name="Updated Product",
             price=89.99,
             stock=40,
@@ -208,7 +208,7 @@ class TestProductService:
             mock_request, product_id, update_data
         )
 
-        assert isinstance(result, models.ProductResponse)
+        assert isinstance(result, pydantic_models.ProductResponse)
         assert result.name == "Updated Product"
         assert result.price == 89.99
         assert result.stock == 40
@@ -221,7 +221,7 @@ class TestProductService:
         self, product_service, mock_request
     ):
         # First create a product
-        product_data = models.ProductRequest(
+        product_data = pydantic_models.ProductRequest(
             name="Product to Patch",
             price=99.99,
             stock=15,
@@ -230,7 +230,7 @@ class TestProductService:
         await product_service.create_product(mock_request, product_data)
         product_id = "prod_1"
 
-        patch_data = models.ProductPatch(
+        patch_data = pydantic_models.ProductPatch(
             stock=25
         )
 
@@ -238,7 +238,7 @@ class TestProductService:
             mock_request, product_id, patch_data
         )
 
-        assert isinstance(result, models.ProductResponse)
+        assert isinstance(result, pydantic_models.ProductResponse)
         assert result.stock == 25
         assert result.name == "Product to Patch"  # Should remain unchanged
 
@@ -247,7 +247,7 @@ class TestProductService:
         self, product_service, mock_request
     ):
         # First create a product
-        product_data = models.ProductRequest(
+        product_data = pydantic_models.ProductRequest(
             name="Product to Delete",
             price=49.99,
             stock=10,
@@ -274,7 +274,7 @@ class TestProductService:
         self, product_service, mock_request
     ):
         # First create a product
-        product_data = models.ProductRequest(
+        product_data = pydantic_models.ProductRequest(
             name="Product for Inventory",
             price=69.99,
             stock=20,
@@ -283,7 +283,7 @@ class TestProductService:
         await product_service.create_product(mock_request, product_data)
         product_id = "prod_1"
 
-        inventory_data = models.InventoryUpdate(
+        inventory_data = pydantic_models.InventoryUpdate(
             stock=50
         )
 
@@ -291,7 +291,7 @@ class TestProductService:
             mock_request, product_id, inventory_data
         )
 
-        assert isinstance(result, models.InventoryResponse)  # Check for model, not dict
+        assert isinstance(result, pydantic_models.InventoryResponse)  # Check for model, not dict
         assert result.id == product_id
         assert result.stock == 50
         

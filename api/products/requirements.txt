@@ -8,3 +8,6 @@ pydantic[email]
 uvicorn
 httpx==0.27.2
 dotenv
+pymongo==3.12
+motor
+bson

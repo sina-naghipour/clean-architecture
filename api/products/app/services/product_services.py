@@ -1,7 +1,7 @@
 from .product_helpers import create_problem_response
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from database import models
+from app.database import pydantic_models
 from datetime import datetime
 
 class ProductService:
@@ -14,7 +14,7 @@ class ProductService:
     async def create_product(
         self,
         request: Request,
-        product_data: models.ProductRequest
+        product_data: pydantic_models.ProductRequest
     ):
         self.logger.info(f"Product creation attempt: {product_data.name}")
         
@@ -31,7 +31,7 @@ class ProductService:
         # Create product
         product_id = f"prod_{self.next_id}"
         
-        product = models.ProductResponse(
+        product = pydantic_models.ProductResponse(
             id=product_id,
             name=product_data.name,
             price=product_data.price,
@@ -78,7 +78,7 @@ class ProductService:
                 instance=str(request.url)
             )
         
-        product = models.ProductResponse(**product_data)
+        product = pydantic_models.ProductResponse(**product_data)
         
         self.logger.info(f"Product retrieved successfully: {product_id}")
         return product
@@ -86,7 +86,7 @@ class ProductService:
     async def list_products(
         self,
         request: Request,
-        query_params: models.ProductQueryParams
+        query_params: pydantic_models.ProductQueryParams
     ):
         self.logger.info(f"Products listing attempt - Page: {query_params.page}, Size: {query_params.page_size}")
         
@@ -105,9 +105,9 @@ class ProductService:
         end_idx = start_idx + query_params.page_size
         paginated_products = all_products[start_idx:end_idx]
         
-        items = [models.ProductResponse(**product) for product in paginated_products]
+        items = [pydantic_models.ProductResponse(**product) for product in paginated_products]
         
-        product_list = models.ProductList(
+        product_list = pydantic_models.ProductList(
             items=items,
             total=len(all_products),
             page=query_params.page,
@@ -121,7 +121,7 @@ class ProductService:
         self,
         request: Request,
         product_id: str,
-        update_data: models.ProductRequest
+        update_data: pydantic_models.ProductRequest
     ):
         self.logger.info(f"Product update attempt: {product_id}")
         
@@ -147,7 +147,7 @@ class ProductService:
                 )
         
         # Update product
-        updated_product = models.ProductResponse(
+        updated_product = pydantic_models.ProductResponse(
             id=product_id,
             name=update_data.name,
             price=update_data.price,
@@ -171,7 +171,7 @@ class ProductService:
         self,
         request: Request,
         product_id: str,
-        patch_data: models.ProductPatch
+        patch_data: pydantic_models.ProductPatch
     ):
         self.logger.info(f"Product patch attempt: {product_id}")
         
@@ -203,7 +203,7 @@ class ProductService:
         # Merge updates with existing data
         merged_data = {**product_data, **update_dict, 'updated_at': datetime.now()}
         
-        updated_product = models.ProductResponse(**merged_data)
+        updated_product = pydantic_models.ProductResponse(**merged_data)
         self.products[product_id] = merged_data
         
         self.logger.info(f"Product patched successfully: {product_id}")
@@ -234,7 +234,7 @@ class ProductService:
         self,
         request: Request,
         product_id: str,
-        inventory_data: models.InventoryUpdate
+        inventory_data: pydantic_models.InventoryUpdate
     ):
         self.logger.info(f"Inventory update attempt: {product_id}")
         
@@ -256,7 +256,7 @@ class ProductService:
             'updated_at': datetime.now()
         }
         
-        response_data = models.InventoryResponse(
+        response_data = pydantic_models.InventoryResponse(
             id=product_id,
             stock=inventory_data.stock
         )
