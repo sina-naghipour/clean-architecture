@@ -23,6 +23,7 @@ class OrderDB(Base):
     shipping_address_id = Column(String, nullable=True)
     payment_method_token = Column(String, nullable=True)
     items = Column(JSON, nullable=False)
+    user_id = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     def to_dict(self) -> Dict[str, Any]:

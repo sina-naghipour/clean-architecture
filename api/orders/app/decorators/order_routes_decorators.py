@@ -84,7 +84,6 @@ class OrderErrorDecorators:
     @staticmethod
     def _handle_get_exception(error: Exception, request: Request) -> Any:
         error_str = str(error).lower()
-        
         if "not found" in error_str:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
