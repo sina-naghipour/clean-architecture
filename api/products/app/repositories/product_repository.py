@@ -1,6 +1,5 @@
 from typing import List, Optional, Dict, Any
-from pymongo.collection import Collection
-from pymongo.results import InsertOneResult, UpdateResult, DeleteResult
+from motor.motor_asyncio import AsyncIOMotorCollection
 from bson import ObjectId
 import logging
 from datetime import datetime
@@ -11,18 +10,22 @@ from database.connection import get_products_collection
 logger = logging.getLogger(__name__)
 
 class ProductRepository:
-    def __init__(self, collection: Collection = None):
-        if collection is not None:
-            self.collection = collection
-        else:
-            self.collection = get_products_collection()
+    def __init__(self, collection: AsyncIOMotorCollection = None):
+        self.collection = collection
         self.logger = logger.getChild("ProductRepository")
 
-    def create_product(self, product_data: ProductDB) -> Optional[ProductDB]:
+    async def _get_collection(self) -> AsyncIOMotorCollection:
+        """Get collection async - lazy initialization"""
+        if self.collection is None:
+            self.collection = await get_products_collection()
+        return self.collection
+
+    async def create_product(self, product_data: ProductDB) -> Optional[ProductDB]:
         try:
+            collection = await self._get_collection()
             self.logger.info(f"Creating product: {product_data.name}")
             
-            existing_product = self.collection.find_one({
+            existing_product = await collection.find_one({
                 "name": {"$regex": f"^{product_data.name}$", "$options": "i"}
             })
             
@@ -31,7 +34,7 @@ class ProductRepository:
                 return None
             
             product_dict = product_data.to_dict()
-            result: InsertOneResult = self.collection.insert_one(product_dict)
+            result = await collection.insert_one(product_dict)
             
             if result.inserted_id:
                 self.logger.info(f"Product created successfully with ID: {product_data.id}")
@@ -44,11 +47,12 @@ class ProductRepository:
             self.logger.error(f"Error creating product: {e}")
             raise
 
-    def get_product_by_id(self, product_id: str) -> Optional[ProductDB]:
+    async def get_product_by_id(self, product_id: str) -> Optional[ProductDB]:
         try:
+            collection = await self._get_collection()
             self.logger.info(f"Fetching product by ID: {product_id}")
             
-            product_data = self.collection.find_one({"_id": product_id})
+            product_data = await collection.find_one({"_id": product_id})
             
             if product_data:
                 self.logger.info(f"Product found: {product_id}")
@@ -61,11 +65,12 @@ class ProductRepository:
             self.logger.error(f"Error fetching product {product_id}: {e}")
             raise
 
-    def get_product_by_name(self, name: str) -> Optional[ProductDB]:
+    async def get_product_by_name(self, name: str) -> Optional[ProductDB]:
         try:
+            collection = await self._get_collection()
             self.logger.info(f"Fetching product by name: {name}")
             
-            product_data = self.collection.find_one({
+            product_data = await collection.find_one({
                 "name": {"$regex": f"^{name}$", "$options": "i"}
             })
             
@@ -80,14 +85,16 @@ class ProductRepository:
             self.logger.error(f"Error fetching product by name {name}: {e}")
             raise
 
-    def list_products(
+    async def list_products(
         self, 
         skip: int = 0, 
         limit: int = 20,
-        search_query: Optional[str] = None
+        search_query: Optional[str] = None,
+        tags: Optional[List[str]] = None
     ) -> List[ProductDB]:
         try:
-            self.logger.info(f"Listing products - skip: {skip}, limit: {limit}, search: {search_query}")
+            collection = await self._get_collection()
+            self.logger.info(f"Listing products - skip: {skip}, limit: {limit}, search: {search_query}, tags: {tags}")
             
             query = {}
             if search_query:
@@ -96,8 +103,12 @@ class ProductRepository:
                     {"description": {"$regex": search_query, "$options": "i"}}
                 ]
             
-            cursor = self.collection.find(query).sort("created_at", -1).skip(skip).limit(limit)
-            products_data = list(cursor)
+            # Tag-based filtering for read-optimized projection
+            if tags:
+                query["tags"] = {"$in": tags}
+            
+            cursor = collection.find(query).sort("created_at", -1).skip(skip).limit(limit)
+            products_data = await cursor.to_list(length=limit)
             
             products = [ProductDB.from_dict(data) for data in products_data]
             self.logger.info(f"Found {len(products)} products")
@@ -108,8 +119,9 @@ class ProductRepository:
             self.logger.error(f"Error listing products: {e}")
             raise
 
-    def count_products(self, search_query: Optional[str] = None) -> int:
+    async def count_products(self, search_query: Optional[str] = None, tags: Optional[List[str]] = None) -> int:
         try:
+            collection = await self._get_collection()
             query = {}
             if search_query:
                 query["$or"] = [
@@ -117,7 +129,10 @@ class ProductRepository:
                     {"description": {"$regex": search_query, "$options": "i"}}
                 ]
             
-            count = self.collection.count_documents(query)
+            if tags:
+                query["tags"] = {"$in": tags}
+            
+            count = await collection.count_documents(query)
             self.logger.debug(f"Counted {count} products")
             
             return count
@@ -126,12 +141,13 @@ class ProductRepository:
             self.logger.error(f"Error counting products: {e}")
             raise
 
-    def update_product(self, product_id: str, update_data: Dict[str, Any]) -> Optional[ProductDB]:
+    async def update_product(self, product_id: str, update_data: Dict[str, Any]) -> Optional[ProductDB]:
         try:
+            collection = await self._get_collection()
             self.logger.info(f"Updating product: {product_id}")
             
             if "name" in update_data:
-                existing_product = self.collection.find_one({
+                existing_product = await collection.find_one({
                     "name": {"$regex": f"^{update_data['name']}$", "$options": "i"},
                     "_id": {"$ne": product_id}
                 })
@@ -142,59 +158,28 @@ class ProductRepository:
             
             update_data["updated_at"] = datetime.utcnow()
             
-            result: UpdateResult = self.collection.update_one(
+            result = await collection.update_one(
                 {"_id": product_id},
                 {"$set": update_data}
             )
             
             if result.modified_count > 0:
                 self.logger.info(f"Product updated successfully: {product_id}")
-                return self.get_product_by_id(product_id)
+                return await self.get_product_by_id(product_id)
             else:
                 self.logger.info(f"No changes made to product: {product_id}")
-                return self.get_product_by_id(product_id)
+                return await self.get_product_by_id(product_id)
                 
         except Exception as e:
             self.logger.error(f"Error updating product {product_id}: {e}")
             raise
 
-    def patch_product(self, product_id: str, patch_data: Dict[str, Any]) -> Optional[ProductDB]:
+    async def delete_product(self, product_id: str) -> bool:
         try:
-            self.logger.info(f"Patching product: {product_id}")
-            
-            if "name" in patch_data:
-                existing_product = self.collection.find_one({
-                    "name": {"$regex": f"^{patch_data['name']}$", "$options": "i"},
-                    "_id": {"$ne": product_id}
-                })
-                
-                if existing_product:
-                    self.logger.warning(f"Product with name '{patch_data['name']}' already exists")
-                    return None
-            
-            patch_data["updated_at"] = datetime.utcnow()
-            
-            result: UpdateResult = self.collection.update_one(
-                {"_id": product_id},
-                {"$set": patch_data}
-            )
-            
-            if result.modified_count > 0:
-                self.logger.info(f"Product patched successfully: {product_id}")
-                return self.get_product_by_id(product_id)
-            else:
-                self.logger.info(f"No changes made to product: {product_id}")
-                return self.get_product_by_id(product_id)
-                
-        except Exception as e:
-            self.logger.error(f"Error patching product {product_id}: {e}")
-            raise
-
-    def delete_product(self, product_id: str) -> bool:
-        try:
+            collection = await self._get_collection()
             self.logger.info(f"Deleting product: {product_id}")
             
-            result: DeleteResult = self.collection.delete_one({"_id": product_id})
+            result = await collection.delete_one({"_id": product_id})
             
             if result.deleted_count > 0:
                 self.logger.info(f"Product deleted successfully: {product_id}")
@@ -207,11 +192,12 @@ class ProductRepository:
             self.logger.error(f"Error deleting product {product_id}: {e}")
             raise
 
-    def update_inventory(self, product_id: str, new_stock: int) -> Optional[ProductDB]:
+    async def update_inventory(self, product_id: str, new_stock: int) -> Optional[ProductDB]:
         try:
+            collection = await self._get_collection()
             self.logger.info(f"Updating inventory for product: {product_id} to stock: {new_stock}")
             
-            result: UpdateResult = self.collection.update_one(
+            result = await collection.update_one(
                 {"_id": product_id},
                 {
                     "$set": {
@@ -223,11 +209,55 @@ class ProductRepository:
             
             if result.modified_count > 0:
                 self.logger.info(f"Inventory updated successfully for product: {product_id}")
-                return self.get_product_by_id(product_id)
+                return await self.get_product_by_id(product_id)
             else:
                 self.logger.info(f"No inventory update made for product: {product_id}")
-                return self.get_product_by_id(product_id)
+                return await self.get_product_by_id(product_id)
                 
         except Exception as e:
             self.logger.error(f"Error updating inventory for product {product_id}: {e}")
+            raise
+
+    # Tag-specific methods for read-optimized projection
+    async def get_products_by_tags(self, tags: List[str], skip: int = 0, limit: int = 20) -> List[ProductDB]:
+        """Get products by tags - optimized for read operations"""
+        try:
+            collection = await self._get_collection()
+            self.logger.info(f"Fetching products by tags: {tags}")
+            
+            cursor = collection.find(
+                {"tags": {"$in": tags}}
+            ).sort("created_at", -1).skip(skip).limit(limit)
+            
+            products_data = await cursor.to_list(length=limit)
+            products = [ProductDB.from_dict(data) for data in products_data]
+            
+            self.logger.info(f"Found {len(products)} products with tags {tags}")
+            return products
+            
+        except Exception as e:
+            self.logger.error(f"Error fetching products by tags: {e}")
+            raise
+
+    async def get_popular_tags(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get most popular tags - for tag-based queries optimization"""
+        try:
+            collection = await self._get_collection()
+            self.logger.info(f"Fetching {limit} most popular tags")
+            
+            pipeline = [
+                {"$unwind": "$tags"},
+                {"$group": {"_id": "$tags", "count": {"$sum": 1}}},
+                {"$sort": {"count": -1}},
+                {"$limit": limit},
+                {"$project": {"tag": "$_id", "count": 1, "_id": 0}}
+            ]
+            
+            tags = await collection.aggregate(pipeline).to_list(length=limit)
+            self.logger.info(f"Found {len(tags)} popular tags")
+            
+            return tags
+            
+        except Exception as e:
+            self.logger.error(f"Error fetching popular tags: {e}")
             raise

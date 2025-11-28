@@ -1,4 +1,4 @@
-from pymongo import MongoClient
+from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 import os
 import logging
@@ -12,7 +12,7 @@ class MongoDBConnection:
         self.db = None
         self.logger = logger.getChild("MongoDBConnection")
         
-    def connect(self, connection_string: str = None, db_name: str = None):
+    async def connect(self, connection_string: str = None, db_name: str = None):
         try:
             connection_string = connection_string or os.getenv(
                 "MONGODB_URI", "mongodb://localhost:27017/"
@@ -22,13 +22,14 @@ class MongoDBConnection:
             self.logger.info(f"Connecting to MongoDB: {db_name}")
             self.logger.debug(f"Connection string: {self._mask_connection_string(connection_string)}")
             
-            self.client = MongoClient(connection_string, serverSelectionTimeoutMS=5000)
+            self.client = AsyncIOMotorClient(connection_string, serverSelectionTimeoutMS=5000)
             self.db = self.client[db_name]
             
-            self.client.admin.command('ping')
+            # Test connection
+            await self.client.admin.command('ping')
             self.logger.info("Successfully connected to MongoDB")
             
-            self._setup_indexes()
+            await self._setup_indexes()
             
         except (ConnectionFailure, ServerSelectionTimeoutError) as e:
             self.logger.error(f"MongoDB connection failed: {e}")
@@ -49,15 +50,27 @@ class MongoDBConnection:
                         return f"{protocol}://{user}:****@{parts[1]}"
         return connection_string
 
-    def _setup_indexes(self):
+    async def _setup_indexes(self):
         try:
             collection = self.db[ProductDB.COLLECTION_NAME]
             indexes = ProductDB.get_indexes()
+            
             if indexes:
-                existing_indexes = list(collection.list_indexes())
-                collection.create_indexes(indexes)
+                # For Motor, we need to handle index creation differently
+                for index_spec in indexes:
+                    # Handle different index formats
+                    if isinstance(index_spec, dict):
+                        # If it's already a dict with 'key' and other options
+                        keys = index_spec.get('key', [])
+                        options = {k: v for k, v in index_spec.items() if k != 'key'}
+                        await collection.create_index(keys, **options)
+                    elif isinstance(index_spec, (list, tuple)):
+                        # If it's a list of (field, direction) pairs
+                        await collection.create_index(index_spec)
+                    else:
+                        self.logger.warning(f"Unsupported index format: {index_spec}")
+                
                 self.logger.info(f"Database indexes created/verified for collection: {ProductDB.COLLECTION_NAME}")
-                self.logger.debug(f"Existing indexes: {len(existing_indexes)}")
         except Exception as e:
             self.logger.error(f"Index creation failed: {e}")
             raise
@@ -71,7 +84,7 @@ class MongoDBConnection:
         self.logger.debug(f"Accessing collection: {collection_name}")
         return self.db[collection_name]
 
-    def close(self):
+    async def close(self):
         if self.client:
             self.client.close()
             self.logger.info("MongoDB connection closed")
@@ -80,13 +93,13 @@ class MongoDBConnection:
 
 db_connection = MongoDBConnection()
 
-def get_db():
+async def get_db():
     if db_connection.db is None:
-        db_connection.connect()
+        await db_connection.connect()
     return db_connection.db
 
-def get_products_collection():
-    db = get_db()
+async def get_products_collection():
+    db = await get_db()
     collection = db[ProductDB.COLLECTION_NAME]
     logger.debug("Products collection retrieved")
     return collection

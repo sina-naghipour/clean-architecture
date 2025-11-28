@@ -1,6 +1,7 @@
-from pymongo import IndexModel, ASCENDING, TEXT
+from pymongo import IndexModel, ASCENDING, TEXT, DESCENDING
 from datetime import datetime
 import uuid
+from typing import List, Optional
 
 class ProductDB:
     def __init__(
@@ -9,6 +10,7 @@ class ProductDB:
         price: float,
         stock: int,
         description: str = None,
+        tags: List[str] = None,  # Add this line
         id: str = None,
         created_at: datetime = None,
         updated_at: datetime = None
@@ -18,6 +20,7 @@ class ProductDB:
         self.price = price
         self.stock = stock
         self.description = description
+        self.tags = tags or []  # Initialize tags
         self.created_at = created_at or datetime.utcnow()
         self.updated_at = updated_at or datetime.utcnow()
 
@@ -28,6 +31,7 @@ class ProductDB:
             "price": self.price,
             "stock": self.stock,
             "description": self.description,
+            "tags": self.tags,  # Add this line
             "created_at": self.created_at,
             "updated_at": self.updated_at
         }
@@ -42,6 +46,7 @@ class ProductDB:
             price=data["price"],
             stock=data["stock"],
             description=data.get("description"),
+            tags=data.get("tags", []),
             created_at=data.get("created_at"),
             updated_at=data.get("updated_at")
         )
@@ -55,5 +60,6 @@ class ProductDB:
             IndexModel([("name", TEXT)]),
             IndexModel([("price", ASCENDING)]),
             IndexModel([("stock", ASCENDING)]),
-            IndexModel([("created_at", ASCENDING)])
+            IndexModel([("created_at", DESCENDING)]),
+            IndexModel([("tags", ASCENDING)])
         ]

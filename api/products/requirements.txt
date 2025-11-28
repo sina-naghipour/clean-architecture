@@ -2,7 +2,7 @@ fastapi==0.104.1
 PyJWT==2.8.0
 bcrypt==4.1.2
 pytest==7.4.3
-pytest-asyncio==0.21.1
+pytest-asyncio
 pytest-cov==4.1.0
 pydantic[email]==2.5.0
 uvicorn[standard]==0.24.0
@@ -11,3 +11,4 @@ python-dotenv==1.0.0
 pymongo==4.5.0
 motor==3.3.2
 mongomock_motor
+asyncio

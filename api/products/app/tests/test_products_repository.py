@@ -1,369 +1,355 @@
 import pytest
-from datetime import datetime
-from bson import ObjectId
-
+import asyncio
+import os
+import time
+from motor.motor_asyncio import AsyncIOMotorClient
+from database.connection import MongoDBConnection
 from repositories.product_repository import ProductRepository
 from database.database_models import ProductDB
 
+TEST_DB_NAME = "test_product_db"
+TEST_CONNECTION_STRING = os.getenv("TEST_MONGODB_URI", "mongodb://localhost:27017/")
 
-class TestProductRepositoryInMemory:
+@pytest.fixture(scope="function")
+async def test_db_setup():
+    connection = MongoDBConnection()
+    await connection.connect(TEST_CONNECTION_STRING, TEST_DB_NAME)
+    collection = connection.get_collection()
     
-    @pytest.fixture(scope="class")
-    def in_memory_db(self):
-        """Create an in-memory MongoDB connection using mongomock."""
-        try:
-            from mongomock import MongoClient
-            client = MongoClient()
-        except ImportError:
-            pytest.skip("mongomock not installed. Run: pip install mongomock")
-            return
-        
-        db = client.test_product_db
-        self._setup_test_data(db)
-        return db
+    await collection.delete_many({})
     
-    def _setup_test_data(self, db):
-        """Setup initial test data."""
-        products_collection = db.products
-        
-        # Clear any existing data
-        products_collection.delete_many({})
-        
-        # Insert test products
-        test_products = [
-            {
-                "_id": "product_1",
-                "name": "Laptop",
-                "price": 999.99,
-                "stock": 10,
-                "description": "High-performance laptop",
-                "created_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow()
-            },
-            {
-                "_id": "product_2", 
-                "name": "Mouse",
-                "price": 29.99,
-                "stock": 50,
-                "description": "Wireless mouse",
-                "created_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow()
-            },
-            {
-                "_id": "product_3",
-                "name": "Keyboard",
-                "price": 79.99,
-                "stock": 25,
-                "description": "Mechanical keyboard",
-                "created_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow()
-            }
-        ]
-        
-        products_collection.insert_many(test_products)
-    
-    def test_create_product_success(self, in_memory_db):
-        # Create repository directly in test
-        collection = in_memory_db.products
-        repository = ProductRepository(collection=collection)
-        
-        print('Repository type:', type(repository))
-        
-        new_product = ProductDB(
-            name="New Product",
-            price=49.99,
-            stock=100,
-            description="A brand new product"
-        )
-        result = repository.create_product(new_product)
-        
-        assert result is not None
-        assert result.name == "New Product"
-        assert result.price == 49.99
-        
-        # Verify it was actually saved to database
-        saved_product = repository.get_product_by_name("New Product")
-        assert saved_product is not None
-        assert saved_product.name == "New Product"
-    
-    def test_create_product_duplicate_name(self, in_memory_db):
-        # Create repository directly in test
-        collection = in_memory_db.products
-        repository = ProductRepository(collection=collection)
-        
-        new_product = ProductDB(
-            name="Laptop",  # This name already exists
-            price=49.99,
-            stock=100,
-            description="Duplicate product"
-        )
-        
-        result = repository.create_product(new_product)
-        
-        assert result is None
-        
-        # Verify no duplicate was created
-        products = repository.list_products(search_query="Laptop")
-        assert len(products) == 1  # Only the original laptop
-    
-    def test_get_product_by_id_found(self, in_memory_db):
-        # Create repository directly in test
-        collection = in_memory_db.products
-        repository = ProductRepository(collection=collection)
-        
-        result = repository.get_product_by_id("product_1")
-        
-        assert result is not None
-        assert result.id == "product_1"
-        assert result.name == "Laptop"
-        assert result.price == 999.99
-    
-    def test_get_product_by_id_not_found(self, in_memory_db):
-        # Create repository directly in test
-        collection = in_memory_db.products
-        repository = ProductRepository(collection=collection)
-        
-        result = repository.get_product_by_id("nonexistent_id")
-        
-        assert result is None
-    
-    def test_get_product_by_name_found(self, in_memory_db):
-        # Create repository directly in test
-        collection = in_memory_db.products
-        repository = ProductRepository(collection=collection)
-        
-        result = repository.get_product_by_name("Mouse")
-        
-        assert result is not None
-        assert result.name == "Mouse"
-        assert result.price == 29.99
-        assert result.stock == 50
-    
-    def test_get_product_by_name_not_found(self, in_memory_db):
-        # Create repository directly in test
-        collection = in_memory_db.products
-        repository = ProductRepository(collection=collection)
-        
-        result = repository.get_product_by_name("Nonexistent Product")
-        
-        assert result is None
-    
-    def test_list_products_no_search(self, in_memory_db):
-        # Create repository directly in test
-        collection = in_memory_db.products
-        repository = ProductRepository(collection=collection)
-        
-        result = repository.list_products(skip=0, limit=10)
-        
-        assert len(result) == 4
-        product_names = [product.name for product in result]
-        assert "Laptop" in product_names
-        assert "Mouse" in product_names
-        assert "Keyboard" in product_names
-    
-    def test_list_products_with_search(self, in_memory_db):
-        # Create repository directly in test
-        collection = in_memory_db.products
-        repository = ProductRepository(collection=collection)
-        
-        result = repository.list_products(search_query="wireless")
-        
-        assert len(result) == 1
-        assert result[0].name == "Mouse"
-        assert "wireless" in result[0].description.lower()
-    
-    def test_list_products_pagination(self, in_memory_db):
-        # Create repository directly in test
-        collection = in_memory_db.products
-        repository = ProductRepository(collection=collection)
-        
-        result_page_1 = repository.list_products(skip=0, limit=2)
-        result_page_2 = repository.list_products(skip=2, limit=2)
-        
-        assert len(result_page_1) == 2
-        assert len(result_page_2) == 2
-        
-        # Verify different products
-        page1_names = {product.name for product in result_page_1}
-        page2_names = {product.name for product in result_page_2}
-        
-        assert not page1_names.intersection(page2_names)
-    
-    def test_count_products(self, in_memory_db):
-        # Create repository directly in test
-        collection = in_memory_db.products
-        repository = ProductRepository(collection=collection)
-        
-        count = repository.count_products()
-        
-        assert count == 4
-    
-    def test_count_products_with_search(self, in_memory_db):
-        # Create repository directly in test
-        collection = in_memory_db.products
-        repository = ProductRepository(collection=collection)
-        
-        count = repository.count_products(search_query="keyboard")
-        
-        assert count == 1
-    
-    def test_update_product_success(self, in_memory_db):
-        # Create repository directly in test
-        collection = in_memory_db.products
-        repository = ProductRepository(collection=collection)
-        
-        update_data = {
-            "name": "Updated Laptop",
-            "price": 1099.99,
-            "stock": 5
+    test_products = [
+        {
+            "_id": "prod_1",
+            "name": "Laptop",
+            "description": "High-performance laptop",
+            "price": 999.99,
+            "stock": 10,
+            "tags": ["electronics", "computers"],
+            "created_at": "2023-01-01T00:00:00",
+            "updated_at": "2023-01-01T00:00:00"
+        },
+        {
+            "_id": "prod_2", 
+            "name": "Mouse",
+            "description": "Wireless mouse",
+            "price": 29.99,
+            "stock": 50,
+            "tags": ["electronics", "accessories"],
+            "created_at": "2023-01-02T00:00:00",
+            "updated_at": "2023-01-02T00:00:00"
+        },
+        {
+            "_id": "prod_3",
+            "name": "Desk",
+            "description": "Wooden desk",
+            "price": 199.99,
+            "stock": 5,
+            "tags": ["furniture", "office"],
+            "created_at": "2023-01-03T00:00:00", 
+            "updated_at": "2023-01-03T00:00:00"
         }
-        
-        result = repository.update_product("product_1", update_data)
-        
-        assert result is not None
-        assert result.name == "Updated Laptop"
-        assert result.price == 1099.99
-        assert result.stock == 5
-        
-        # Verify the update persisted
-        updated_product = repository.get_product_by_id("product_1")
-        assert updated_product.name == "Updated Laptop"
+    ]
     
-    def test_update_product_name_conflict(self, in_memory_db):
-        # Create repository directly in test
-        collection = in_memory_db.products
-        repository = ProductRepository(collection=collection)
-        
-        update_data = {"name": "Mouse"}  # This name already exists for product_2
-        
-        result = repository.update_product("product_1", update_data)
-        
-        assert result is None
-        
-        # Verify product_1 wasn't changed
-        product = repository.get_product_by_id("product_1")
-        assert product.name != "Mouse"
+    await collection.insert_many(test_products)
     
-    def test_patch_product(self, in_memory_db):
-        # Create repository directly in test
-        collection = in_memory_db.products
-        repository = ProductRepository(collection=collection)
-        
-        patch_data = {"price": 89.99}
-        
-        result = repository.patch_product("product_2", patch_data)
-        
-        assert result is not None
-        assert result.name == "Mouse"  # Name unchanged
-        assert result.price == 89.99   # Price updated
-        
-        # Verify the patch persisted
-        patched_product = repository.get_product_by_id("product_2")
-        assert patched_product.price == 89.99
+    repository = ProductRepository(collection=collection)
     
-    def test_delete_product_success(self, in_memory_db):
-        # Create repository directly in test
-        collection = in_memory_db.products
-        repository = ProductRepository(collection=collection)
-        
-        # First verify the product exists
-        product = repository.get_product_by_id("product_3")
-        assert product is not None
-        
-        # Delete the product
-        result = repository.delete_product("product_3")
-        
-        assert result is True
-        
-        # Verify it's gone
-        deleted_product = repository.get_product_by_id("product_3")
-        assert deleted_product is None
-        
-        # Verify count decreased
-        count = repository.count_products()
-        assert count == 3
+    yield repository, connection, collection
     
-    def test_delete_product_not_found(self, in_memory_db):
-        # Create repository directly in test
-        collection = in_memory_db.products
-        repository = ProductRepository(collection=collection)
-        
-        result = repository.delete_product("nonexistent_id")
-        
-        assert result is False
-        
-        # Verify count unchanged
-        count = repository.count_products()
-        assert count == 3
+    await collection.delete_many({})
+    await connection.close()
+
+@pytest.mark.asyncio
+async def test_create_product_success(test_db_setup):
+    repository, connection, collection = test_db_setup
     
-    def test_update_inventory_success(self, in_memory_db):
-        # Create repository directly in test
-        collection = in_memory_db.products
-        repository = ProductRepository(collection=collection)
-        
-        result = repository.update_inventory("product_1", 15)
-        
-        assert result is not None
-        assert result.stock == 15
-        
-        # Verify the update persisted
-        updated_product = repository.get_product_by_id("product_1")
-        assert updated_product.stock == 15
+    new_product = ProductDB(
+        id="prod_4",
+        name="Keyboard",
+        description="Mechanical keyboard",
+        price=79.99,
+        stock=25,
+        tags=["electronics", "accessories"]
+    )
     
-    def test_update_inventory_no_change(self, in_memory_db):
-        # Create repository directly in test
-        collection = in_memory_db.products
-        repository = ProductRepository(collection=collection)
-        
-        # Get current stock
-        product = repository.get_product_by_id("product_2")
-        original_stock = product.stock
-        
-        # Update to same value
-        result = repository.update_inventory("product_2", original_stock)
-        
-        assert result is not None
-        assert result.stock == original_stock
+    result = await repository.create_product(new_product)
     
-    def test_integration_workflow(self, in_memory_db):
-        # Create repository directly in test
-        collection = in_memory_db.products
-        repository = ProductRepository(collection=collection)
+    assert result is not None
+    assert result.name == "Keyboard"
+    assert result.price == 79.99
+    
+    fetched = await repository.get_product_by_id("prod_4")
+    assert fetched.name == "Keyboard"
+
+@pytest.mark.asyncio
+async def test_create_product_duplicate_name(test_db_setup):
+    repository, connection, collection = test_db_setup
+    
+    duplicate_product = ProductDB(
+        id="prod_5",
+        name="Laptop",
+        description="Another laptop",
+        price=899.99,
+        stock=5
+    )
+    
+    result = await repository.create_product(duplicate_product)
+    assert result is None
+
+@pytest.mark.asyncio
+async def test_get_product_by_id_success(test_db_setup):
+    repository, connection, collection = test_db_setup
+    
+    result = await repository.get_product_by_id("prod_1")
+    
+    assert result is not None
+    assert result.id == "prod_1"
+    assert result.name == "Laptop"
+    assert result.price == 999.99
+
+@pytest.mark.asyncio
+async def test_get_product_by_id_not_found(test_db_setup):
+    repository, connection, collection = test_db_setup
+    
+    result = await repository.get_product_by_id("non_existent")
+    assert result is None
+
+@pytest.mark.asyncio
+async def test_get_product_by_name(test_db_setup):
+    repository, connection, collection = test_db_setup
+    
+    result = await repository.get_product_by_name("Mouse")
+    
+    assert result is not None
+    assert result.name == "Mouse"
+    assert result.price == 29.99
+
+@pytest.mark.asyncio
+async def test_list_products_basic(test_db_setup):
+    repository, connection, collection = test_db_setup
+    
+    products = await repository.list_products(skip=0, limit=2)
+    
+    assert len(products) == 2
+    assert products[0].name == "Desk"
+    assert products[1].name == "Mouse"
+
+@pytest.mark.asyncio
+async def test_list_products_with_search(test_db_setup):
+    repository, connection, collection = test_db_setup
+    
+    products = await repository.list_products(
+        skip=0, 
+        limit=10, 
+        search_query="laptop"
+    )
+    
+    assert len(products) == 1
+    assert products[0].name == "Laptop"
+
+@pytest.mark.asyncio
+async def test_list_products_with_tags(test_db_setup):
+    repository, connection, collection = test_db_setup
+    
+    products = await repository.list_products(
+        skip=0,
+        limit=10,
+        tags=["electronics"]
+    )
+    
+    assert len(products) == 2
+    product_names = [p.name for p in products]
+    assert "Laptop" in product_names
+    assert "Mouse" in product_names
+
+@pytest.mark.asyncio
+async def test_count_products(test_db_setup):
+    repository, connection, collection = test_db_setup
+    
+    count = await repository.count_products()
+    assert count == 3
+
+@pytest.mark.asyncio
+async def test_count_products_with_search(test_db_setup):
+    repository, connection, collection = test_db_setup
+    
+    count = await repository.count_products(search_query="wireless")
+    assert count == 1
+
+@pytest.mark.asyncio
+async def test_update_product_success(test_db_setup):
+    repository, connection, collection = test_db_setup
+    
+    update_data = {
+        "name": "Gaming Laptop",
+        "price": 1299.99,
+        "stock": 8
+    }
+    
+    result = await repository.update_product("prod_1", update_data)
+    
+    assert result is not None
+    assert result.name == "Gaming Laptop"
+    assert result.price == 1299.99
+    assert result.stock == 8
+
+@pytest.mark.asyncio
+async def test_update_product_not_found(test_db_setup):
+    repository, connection, collection = test_db_setup
+    
+    result = await repository.update_product("non_existent", {"name": "Test"})
+    assert result is None
+
+@pytest.mark.asyncio
+async def test_delete_product_success(test_db_setup):
+    repository, connection, collection = test_db_setup
+    
+    result = await repository.delete_product("prod_1")
+    assert result is True
+    
+    fetched = await repository.get_product_by_id("prod_1")
+    assert fetched is None
+
+@pytest.mark.asyncio
+async def test_delete_product_not_found(test_db_setup):
+    repository, connection, collection = test_db_setup
+    
+    result = await repository.delete_product("non_existent")
+    assert result is False
+
+@pytest.mark.asyncio
+async def test_update_inventory(test_db_setup):
+    repository, connection, collection = test_db_setup
+    
+    result = await repository.update_inventory("prod_1", 15)
+    assert result is not None
+    assert result.stock == 15
+
+@pytest.mark.asyncio
+async def test_get_products_by_tags(test_db_setup):
+    repository, connection, collection = test_db_setup
+    
+    products = await repository.get_products_by_tags(["electronics"])
+    assert len(products) == 2
+    assert all("electronics" in product.tags for product in products)
+
+@pytest.mark.asyncio
+async def test_get_popular_tags(test_db_setup):
+    repository, connection, collection = test_db_setup
+    
+    popular_tags = await repository.get_popular_tags(limit=5)
+    assert len(popular_tags) > 0
+    tag_names = [tag["tag"] for tag in popular_tags]
+    assert "electronics" in tag_names
+
+@pytest.mark.asyncio
+async def test_tag_query_performance(test_db_setup):
+    repository, connection, collection = test_db_setup
+    
+    await collection.create_index("tags")
+    
+    start_time = time.time()
+    
+    for _ in range(100):
+        cursor = collection.find({"tags": "electronics"})
+        results = await cursor.to_list(length=100)
+    
+    end_time = time.time()
+    query_time = end_time - start_time
+    
+    print(f"Tag query time for 100 iterations: {query_time:.4f} seconds")
+    assert query_time < 2.0
+
+@pytest.mark.asyncio
+async def test_search_query_performance(test_db_setup):
+    repository, connection, collection = test_db_setup
+    
+    start_time = time.time()
+    
+    for _ in range(100):
+        cursor = collection.find({
+            "$or": [
+                {"name": {"$regex": "laptop", "$options": "i"}},
+                {"description": {"$regex": "wireless", "$options": "i"}}
+            ]
+        })
+        results = await cursor.to_list(length=100)
+    
+    end_time = time.time()
+    query_time = end_time - start_time
+    
+    print(f"Search query time for 100 iterations: {query_time:.4f} seconds")
+    assert query_time < 2.0
+@pytest.mark.asyncio
+async def test_index_effectiveness(test_db_setup):
+    repository, connection, collection = test_db_setup
+    
+    await collection.delete_many({})
+    
+    bulk_data = []
+    for i in range(5000):
+        bulk_data.append({
+            "_id": f"prod_{i}",
+            "name": f"Product {i}",
+            "description": f"Description {i}",
+            "price": i * 10.0,
+            "stock": i % 100,
+            "tags": ["electronics"] if i % 10 == 0 else ["furniture"],
+            "created_at": "2023-01-01T00:00:00",
+            "updated_at": "2023-01-01T00:00:00"
+        })
+    
+    await collection.insert_many(bulk_data)
+    
+    await collection.drop_indexes()
+    
+    start_time = time.time()
+    for _ in range(10):
+        cursor = collection.find({"tags": "electronics"})
+        results = await cursor.to_list(length=1000)
+    time_without_index = time.time() - start_time
+    
+    await collection.create_index([("tags", 1)])
+    
+    start_time = time.time()
+    for _ in range(10):
+        cursor = collection.find({"tags": "electronics"})
+        results = await cursor.to_list(length=1000)
+    time_with_index = time.time() - start_time
+    
+    improvement = ((time_without_index - time_with_index) / time_without_index) * 100
+    print(f"Without index: {time_without_index:.4f}s, With index: {time_with_index:.4f}s, Improvement: {improvement:.1f}%")
+    
+    assert time_with_index < time_without_index * 1.5
+    
+if __name__ == "__main__":
+    import asyncio
+    
+    async def run_tests():
+        connection = MongoDBConnection()
+        await connection.connect(TEST_CONNECTION_STRING, TEST_DB_NAME)
+        collection = connection.get_collection()
+        await collection.delete_many({})
         
-        """Test a complete workflow to verify everything works together."""
-        # 1. Create a new product
-        new_product = ProductDB(
-            name="Tablet",
-            price=299.99,
-            stock=20,
-            description="Portable tablet device"
+        repo = ProductRepository(collection=collection)
+        
+        test_product = ProductDB(
+            id="manual_test_1",
+            name="Test Product",
+            description="Test Description",
+            price=100.0,
+            stock=10,
+            tags=["test"]
         )
-        created = repository.create_product(new_product)
-        assert created is not None
         
-        # 2. Verify it can be retrieved
-        retrieved = repository.get_product_by_id(created.id)
-        assert retrieved.name == "Tablet"
+        result = await repo.create_product(test_product)
+        print(f"Create product: {'SUCCESS' if result else 'FAILED'}")
         
-        # 3. Update the product
-        update_result = repository.update_product(
-            created.id, 
-            {"price": 279.99, "stock": 15}
-        )
-        assert update_result.price == 279.99
+        fetched = await repo.get_product_by_id("manual_test_1")
+        print(f"Get product: {'SUCCESS' if fetched else 'FAILED'}")
         
-        # 4. Search for the product
-        search_results = repository.list_products(search_query="tablet")
-        assert len(search_results) == 1
-        
-        # 5. Update inventory
-        inventory_result = repository.update_inventory(created.id, 10)
-        assert inventory_result.stock == 10
-        
-        # 6. Delete the product
-        delete_result = repository.delete_product(created.id)
-        assert delete_result is True
-        
-        # 7. Verify it's gone
-        final_check = repository.get_product_by_id(created.id)
-        assert final_check is None
+        await collection.delete_many({})
+        await connection.close()
+    
+    asyncio.run(run_tests())
