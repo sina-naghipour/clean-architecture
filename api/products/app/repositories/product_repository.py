@@ -5,8 +5,8 @@ from bson import ObjectId
 import logging
 from datetime import datetime
 
-from app.database.database_models import ProductDB
-from app.database.connection import get_products_collection
+from database.database_models import ProductDB
+from database.connection import get_products_collection
 
 logger = logging.getLogger(__name__)
 

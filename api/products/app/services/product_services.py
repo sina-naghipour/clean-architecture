@@ -1,9 +1,9 @@
 from .product_helpers import create_problem_response
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from app.database import pydantic_models
-from app.repositories.product_repository import ProductRepository
-from app.database.database_models import ProductDB
+from database import pydantic_models
+from repositories.product_repository import ProductRepository
+from database.database_models import ProductDB
 from datetime import datetime
 
 class ProductService:

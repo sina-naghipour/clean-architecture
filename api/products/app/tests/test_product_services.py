@@ -2,9 +2,9 @@ import pytest
 from unittest.mock import Mock, AsyncMock
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from app.services.product_services import ProductService
-from app.database import pydantic_models
-from app.database.database_models import ProductDB
+from services.product_services import ProductService
+from database import pydantic_models
+from database.database_models import ProductDB
 
 class TestProductService:
     @pytest.fixture

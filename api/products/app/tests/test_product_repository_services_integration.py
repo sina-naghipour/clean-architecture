@@ -1,11 +1,11 @@
 import pytest
 from unittest.mock import Mock
 from fastapi import Request
-from app.services.product_services import ProductService
-from app.repositories.product_repository import ProductRepository
-from app.database import pydantic_models
-from app.database.database_models import ProductDB
-from app.database.connection import get_products_collection
+from services.product_services import ProductService
+from repositories.product_repository import ProductRepository
+from database import pydantic_models
+from database.database_models import ProductDB
+from database.connection import get_products_collection
 
 class TestProductServiceRepositoryIntegration:
     @pytest.fixture

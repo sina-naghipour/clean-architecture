@@ -2,7 +2,7 @@ import logging
 import os
 from fastapi import APIRouter, Request, Depends, Query
 from services.product_services import ProductService
-from app.database import pydantic_models
+from database import pydantic_models
 from decorators.product_routes_decorators import ProductErrorDecorators
 
 logger = logging.getLogger(__name__)

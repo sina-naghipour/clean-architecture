@@ -9,4 +9,4 @@ python-dotenv==1.0.0
 sqlalchemy
 asyncpg
 alembic
-psycopg2
+psycopg2-binary

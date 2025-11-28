@@ -5,7 +5,7 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import SQLAlchemyError
 import logging
 
-from app.database.database_models import OrderDB, OrderStatus
+from database.database_models import OrderDB, OrderStatus
 
 class OrderRepository:
     def __init__(self, session: AsyncSession, logger: logging.Logger = None):

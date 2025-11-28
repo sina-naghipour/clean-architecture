@@ -1,14 +1,54 @@
 version: '3.8'
 
 services:
+  auth_db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: auth
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: toor
+    ports:
+      - "5432:5432"
+    volumes:
+      - auth_db_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  orders_db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: orders_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: toor
+    ports:
+      - "5433:5432"
+    volumes:
+      - orders_db_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  mongodb:
+    image: mongo:6
+    environment:
+      MONGO_INITDB_DATABASE: product_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - app-network
+
   auth:
     build: ./auth
     ports:
       - "8000:8000"
     environment:
       - ENVIRONMENT=development
+      - DATABASE_URL=postgresql+asyncpg://postgres:toor@auth_db:5432/auth
     volumes:
       - ./auth/app:/app
+    depends_on:
+      - auth_db
     networks:
       - app-network
 
@@ -29,8 +69,11 @@ services:
       - "8002:8002"
     environment:
       - ENVIRONMENT=development
+      - DATABASE_URL=postgresql+asyncpg://postgres:toor@orders_db:5432/orders_db
     volumes:
       - ./orders/app:/app
+    depends_on:
+      - orders_db
     networks:
       - app-network
 
@@ -40,8 +83,12 @@ services:
       - "8003:8003"
     environment:
       - ENVIRONMENT=development
+      - MONGODB_URI=mongodb://mongodb:27017/
+      - MONGODB_DB_NAME=product_db
     volumes:
       - ./products/app:/app
+    depends_on:
+      - mongodb
     networks:
       - app-network
 
@@ -70,6 +117,11 @@ services:
       - profile
     networks:
       - app-network
+
+volumes:
+  auth_db_data:
+  orders_db_data:
+  mongodb_data:
 
 networks:
   app-network:

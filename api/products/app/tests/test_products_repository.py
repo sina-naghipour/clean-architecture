@@ -2,8 +2,8 @@ import pytest
 from unittest.mock import Mock, patch, AsyncMock
 from datetime import datetime
 import uuid
-from app.repositories.product_repository import ProductRepository
-from app.database.database_models import ProductDB
+from repositories.product_repository import ProductRepository
+from database.database_models import ProductDB
 
 class TestProductRepository:
     

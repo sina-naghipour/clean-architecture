@@ -1,9 +1,9 @@
 import pytest
 import os
 from datetime import datetime
-from app.repositories.product_repository import ProductRepository
-from app.database.database_models import ProductDB
-from app.database.connection import MongoDBConnection
+from repositories.product_repository import ProductRepository
+from database.database_models import ProductDB
+from database.connection import MongoDBConnection
 
 class TestProductRepositoryIntegration:
     
