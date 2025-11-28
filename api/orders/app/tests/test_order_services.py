@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 from main import app
 from services.order_services import OrderService
-from database import models
+from app.database import pydantic_models
 
 
 class TestOrderService:
@@ -39,7 +39,7 @@ class TestOrderService:
         self, order_service, mock_request
     ):
         user_id = "test_user_1"
-        order_data = models.OrderCreate(
+        order_data = pydantic_models.OrderCreate(
             billing_address_id="addr_1",
             shipping_address_id="addr_1",
             payment_method_token="pm_tok_abc"
@@ -60,7 +60,7 @@ class TestOrderService:
         self, order_service, mock_request
     ):
         user_id = "user_with_empty_cart"
-        order_data = models.OrderCreate()
+        order_data = pydantic_models.OrderCreate()
 
         result = await order_service.create_order(
             mock_request, order_data, user_id
@@ -74,7 +74,7 @@ class TestOrderService:
         self, order_service, mock_request
     ):
         user_id = "test_user_1"
-        order_data = models.OrderCreate()
+        order_data = pydantic_models.OrderCreate()
         
         create_result = await order_service.create_order(mock_request, order_data, user_id)
         order_id = "order_1"
@@ -83,9 +83,9 @@ class TestOrderService:
             mock_request, order_id, user_id
         )
 
-        assert isinstance(result, models.OrderResponse)
+        assert isinstance(result, pydantic_models.OrderResponse)
         assert result.id == order_id
-        assert result.status == models.OrderStatus.CREATED
+        assert result.status == pydantic_models.OrderStatus.CREATED
         assert len(result.items) == 2
         
         order_service.logger.info.assert_any_call(f"Order retrieval attempt: {order_id}")
@@ -109,7 +109,7 @@ class TestOrderService:
         self, order_service, mock_request
     ):
         user_id = "test_user_1"
-        order_data = models.OrderCreate()
+        order_data = pydantic_models.OrderCreate()
         
         await order_service.create_order(mock_request, order_data, user_id)
         order_id = "order_1"
@@ -127,10 +127,10 @@ class TestOrderService:
     ):
         user_id = "test_user_1"
         
-        order_data = models.OrderCreate()
+        order_data = pydantic_models.OrderCreate()
         await order_service.create_order(mock_request, order_data, user_id)
 
-        query_params = models.OrderQueryParams(
+        query_params = pydantic_models.OrderQueryParams(
             page=1,
             page_size=20
         )
@@ -139,7 +139,7 @@ class TestOrderService:
             mock_request, user_id, query_params
         )
 
-        assert isinstance(result, models.OrderList)
+        assert isinstance(result, pydantic_models.OrderList)
         assert len(result.items) == 1
         assert result.total == 1
         assert result.page == 1
@@ -154,7 +154,7 @@ class TestOrderService:
     ):
         user_id = "user_with_no_orders"
 
-        query_params = models.OrderQueryParams(
+        query_params = pydantic_models.OrderQueryParams(
             page=1,
             page_size=20
         )
@@ -163,7 +163,7 @@ class TestOrderService:
             mock_request, user_id, query_params
         )
 
-        assert isinstance(result, models.OrderList)
+        assert isinstance(result, pydantic_models.OrderList)
         assert len(result.items) == 0
         assert result.total == 0
 
@@ -172,7 +172,7 @@ class TestOrderService:
         self, order_service, mock_request
     ):
         user_id = "test_user_1"
-        order_data = models.OrderCreate()
+        order_data = pydantic_models.OrderCreate()
 
         result = await order_service.create_order(mock_request, order_data, user_id)
         

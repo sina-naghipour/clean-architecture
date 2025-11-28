@@ -1,7 +1,7 @@
 from .order_helpers import create_problem_response
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from database import models
+from app.database import pydantic_models
 from datetime import datetime
 
 class OrderService:
@@ -14,7 +14,7 @@ class OrderService:
     async def create_order(
         self,
         request: Request,
-        order_data: models.OrderCreate,
+        order_data: pydantic_models.OrderCreate,
         user_id: str,
     ):
         self.logger.info(f"Order creation attempt for user: {user_id}")
@@ -33,7 +33,7 @@ class OrderService:
         total = sum(item['quantity'] * item['unit_price'] for item in cart['items'])
         
         order_items = [
-            models.OrderItemResponse(
+            pydantic_models.OrderItemResponse(
                 product_id=item['product_id'],
                 name=item['name'],
                 quantity=item['quantity'],
@@ -41,9 +41,9 @@ class OrderService:
             ) for item in cart['items']
         ]
         
-        order = models.OrderResponse(
+        order = pydantic_models.OrderResponse(
             id=order_id,
-            status=models.OrderStatus.CREATED,
+            status=pydantic_models.OrderStatus.CREATED,
             total=total,
             items=order_items,
             billing_address_id=order_data.billing_address_id,
@@ -54,7 +54,7 @@ class OrderService:
         self.orders[order_id] = {
             'id': order_id,
             'user_id': user_id,
-            'status': models.OrderStatus.CREATED,
+            'status': pydantic_models.OrderStatus.CREATED,
             'total': total,
             'items': cart['items'],
             'billing_address_id': order_data.billing_address_id,
@@ -103,7 +103,7 @@ class OrderService:
             )
         
         order_items = [
-            models.OrderItemResponse(
+            pydantic_models.OrderItemResponse(
                 product_id=item['product_id'],
                 name=item['name'],
                 quantity=item['quantity'],
@@ -111,7 +111,7 @@ class OrderService:
             ) for item in order_data['items']
         ]
         
-        order = models.OrderResponse(
+        order = pydantic_models.OrderResponse(
             id=order_data['id'],
             status=order_data['status'],
             total=order_data['total'],
@@ -128,7 +128,7 @@ class OrderService:
         self,
         request: Request,
         user_id: str,
-        query_params: models.OrderQueryParams
+        query_params: pydantic_models.OrderQueryParams
     ):
         self.logger.info(f"Orders listing attempt for user: {user_id}")
         
@@ -141,7 +141,7 @@ class OrderService:
         orders_with_items = []
         for order in paginated_orders:
             order_items = [
-                models.OrderItemResponse(
+                pydantic_models.OrderItemResponse(
                     product_id=item['product_id'],
                     name=item['name'],
                     quantity=item['quantity'],
@@ -149,7 +149,7 @@ class OrderService:
                 ) for item in order['items']
             ]
             
-            order_response = models.OrderResponse(
+            order_response = pydantic_models.OrderResponse(
                 id=order['id'],
                 status=order['status'],
                 total=order['total'],
@@ -160,7 +160,7 @@ class OrderService:
             )
             orders_with_items.append(order_response)
         
-        order_list = models.OrderList(
+        order_list = pydantic_models.OrderList(
             items=orders_with_items,
             total=len(user_orders),
             page=query_params.page,
