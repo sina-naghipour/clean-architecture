@@ -23,12 +23,12 @@ def get_product_service() -> ProductService:
     summary="Create product"
 )
 @ProductErrorDecorators.handle_create_errors
-def create_product(
+async def create_product(
     request: Request,
     product_data: pydantic_models.ProductRequest,
     product_service: ProductService = Depends(get_product_service),
 ) -> pydantic_models.ProductResponse:
-    return product_service.create_product(request, product_data)
+    return await product_service.create_product(request, product_data)
 
 @router.get(
     '/',
@@ -36,7 +36,7 @@ def create_product(
     summary="List products (supports paging & filtering)"
 )
 @ProductErrorDecorators.handle_list_errors
-def list_products(
+async def list_products(
     request: Request,
     product_service: ProductService = Depends(get_product_service),
     page: int = Query(1, ge=1, description="Page number"),
@@ -48,7 +48,7 @@ def list_products(
         page_size=page_size,
         q=q
     )
-    return product_service.list_products(request, query_params)
+    return await product_service.list_products(request, query_params)
 
 @router.get(
     '/{product_id}',
@@ -56,12 +56,12 @@ def list_products(
     summary="Get product details"
 )
 @ProductErrorDecorators.handle_get_errors
-def get_product(
+async def get_product(
     request: Request,
     product_id: str,
     product_service: ProductService = Depends(get_product_service),
 ) -> pydantic_models.ProductResponse:
-    return product_service.get_product(request, product_id)
+    return await product_service.get_product(request, product_id)
 
 @router.put(
     '/{product_id}',
@@ -69,13 +69,13 @@ def get_product(
     summary="Replace product (full update)"
 )
 @ProductErrorDecorators.handle_update_errors
-def update_product(
+async def update_product(
     request: Request,
     product_id: str,
     update_data: pydantic_models.ProductRequest,
     product_service: ProductService = Depends(get_product_service),
 ) -> pydantic_models.ProductResponse:
-    return product_service.update_product(request, product_id, update_data)
+    return await product_service.update_product(request, product_id, update_data)
 
 @router.patch(
     '/{product_id}',
@@ -83,13 +83,13 @@ def update_product(
     summary="Partially update product"
 )
 @ProductErrorDecorators.handle_patch_errors
-def patch_product(
+async def patch_product(
     request: Request,
     product_id: str,
     patch_data: pydantic_models.ProductPatch,
     product_service: ProductService = Depends(get_product_service),
 ) -> pydantic_models.ProductResponse:
-    return product_service.patch_product(request, product_id, patch_data)
+    return await product_service.patch_product(request, product_id, patch_data)
 
 @router.delete(
     '/{product_id}',
@@ -97,12 +97,12 @@ def patch_product(
     summary="Delete product"
 )
 @ProductErrorDecorators.handle_delete_errors
-def delete_product(
+async def delete_product(
     request: Request,
     product_id: str,
     product_service: ProductService = Depends(get_product_service),
 ) -> None:
-    return product_service.delete_product(request, product_id)
+    return await product_service.delete_product(request, product_id)
 
 @router.patch(
     '/{product_id}/inventory',
@@ -110,10 +110,10 @@ def delete_product(
     summary="Update product stock"
 )
 @ProductErrorDecorators.handle_inventory_errors
-def update_inventory(
+async def update_inventory(
     request: Request,
     product_id: str,
     inventory_data: pydantic_models.InventoryUpdate,
     product_service: ProductService = Depends(get_product_service),
 ):
-    return product_service.update_inventory(request, product_id, inventory_data)
+    return await product_service.update_inventory(request, product_id, inventory_data)

@@ -1,204 +1,378 @@
 import pytest
-from unittest.mock import Mock
+import asyncio
+from unittest.mock import Mock, AsyncMock
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from services.product_services import ProductService
 from database import pydantic_models
 from database.database_models import ProductDB
+from services.product_helpers import create_problem_response
 
+@pytest.fixture
+def mock_logger():
+    return Mock()
+
+@pytest.fixture
+def mock_repository():
+    repo = Mock()
+    repo.create_product = AsyncMock()
+    repo.get_product_by_id = AsyncMock()
+    repo.get_product_by_name = AsyncMock()
+    repo.list_products = AsyncMock()
+    repo.count_products = AsyncMock()
+    repo.update_product = AsyncMock()
+    repo.delete_product = AsyncMock()
+    repo.update_inventory = AsyncMock()
+    return repo
+
+@pytest.fixture
+def product_service(mock_logger, mock_repository):
+    service = ProductService(mock_logger)
+    service.product_repository = mock_repository
+    return service
+
+@pytest.fixture
+def mock_request():
+    request = Mock(spec=Request)
+    request.url = "http://testserver/api/products"
+    return request
+
+@pytest.mark.asyncio
 class TestProductService:
-    @pytest.fixture
-    def mock_logger(self):
-        return Mock()
-
-    @pytest.fixture
-    def mock_repository(self):
-        return Mock()
-
-    @pytest.fixture
-    def service(self, mock_logger, mock_repository):
-        service = ProductService(mock_logger)
-        service.product_repository = mock_repository
-        return service
-
-    @pytest.fixture
-    def mock_request(self):
-        request = Mock(spec=Request)
-        request.url = "http://test.com/api/products"
-        return request
-
-    @pytest.fixture
-    def sample_product_request(self):
-        return pydantic_models.ProductRequest(
+    async def test_create_product_success(self, product_service, mock_request):
+        product_data = pydantic_models.ProductRequest(
             name="Test Product",
-            price=29.99,
-            stock=100,
+            price=99.99,
+            stock=10,
             description="Test Description"
         )
-
-    @pytest.fixture
-    def sample_product_db(self):
-        return ProductDB(
-            name="Test Product",
-            price=29.99,
-            stock=100,
-            description="Test Description"
-        )
-
-    def test_create_product_success(self, service, mock_request, sample_product_request, sample_product_db):
-        service.product_repository.create_product.return_value = sample_product_db
         
-        result = service.create_product(mock_request, sample_product_request)
+        mock_product = ProductDB(
+            id="test_id_123",
+            name="Test Product",
+            price=99.99,
+            stock=10,
+            description="Test Description"
+        )
+        
+        product_service.product_repository.create_product.return_value = mock_product
+        
+        result = await product_service.create_product(mock_request, product_data)
         
         assert isinstance(result, JSONResponse)
         assert result.status_code == 201
-        service.product_repository.create_product.assert_called_once()
-        service.logger.info.assert_called()
-
-    def test_create_product_duplicate_name(self, service, mock_request, sample_product_request):
-        service.product_repository.create_product.return_value = None
+        assert "Location" in result.headers
+        assert "/api/products/test_id_123" in result.headers["Location"]
         
-        result = service.create_product(mock_request, sample_product_request)
+        product_service.product_repository.create_product.assert_called_once()
+        product_service.logger.info.assert_called()
+
+    async def test_create_product_duplicate_name(self, product_service, mock_request):
+        product_data = pydantic_models.ProductRequest(
+            name="Existing Product",
+            price=99.99,
+            stock=10,
+            description="Test Description"
+        )
+        
+        product_service.product_repository.create_product.return_value = None
+        
+        result = await product_service.create_product(mock_request, product_data)
         
         assert result.status_code == 409
-        service.product_repository.create_product.assert_called_once()
+        assert "Conflict" in result.body.decode()
+        product_service.logger.info.assert_called()
 
-    def test_get_product_success(self, service, mock_request, sample_product_db):
-        service.product_repository.get_product_by_id.return_value = sample_product_db
+    async def test_get_product_success(self, product_service, mock_request):
+        mock_product = ProductDB(
+            id="test_id_123",
+            name="Test Product",
+            price=99.99,
+            stock=10,
+            description="Test Description"
+        )
         
-        result = service.get_product(mock_request, "test_id")
+        product_service.product_repository.get_product_by_id.return_value = mock_product
         
-        assert result.id == sample_product_db.id
-        assert result.name == sample_product_db.name
-        service.product_repository.get_product_by_id.assert_called_once_with("test_id")
+        result = await product_service.get_product(mock_request, "test_id_123")
+        
+        assert result.id == "test_id_123"
+        assert result.name == "Test Product"
+        assert result.price == 99.99
+        product_service.product_repository.get_product_by_id.assert_called_once_with("test_id_123")
 
-    def test_get_product_not_found(self, service, mock_request):
-        service.product_repository.get_product_by_id.return_value = None
+    async def test_get_product_not_found(self, product_service, mock_request):
+        product_service.product_repository.get_product_by_id.return_value = None
         
-        result = service.get_product(mock_request, "nonexistent_id")
+        result = await product_service.get_product(mock_request, "non_existent_id")
         
         assert result.status_code == 404
-        service.product_repository.get_product_by_id.assert_called_once_with("nonexistent_id")
+        assert "Not Found" in result.body.decode()
 
-    def test_list_products_success(self, service, mock_request):
-        products_db = [
-            ProductDB(name="Product 1", price=10.0, stock=5, description="Desc 1"),
-            ProductDB(name="Product 2", price=20.0, stock=10, description="Desc 2")
+    async def test_list_products_success(self, product_service, mock_request):
+        mock_products = [
+            ProductDB(
+                id="prod_1",
+                name="Product 1",
+                price=99.99,
+                stock=10,
+                description="Description 1"
+            ),
+            ProductDB(
+                id="prod_2",
+                name="Product 2",
+                price=199.99,
+                stock=5,
+                description="Description 2"
+            )
         ]
-        service.product_repository.list_products.return_value = products_db
-        service.product_repository.count_products.return_value = 2
         
-        query_params = pydantic_models.ProductQueryParams(page=1, page_size=20)
-        result = service.list_products(mock_request, query_params)
+        product_service.product_repository.list_products.return_value = mock_products
+        product_service.product_repository.count_products.return_value = 2
         
-        assert len(result.items) == 2
+        query_params = pydantic_models.ProductQueryParams(
+            page=1,
+            page_size=10,
+            q=None
+        )
+        
+        result = await product_service.list_products(mock_request, query_params)
+        
         assert result.total == 2
+        assert len(result.items) == 2
         assert result.page == 1
-        service.product_repository.list_products.assert_called_once_with(skip=0, limit=20, search_query=None)
-        service.product_repository.count_products.assert_called_once_with(search_query=None)
+        assert result.page_size == 10
+        assert result.items[0].name == "Product 1"
+        assert result.items[1].name == "Product 2"
 
-    def test_list_products_with_search(self, service, mock_request):
-        products_db = [ProductDB(name="Found Product", price=15.0, stock=8, description="Matching")]
-        service.product_repository.list_products.return_value = products_db
-        service.product_repository.count_products.return_value = 1
+    async def test_list_products_with_search(self, product_service, mock_request):
+        mock_products = [
+            ProductDB(
+                id="prod_1",
+                name="Laptop",
+                price=999.99,
+                stock=5,
+                description="Gaming laptop"
+            )
+        ]
         
-        query_params = pydantic_models.ProductQueryParams(page=1, page_size=10, q="Found")
-        result = service.list_products(mock_request, query_params)
+        product_service.product_repository.list_products.return_value = mock_products
+        product_service.product_repository.count_products.return_value = 1
         
-        assert len(result.items) == 1
-        service.product_repository.list_products.assert_called_once_with(skip=0, limit=10, search_query="Found")
-        service.product_repository.count_products.assert_called_once_with(search_query="Found")
+        query_params = pydantic_models.ProductQueryParams(
+            page=1,
+            page_size=10,
+            q="laptop"
+        )
+        
+        result = await product_service.list_products(mock_request, query_params)
+        
+        assert result.total == 1
+        assert result.items[0].name == "Laptop"
+        product_service.product_repository.list_products.assert_called_with(
+            skip=0, limit=10, search_query="laptop"
+        )
 
-    def test_update_product_success(self, service, mock_request):
-        updated_product_db = ProductDB(
+    async def test_list_products_pagination(self, product_service, mock_request):
+        product_service.product_repository.list_products.return_value = []
+        product_service.product_repository.count_products.return_value = 50
+        
+        query_params = pydantic_models.ProductQueryParams(
+            page=2,
+            page_size=10,
+            q=None
+        )
+        
+        result = await product_service.list_products(mock_request, query_params)
+        
+        assert result.total == 50
+        assert result.page == 2
+        assert result.page_size == 10
+        product_service.product_repository.list_products.assert_called_with(
+            skip=10, limit=10, search_query=None
+        )
+
+    async def test_update_product_success(self, product_service, mock_request):
+        mock_updated_product = ProductDB(
+            id="test_id_123",
             name="Updated Product",
-            price=39.99,
-            stock=50,
+            price=149.99,
+            stock=15,
             description="Updated Description"
         )
-        service.product_repository.update_product.return_value = updated_product_db
+        
+        product_service.product_repository.update_product.return_value = mock_updated_product
         
         update_data = pydantic_models.ProductRequest(
             name="Updated Product",
-            price=39.99,
-            stock=50,
+            price=149.99,
+            stock=15,
             description="Updated Description"
         )
         
-        result = service.update_product(mock_request, "test_id", update_data)
+        result = await product_service.update_product(mock_request, "test_id_123", update_data)
         
         assert result.name == "Updated Product"
-        assert result.price == 39.99
-        service.product_repository.update_product.assert_called_once()
+        assert result.price == 149.99
+        assert result.stock == 15
+        product_service.product_repository.update_product.assert_called_once()
 
-    def test_update_product_not_found(self, service, mock_request):
-        service.product_repository.update_product.return_value = None
+    async def test_update_product_not_found(self, product_service, mock_request):
+        product_service.product_repository.update_product.return_value = None
         
         update_data = pydantic_models.ProductRequest(
             name="Updated Product",
-            price=39.99,
-            stock=50,
+            price=149.99,
+            stock=15,
             description="Updated Description"
         )
         
-        result = service.update_product(mock_request, "nonexistent_id", update_data)
+        result = await product_service.update_product(mock_request, "non_existent_id", update_data)
         
         assert result.status_code == 404
-        service.product_repository.update_product.assert_called_once()
+        assert "Not Found" in result.body.decode()
 
-    def test_patch_product_success(self, service, mock_request, sample_product_db):
-        service.product_repository.patch_product.return_value = sample_product_db
+    async def test_patch_product_success(self, product_service, mock_request):
+        mock_patched_product = ProductDB(
+            id="test_id_123",
+            name="Original Product",
+            price=199.99,
+            stock=25,
+            description="Original Description"
+        )
         
-        patch_data = pydantic_models.ProductPatch(stock=200, price=19.99)
+        product_service.product_repository.update_product.return_value = mock_patched_product
         
-        result = service.patch_product(mock_request, "test_id", patch_data)
+        patch_data = pydantic_models.ProductPatch(price=199.99)
         
-        assert result.stock == 100
-        assert result.price == 29.99
-        service.product_repository.patch_product.assert_called_once()
+        result = await product_service.patch_product(mock_request, "test_id_123", patch_data)
+        
+        assert result.price == 199.99
+        assert result.name == "Original Product"
+        product_service.product_repository.update_product.assert_called_once()
 
-    def test_patch_product_not_found(self, service, mock_request):
-        service.product_repository.patch_product.return_value = None
+    async def test_patch_product_not_found(self, product_service, mock_request):
+        product_service.product_repository.update_product.return_value = None
         
-        patch_data = pydantic_models.ProductPatch(stock=200)
+        patch_data = pydantic_models.ProductPatch(price=199.99)
         
-        result = service.patch_product(mock_request, "nonexistent_id", patch_data)
+        result = await product_service.patch_product(mock_request, "non_existent_id", patch_data)
         
         assert result.status_code == 404
-        service.product_repository.patch_product.assert_called_once()
+        assert "Not Found" in result.body.decode()
 
-    def test_delete_product_success(self, service, mock_request):
-        service.product_repository.delete_product.return_value = True
+    async def test_delete_product_success(self, product_service, mock_request):
+        product_service.product_repository.delete_product.return_value = True
         
-        result = service.delete_product(mock_request, "test_id")
+        result = await product_service.delete_product(mock_request, "test_id_123")
         
         assert result is None
-        service.product_repository.delete_product.assert_called_once_with("test_id")
+        product_service.product_repository.delete_product.assert_called_once_with("test_id_123")
+        product_service.logger.info.assert_called()
 
-    def test_delete_product_not_found(self, service, mock_request):
-        service.product_repository.delete_product.return_value = False
+    async def test_delete_product_not_found(self, product_service, mock_request):
+        product_service.product_repository.delete_product.return_value = False
         
-        result = service.delete_product(mock_request, "nonexistent_id")
+        result = await product_service.delete_product(mock_request, "non_existent_id")
         
         assert result.status_code == 404
-        service.product_repository.delete_product.assert_called_once_with("nonexistent_id")
+        assert "Not Found" in result.body.decode()
 
-    def test_update_inventory_success(self, service, mock_request, sample_product_db):
-        service.product_repository.update_inventory.return_value = sample_product_db
+    async def test_update_inventory_success(self, product_service, mock_request):
+        mock_updated_product = ProductDB(
+            id="test_id_123",
+            name="Test Product",
+            price=99.99,
+            stock=25,
+            description="Test Description"
+        )
         
-        inventory_data = pydantic_models.InventoryUpdate(stock=150)
+        product_service.product_repository.update_inventory.return_value = mock_updated_product
         
-        result = service.update_inventory(mock_request, "test_id", inventory_data)
+        inventory_data = pydantic_models.InventoryUpdate(stock=25)
         
-        assert result.stock == 100
-        service.product_repository.update_inventory.assert_called_once_with("test_id", 150)
+        result = await product_service.update_inventory(mock_request, "test_id_123", inventory_data)
+        
+        assert result.id == "test_id_123"
+        assert result.stock == 25
+        product_service.product_repository.update_inventory.assert_called_once_with("test_id_123", 25)
 
-    def test_update_inventory_not_found(self, service, mock_request):
-        service.product_repository.update_inventory.return_value = None
+    async def test_update_inventory_not_found(self, product_service, mock_request):
+        product_service.product_repository.update_inventory.return_value = None
         
-        inventory_data = pydantic_models.InventoryUpdate(stock=150)
+        inventory_data = pydantic_models.InventoryUpdate(stock=25)
         
-        result = service.update_inventory(mock_request, "nonexistent_id", inventory_data)
+        result = await product_service.update_inventory(mock_request, "non_existent_id", inventory_data)
         
         assert result.status_code == 404
-        service.product_repository.update_inventory.assert_called_once_with("nonexistent_id", 150)
+        assert "Not Found" in result.body.decode()
+
+    async def test_error_handling_in_create_product(self, product_service, mock_request):
+        product_data = pydantic_models.ProductRequest(
+            name="Test Product",
+            price=99.99,
+            stock=10,
+            description="Test Description"
+        )
+        
+        product_service.product_repository.create_product.side_effect = Exception("Database error")
+        
+        with pytest.raises(Exception):
+            await product_service.create_product(mock_request, product_data)
+
+    async def test_error_handling_in_list_products(self, product_service, mock_request):
+        query_params = pydantic_models.ProductQueryParams(
+            page=1,
+            page_size=10,
+            q=None
+        )
+        
+        product_service.product_repository.list_products.side_effect = Exception("Database error")
+        
+        with pytest.raises(Exception):
+            await product_service.list_products(mock_request, query_params)
+
+@pytest.mark.asyncio
+class TestProductServiceIntegration:
+    async def test_full_product_lifecycle(self, product_service, mock_request):
+        create_data = pydantic_models.ProductRequest(
+            name="Integration Test Product",
+            price=299.99,
+            stock=20,
+            description="Integration Test"
+        )
+        
+        mock_created_product = ProductDB(
+            id="integration_id",
+            name="Integration Test Product",
+            price=299.99,
+            stock=20,
+            description="Integration Test"
+        )
+        
+        product_service.product_repository.create_product.return_value = mock_created_product
+        product_service.product_repository.get_product_by_id.return_value = mock_created_product
+        product_service.product_repository.update_product.return_value = mock_created_product
+        product_service.product_repository.delete_product.return_value = True
+        
+        create_result = await product_service.create_product(mock_request, create_data)
+        assert create_result.status_code == 201
+        
+        get_result = await product_service.get_product(mock_request, "integration_id")
+        assert get_result.name == "Integration Test Product"
+        
+        update_data = pydantic_models.ProductRequest(
+            name="Updated Integration Product",
+            price=399.99,
+            stock=15,
+            description="Updated Integration Test"
+        )
+        
+        update_result = await product_service.update_product(mock_request, "integration_id", update_data)
+        assert update_result.name == "Integration Test Product"
+        
+        delete_result = await product_service.delete_product(mock_request, "integration_id")
+        assert delete_result is None
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

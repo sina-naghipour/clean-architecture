@@ -15,7 +15,6 @@ class ProductRepository:
         self.logger = logger.getChild("ProductRepository")
 
     async def _get_collection(self) -> AsyncIOMotorCollection:
-        """Get collection async - lazy initialization"""
         if self.collection is None:
             self.collection = await get_products_collection()
         return self.collection
@@ -218,9 +217,7 @@ class ProductRepository:
             self.logger.error(f"Error updating inventory for product {product_id}: {e}")
             raise
 
-    # Tag-specific methods for read-optimized projection
     async def get_products_by_tags(self, tags: List[str], skip: int = 0, limit: int = 20) -> List[ProductDB]:
-        """Get products by tags - optimized for read operations"""
         try:
             collection = await self._get_collection()
             self.logger.info(f"Fetching products by tags: {tags}")
@@ -240,7 +237,6 @@ class ProductRepository:
             raise
 
     async def get_popular_tags(self, limit: int = 10) -> List[Dict[str, Any]]:
-        """Get most popular tags - for tag-based queries optimization"""
         try:
             collection = await self._get_collection()
             self.logger.info(f"Fetching {limit} most popular tags")

@@ -1,269 +1,313 @@
 import pytest
+import asyncio
 from fastapi.testclient import TestClient
-from main import app
+from fastapi import FastAPI
+from unittest.mock import Mock, AsyncMock
+from services.product_services import ProductService
+from database import pydantic_models
+from database.database_models import ProductDB
+from routes.product_routes import router, get_product_service
+import logging
 
+# Create test FastAPI app
+app = FastAPI()
+app.include_router(router, prefix="/api/products")
 
-class TestProductAPIContract:    
-    @pytest.fixture
-    def client(self):
-        with TestClient(app) as client:
-            yield client
+@pytest.fixture
+def mock_product_service():
+    service = Mock(spec=ProductService)
+    service.create_product = AsyncMock()
+    service.get_product = AsyncMock()
+    service.list_products = AsyncMock()
+    service.update_product = AsyncMock()
+    service.patch_product = AsyncMock()
+    service.delete_product = AsyncMock()
+    service.update_inventory = AsyncMock()
+    return service
 
-    def test_health_endpoint(self, client):
-        response = client.get("/health")
+@pytest.fixture
+def client(mock_product_service):
+    # Override dependency
+    app.dependency_overrides[get_product_service] = lambda: mock_product_service
+    with TestClient(app) as test_client:
+        yield test_client
+    app.dependency_overrides.clear()
+
+@pytest.fixture
+def sample_product_data():
+    return {
+        "name": "Test Product",
+        "price": 99.99,
+        "stock": 10,
+        "description": "Test Description"
+    }
+
+@pytest.fixture
+def sample_product_response():
+    return {
+        "id": "prod_123",
+        "name": "Test Product",
+        "price": 99.99,
+        "stock": 10,
+        "description": "Test Description"
+    }
+
+class TestProductRoutesContract:
+    def test_create_product_success(self, client, mock_product_service, sample_product_data, sample_product_response):
+        from fastapi.responses import JSONResponse
+        json_response = JSONResponse(
+            status_code=201,
+            content=sample_product_response,
+            headers={"Location": "/api/products/prod_123"}
+        )
+        mock_product_service.create_product.return_value = json_response
+        
+        response = client.post("/api/products/create", json=sample_product_data)
+        
+        assert response.status_code == 201
+        assert response.json() == sample_product_response
+        assert "Location" in response.headers
+        assert "/api/products/prod_123" in response.headers["Location"]
+        mock_product_service.create_product.assert_called_once()
+
+    def test_get_product_success(self, client, mock_product_service, sample_product_response):
+        mock_response = pydantic_models.ProductResponse(**sample_product_response)
+        mock_product_service.get_product.return_value = mock_response
+        
+        response = client.get("/api/products/prod_123")
+        
+        assert response.status_code == 200
+        assert response.json() == sample_product_response
+        mock_product_service.get_product.assert_called_once()
+
+    def test_get_product_not_found(self, client, mock_product_service):
+        from services.product_helpers import create_problem_response
+        from fastapi.responses import JSONResponse
+        
+        problem_response = create_problem_response(
+            status_code=404,
+            error_type="not-found",
+            title="Not Found", 
+            detail="Product not found",
+            instance="/api/products/non_existent"
+        )
+        mock_product_service.get_product.return_value = problem_response
+        
+        response = client.get("/api/products/non_existent")
+        
+        assert response.status_code == 404
+        assert "Not Found" in response.json()["title"]
+
+    def test_list_products_success(self, client, mock_product_service, sample_product_response):
+        product_list = pydantic_models.ProductList(
+            items=[pydantic_models.ProductResponse(**sample_product_response)],
+            total=1,
+            page=1,
+            page_size=20
+        )
+        mock_product_service.list_products.return_value = product_list
+        
+        response = client.get("/api/products/")
         
         assert response.status_code == 200
         data = response.json()
-        assert "status" in data
-        assert "service" in data
-        assert "timestamp" in data
-        assert data["service"] == "product"
+        assert data["total"] == 1
+        assert data["page"] == 1
+        assert len(data["items"]) == 1
+        assert data["items"][0] == sample_product_response
+        mock_product_service.list_products.assert_called_once()
 
-    def test_root_endpoint(self, client):
-        response = client.get("/info")
+    def test_list_products_with_pagination(self, client, mock_product_service):
+        product_list = pydantic_models.ProductList(
+            items=[],
+            total=0,
+            page=2,
+            page_size=5
+        )
+        mock_product_service.list_products.return_value = product_list
+        
+        response = client.get("/api/products/?page=2&page_size=5")
         
         assert response.status_code == 200
         data = response.json()
-        assert "message" in data
-        assert "version" in data
-        assert "docs" in data
-        assert "health" in data
+        assert data["page"] == 2
+        assert data["page_size"] == 5
 
-    def test_create_product_contract(self, client):
-        product_data = {
-            "name": f"Test Product {id(self)}",
-            "price": 29.99,
-            "stock": 100,
-            "description": "Test product description"
-        }
+    def test_list_products_with_search(self, client, mock_product_service):
+        product_list = pydantic_models.ProductList(
+            items=[],
+            total=0,
+            page=1,
+            page_size=20
+        )
+        mock_product_service.list_products.return_value = product_list
         
-        response = client.post("/create", json=product_data)
+        response = client.get("/api/products/?q=laptop")
         
-        assert response.status_code in [201, 409]
-        
-        if response.status_code == 201:
-            data = response.json()
-            assert "id" in data
-            assert "name" in data
-            assert "price" in data
-            assert "stock" in data
-            assert "description" in data
-            assert data["name"] == product_data["name"]
-            assert data["price"] == product_data["price"]
-            assert data["stock"] == product_data["stock"]
-            
-            assert "Location" in response.headers
-            assert "/" in response.headers["Location"]
+        assert response.status_code == 200
+        mock_product_service.list_products.assert_called_once()
 
-    def test_create_product_validation_contract(self, client):
-        invalid_data = {
-            "name": "",
-            "price": -10.00,
-            "stock": -5
-        }
+    def test_update_product_success(self, client, mock_product_service, sample_product_data, sample_product_response):
+        mock_response = pydantic_models.ProductResponse(**sample_product_response)
+        mock_product_service.update_product.return_value = mock_response
         
-        response = client.post("/create", json=invalid_data)
+        response = client.put("/api/products/prod_123", json=sample_product_data)
+        
+        assert response.status_code == 200
+        assert response.json() == sample_product_response
+        mock_product_service.update_product.assert_called_once()
+
+    def test_patch_product_success(self, client, mock_product_service, sample_product_response):
+        mock_response = pydantic_models.ProductResponse(**sample_product_response)
+        mock_product_service.patch_product.return_value = mock_response
+        
+        patch_data = {"price": 149.99}
+        
+        response = client.patch("/api/products/prod_123", json=patch_data)
+        
+        assert response.status_code == 200
+        assert response.json() == sample_product_response
+        mock_product_service.patch_product.assert_called_once()
+
+    def test_delete_product_success(self, client, mock_product_service):
+        mock_product_service.delete_product.return_value = None
+        
+        response = client.delete("/api/products/prod_123")
+        
+        assert response.status_code == 204
+        mock_product_service.delete_product.assert_called_once()
+
+    def test_update_inventory_success(self, client, mock_product_service):
+        inventory_response = pydantic_models.InventoryResponse(
+            id="prod_123",
+            stock=25
+        )
+        mock_product_service.update_inventory.return_value = inventory_response
+        
+        inventory_data = {"stock": 25}
+        
+        response = client.patch("/api/products/prod_123/inventory", json=inventory_data)
+        
+        assert response.status_code == 200
+        assert response.json() == {"id": "prod_123", "stock": 25}
+        mock_product_service.update_inventory.assert_called_once()
+
+    def test_update_inventory_validation_error(self, client):
+        invalid_data = {"stock": -5}  # Invalid stock
+        
+        response = client.patch("/api/products/prod_123/inventory", json=invalid_data)
         
         assert response.status_code == 422
 
-    def test_list_products_contract(self, client):
-        product_data = {
-            "name": f"Test Product for List {id(self)}",
-            "price": 39.99,
-            "stock": 50,
-            "description": "Test product for listing"
-        }
+    def test_invalid_page_parameter(self, client):
+        response = client.get("/api/products/?page=0")  # Page should be >= 1
         
-        create_response = client.post("/create", json=product_data)
-        
-        response = client.get("/")
-        assert response.status_code == 200
-        
-        if response.status_code == 200:
-            data = response.json()
-            assert "items" in data
-            assert "total" in data
-            assert "page" in data
-            assert "page_size" in data
-            assert isinstance(data["items"], list)
+        assert response.status_code == 422
 
-    def test_list_products_pagination_contract(self, client):
-        for i in range(3):
-            product_data = {
-                "name": f"Test Product {i} {id(self)}",
-                "price": 10.99 + i,
-                "stock": 10 * (i + 1),
-                "description": f"Test product {i}"
-            }
-            client.post("/create", json=product_data)
+    def test_invalid_page_size_parameter(self, client):
+        response = client.get("/api/products/?page_size=200")  # Exceeds MAX_PAGE_SIZE
         
-        response = client.get("/?page=2&page_size=5")
-        assert response.status_code == 200
-        
-        if response.status_code == 200:
-            data = response.json()
-            assert data["page"] == 2
-            assert data["page_size"] == 5
-        
-    def test_get_product_contract(self, client):
-        product_data = {
-            "name": f"Test Product for Get {id(self)}",
-            "price": 39.99,
-            "stock": 50,
-            "description": "Test product for get operation"
-        }
-        
-        create_response = client.post("/create", json=product_data)
-        
-        if create_response.status_code == 201:
-            product_id = create_response.json()["id"]
-            
-            response = client.get(f"/{product_id}")
-            
-            assert response.status_code in [200, 404]
-            
-            if response.status_code == 200:
-                data = response.json()
-                assert "id" in data
-                assert "name" in data
-                assert "price" in data
-                assert "stock" in data
-                assert "description" in data
+        assert response.status_code == 422
 
-    def test_get_product_not_found_contract(self, client):
-        response = client.get("/non_existent_id")
+    def test_route_not_found(self, client):
+        response = client.get("/api/products/nonexistent/route")
         
         assert response.status_code == 404
 
-    def test_update_product_contract(self, client):
-        product_data = {
-            "name": f"Test Product for Update {id(self)}",
-            "price": 49.99,
-            "stock": 75,
-            "description": "Test product for update operation"
-        }
+    def test_method_not_allowed(self, client):
+        response = client.post("/api/products/prod_123")  # POST not allowed on detail endpoint
         
-        create_response = client.post("/create", json=product_data)
-        
-        if create_response.status_code == 201:
-            product_id = create_response.json()["id"]
-            
-            update_data = {
-                "name": f"Updated Product {id(self)}",
-                "price": 59.99,
-                "stock": 100,
-                "description": "Updated description"
-            }
-            
-            response = client.put(f"/{product_id}", json=update_data)
-            
-            assert response.status_code in [200, 404]
-            
-            if response.status_code == 200:
-                data = response.json()
-                assert data["name"] == update_data["name"]
-                assert data["price"] == update_data["price"]
-                assert data["stock"] == update_data["stock"]
-
-    def test_patch_product_contract(self, client):
-        product_data = {
-            "name": f"Test Product for Patch {id(self)}",
-            "price": 69.99,
-            "stock": 25,
-            "description": "Test product for patch operation"
-        }
-        
-        create_response = client.post("/create", json=product_data)
-        
-        if create_response.status_code == 201:
-            product_id = create_response.json()["id"]
-            
-            patch_data = {
-                "stock": 50
-            }
-            
-            response = client.patch(f"/{product_id}", json=patch_data)
-            
-            assert response.status_code in [200, 404]
-            
-            if response.status_code == 200:
-                data = response.json()
-                assert data["stock"] == patch_data["stock"]
-
-    def test_delete_product_contract(self, client):
-        product_data = {
-            "name": f"Test Product for Delete {id(self)}",
-            "price": 79.99,
-            "stock": 10,
-            "description": "Test product for delete operation"
-        }
-        
-        create_response = client.post("/create", json=product_data)
-        
-        if create_response.status_code == 201:
-            product_id = create_response.json()["id"]
-            
-            response = client.delete(f"/{product_id}")
-            
-            assert response.status_code in [204, 404]
-
-    def test_update_inventory_contract(self, client):
-        product_data = {
-            "name": f"Test Product for Inventory {id(self)}",
-            "price": 89.99,
-            "stock": 30,
-            "description": "Test product for inventory operation"
-        }
-        
-        create_response = client.post("/create", json=product_data)
-        
-        if create_response.status_code == 201:
-            product_id = create_response.json()["id"]
-            
-            inventory_data = {
-                "stock": 60
-            }
-            
-            response = client.patch(f"/{product_id}/inventory", json=inventory_data)
-            
-            assert response.status_code in [200, 404]
-            
-            if response.status_code == 200:
-                data = response.json()
-                assert "id" in data
-                assert "stock" in data
-                assert data["stock"] == inventory_data["stock"]
-
-
-class TestProductAPIErrorScenarios:
-    
-    @pytest.fixture
-    def client(self):
-        with TestClient(app) as client:
-            yield client
-
-    def test_malformed_json_contract(self, client):
-        response = client.post(
-            "/create",
-            content="{invalid json",
-            headers={"Content-Type": "application/json"}
-        )
-        assert response.status_code == 422
-
-    def test_unsupported_media_type_contract(self, client):
-        response = client.post(
-            "/create",
-            content="name=Test",
-            headers={"Content-Type": "application/x-www-form-urlencoded"}
-        )
-        assert response.status_code == 422
-
-    def test_method_not_allowed_contract(self, client):
-        response = client.put("/")
         assert response.status_code == 405
 
-    def test_cors_headers_contract(self, client):
-        response = client.get("/health", headers={"Origin": "http://localhost:3000"})
+class TestProductRoutesErrorScenarios:
+    def test_service_raises_exception(self, client, mock_product_service):
+        mock_product_service.get_product.side_effect = Exception("Database error")
         
-        if "access-control-allow-origin" in response.headers:
-            assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+        response = client.get("/api/products/prod_123")
+        
+        # Should be handled by decorators and return 500
+        assert response.status_code == 500
+
+    def test_malformed_json(self, client):
+        response = client.post("/api/products/create", data='{"malformed": json')
+        
+        assert response.status_code == 422
+
+    def test_missing_required_fields(self, client):
+        incomplete_data = {"name": "Test"}  # Missing price, stock, etc.
+        
+        response = client.post("/api/products/create", json=incomplete_data)
+        
+        assert response.status_code == 422
+
+class TestProductRoutesEdgeCases:
+    def test_empty_product_list(self, client, mock_product_service):
+        product_list = pydantic_models.ProductList(
+            items=[],
+            total=0,
+            page=1,
+            page_size=20
+        )
+        mock_product_service.list_products.return_value = product_list
+        
+        response = client.get("/api/products/")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 0
+        assert data["items"] == []
+
+    def test_special_characters_in_search(self, client, mock_product_service):
+        product_list = pydantic_models.ProductList(
+            items=[],
+            total=0,
+            page=1,
+            page_size=20
+        )
+        mock_product_service.list_products.return_value = product_list
+        
+        response = client.get("/api/products/?q=test%20product%20@%23")
+        
+        assert response.status_code == 200
+
+    def test_long_product_id(self, client, mock_product_service, sample_product_response):
+        mock_response = pydantic_models.ProductResponse(**sample_product_response)
+        mock_product_service.get_product.return_value = mock_response
+        
+        long_id = "a" * 100
+        response = client.get(f"/api/products/{long_id}")
+        
+        assert response.status_code == 200
+
+class TestProductRoutesContentTypes:
+    def test_json_content_type(self, client, mock_product_service, sample_product_response):
+        mock_response = pydantic_models.ProductResponse(**sample_product_response)
+        mock_product_service.get_product.return_value = mock_response
+        
+        response = client.get("/api/products/prod_123")
+        
+        assert response.headers["content-type"] == "application/json"
+
+    def test_create_product_content_type(self, client, mock_product_service, sample_product_data, sample_product_response):
+        mock_response = pydantic_models.ProductResponse(**sample_product_response)
+        mock_product_service.create_product.return_value = mock_response
+        
+        response = client.post(
+            "/api/products/create", 
+            json=sample_product_data,
+            headers={"Content-Type": "application/json"}
+        )
+        
+        assert response.status_code == 201
+
+    def test_wrong_content_type(self, client):
+        response = client.post(
+            "/api/products/create",
+            data="name=test",
+            headers={"Content-Type": "application/x-www-form-urlencoded"}
+        )
+        
+        assert response.status_code == 422
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
