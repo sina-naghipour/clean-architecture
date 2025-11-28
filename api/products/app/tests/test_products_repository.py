@@ -321,7 +321,7 @@ async def test_index_effectiveness(test_db_setup):
     improvement = ((time_without_index - time_with_index) / time_without_index) * 100
     print(f"Without index: {time_without_index:.4f}s, With index: {time_with_index:.4f}s, Improvement: {improvement:.1f}%")
     
-    assert time_with_index < time_without_index * 1.5
+    assert time_with_index < time_without_index 
     
 if __name__ == "__main__":
     import asyncio

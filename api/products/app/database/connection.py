@@ -15,7 +15,7 @@ class MongoDBConnection:
     async def connect(self, connection_string: str = None, db_name: str = None):
         try:
             connection_string = connection_string or os.getenv(
-                "MONGODB_URI", "mongodb://localhost:27017/"
+                "MONGODB_URI", "mongodb://mongodb:27017/"
             )
             db_name = db_name or os.getenv("MONGODB_DB_NAME", "product_db")
             
