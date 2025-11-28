@@ -18,7 +18,7 @@ class ProductRepository:
             self.collection = get_products_collection()
         self.logger = logger.getChild("ProductRepository")
 
-    async def create_product(self, product_data: ProductDB) -> Optional[ProductDB]:
+    def create_product(self, product_data: ProductDB) -> Optional[ProductDB]:
         try:
             self.logger.info(f"Creating product: {product_data.name}")
             
@@ -44,7 +44,7 @@ class ProductRepository:
             self.logger.error(f"Error creating product: {e}")
             raise
 
-    async def get_product_by_id(self, product_id: str) -> Optional[ProductDB]:
+    def get_product_by_id(self, product_id: str) -> Optional[ProductDB]:
         try:
             self.logger.info(f"Fetching product by ID: {product_id}")
             
@@ -61,7 +61,7 @@ class ProductRepository:
             self.logger.error(f"Error fetching product {product_id}: {e}")
             raise
 
-    async def get_product_by_name(self, name: str) -> Optional[ProductDB]:
+    def get_product_by_name(self, name: str) -> Optional[ProductDB]:
         try:
             self.logger.info(f"Fetching product by name: {name}")
             
@@ -80,7 +80,7 @@ class ProductRepository:
             self.logger.error(f"Error fetching product by name {name}: {e}")
             raise
 
-    async def list_products(
+    def list_products(
         self, 
         skip: int = 0, 
         limit: int = 20,
@@ -108,7 +108,7 @@ class ProductRepository:
             self.logger.error(f"Error listing products: {e}")
             raise
 
-    async def count_products(self, search_query: Optional[str] = None) -> int:
+    def count_products(self, search_query: Optional[str] = None) -> int:
         try:
             query = {}
             if search_query:
@@ -126,7 +126,7 @@ class ProductRepository:
             self.logger.error(f"Error counting products: {e}")
             raise
 
-    async def update_product(self, product_id: str, update_data: Dict[str, Any]) -> Optional[ProductDB]:
+    def update_product(self, product_id: str, update_data: Dict[str, Any]) -> Optional[ProductDB]:
         try:
             self.logger.info(f"Updating product: {product_id}")
             
@@ -149,16 +149,16 @@ class ProductRepository:
             
             if result.modified_count > 0:
                 self.logger.info(f"Product updated successfully: {product_id}")
-                return await self.get_product_by_id(product_id)
+                return self.get_product_by_id(product_id)
             else:
                 self.logger.info(f"No changes made to product: {product_id}")
-                return await self.get_product_by_id(product_id)
+                return self.get_product_by_id(product_id)
                 
         except Exception as e:
             self.logger.error(f"Error updating product {product_id}: {e}")
             raise
 
-    async def patch_product(self, product_id: str, patch_data: Dict[str, Any]) -> Optional[ProductDB]:
+    def patch_product(self, product_id: str, patch_data: Dict[str, Any]) -> Optional[ProductDB]:
         try:
             self.logger.info(f"Patching product: {product_id}")
             
@@ -181,16 +181,16 @@ class ProductRepository:
             
             if result.modified_count > 0:
                 self.logger.info(f"Product patched successfully: {product_id}")
-                return await self.get_product_by_id(product_id)
+                return self.get_product_by_id(product_id)
             else:
                 self.logger.info(f"No changes made to product: {product_id}")
-                return await self.get_product_by_id(product_id)
+                return self.get_product_by_id(product_id)
                 
         except Exception as e:
             self.logger.error(f"Error patching product {product_id}: {e}")
             raise
 
-    async def delete_product(self, product_id: str) -> bool:
+    def delete_product(self, product_id: str) -> bool:
         try:
             self.logger.info(f"Deleting product: {product_id}")
             
@@ -207,7 +207,7 @@ class ProductRepository:
             self.logger.error(f"Error deleting product {product_id}: {e}")
             raise
 
-    async def update_inventory(self, product_id: str, new_stock: int) -> Optional[ProductDB]:
+    def update_inventory(self, product_id: str, new_stock: int) -> Optional[ProductDB]:
         try:
             self.logger.info(f"Updating inventory for product: {product_id} to stock: {new_stock}")
             
@@ -223,10 +223,10 @@ class ProductRepository:
             
             if result.modified_count > 0:
                 self.logger.info(f"Inventory updated successfully for product: {product_id}")
-                return await self.get_product_by_id(product_id)
+                return self.get_product_by_id(product_id)
             else:
                 self.logger.info(f"No inventory update made for product: {product_id}")
-                return await self.get_product_by_id(product_id)
+                return self.get_product_by_id(product_id)
                 
         except Exception as e:
             self.logger.error(f"Error updating inventory for product {product_id}: {e}")

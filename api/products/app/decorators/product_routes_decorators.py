@@ -8,13 +8,13 @@ class ProductErrorDecorators:
     @staticmethod
     def handle_create_errors(func: Callable) -> Callable:
         @wraps(func)
-        async def wrapper(
+        def wrapper(
             request: Request,
             product_data: Any,
             product_service: ProductService = Depends(),
         ) -> Any:
             try:
-                return await func(request, product_data, product_service)
+                return func(request, product_data, product_service)
             except Exception as e:
                 return ProductErrorDecorators._handle_create_exception(e, request)
         return wrapper
@@ -22,13 +22,13 @@ class ProductErrorDecorators:
     @staticmethod
     def handle_get_errors(func: Callable) -> Callable:
         @wraps(func)
-        async def wrapper(
+        def wrapper(
             request: Request,
             product_id: str,
             product_service: ProductService = Depends(),
         ) -> Any:
             try:
-                return await func(request, product_id, product_service)
+                return func(request, product_id, product_service)
             except Exception as e:
                 return ProductErrorDecorators._handle_get_exception(e, request)
         return wrapper
@@ -36,7 +36,7 @@ class ProductErrorDecorators:
     @staticmethod
     def handle_list_errors(func: Callable) -> Callable:
         @wraps(func)
-        async def wrapper(
+        def wrapper(
             request: Request,
             product_service: ProductService = Depends(),
             page: int = 1,
@@ -44,7 +44,7 @@ class ProductErrorDecorators:
             q: str = None,
         ) -> Any:
             try:
-                return await func(request, product_service, page, page_size, q)
+                return func(request, product_service, page, page_size, q)
             except Exception as e:
                 return ProductErrorDecorators._handle_list_exception(e, request)
         return wrapper
@@ -52,14 +52,14 @@ class ProductErrorDecorators:
     @staticmethod
     def handle_patch_errors(func: Callable) -> Callable:
         @wraps(func)
-        async def wrapper(
+        def wrapper(
             request: Request,
             product_id: str,
             patch_data: Any,
             product_service: ProductService = Depends(),
         ) -> Any:
             try:
-                return await func(request, product_id, patch_data, product_service)
+                return func(request, product_id, patch_data, product_service)
             except Exception as e:
                 return ProductErrorDecorators._handle_update_exception(e, request)  # Can reuse the same exception handler
         return wrapper
@@ -67,14 +67,14 @@ class ProductErrorDecorators:
     @staticmethod
     def handle_update_errors(func: Callable) -> Callable:
         @wraps(func)
-        async def wrapper(
+        def wrapper(
             request: Request,
             product_id: str,
             update_data: Any,
             product_service: ProductService = Depends(),
         ) -> Any:
             try:
-                return await func(request, product_id, update_data, product_service)
+                return func(request, product_id, update_data, product_service)
             except Exception as e:
                 return ProductErrorDecorators._handle_update_exception(e, request)
         return wrapper
@@ -82,13 +82,13 @@ class ProductErrorDecorators:
     @staticmethod
     def handle_delete_errors(func: Callable) -> Callable:
         @wraps(func)
-        async def wrapper(
+        def wrapper(
             request: Request,
             product_id: str,
             product_service: ProductService = Depends(),
         ) -> Any:
             try:
-                return await func(request, product_id, product_service)
+                return func(request, product_id, product_service)
             except Exception as e:
                 return ProductErrorDecorators._handle_delete_exception(e, request)
         return wrapper
@@ -96,14 +96,14 @@ class ProductErrorDecorators:
     @staticmethod
     def handle_inventory_errors(func: Callable) -> Callable:
         @wraps(func)
-        async def wrapper(
+        def wrapper(
             request: Request,
             product_id: str,
             inventory_data: Any,
             product_service: ProductService = Depends(),
         ) -> Any:
             try:
-                return await func(request, product_id, inventory_data, product_service)
+                return func(request, product_id, inventory_data, product_service)
             except Exception as e:
                 return ProductErrorDecorators._handle_inventory_exception(e, request)
         return wrapper
@@ -111,7 +111,7 @@ class ProductErrorDecorators:
     @staticmethod
     def _handle_create_exception(error: Exception, request: Request) -> Any:
         error_str = str(error).lower()
-        
+        print('error_str', error_str)
         if "duplicate" in error_str or "already exists" in error_str:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,

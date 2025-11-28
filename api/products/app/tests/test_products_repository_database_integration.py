@@ -37,22 +37,20 @@ class TestProductRepositoryIntegration:
             description="Integration test product description"
         )
 
-    @pytest.mark.asyncio
-    async def test_create_and_retrieve_product(self, repository, sample_product):
-        created_product = await repository.create_product(sample_product)
+    def test_create_and_retrieve_product(self, repository, sample_product):
+        created_product = repository.create_product(sample_product)
         assert created_product is not None
         assert created_product.name == sample_product.name
         assert created_product.price == sample_product.price
         
-        retrieved_product = await repository.get_product_by_id(created_product.id)
+        retrieved_product = repository.get_product_by_id(created_product.id)
         assert retrieved_product is not None
         assert retrieved_product.id == created_product.id
         assert retrieved_product.name == sample_product.name
         assert retrieved_product.price == sample_product.price
         assert retrieved_product.stock == sample_product.stock
 
-    @pytest.mark.asyncio
-    async def test_duplicate_product_name_prevention(self, repository):
+    def test_duplicate_product_name_prevention(self, repository):
         product1 = ProductDB(
             name="Unique Product Name",
             price=49.99,
@@ -67,14 +65,13 @@ class TestProductRepositoryIntegration:
             description="Second product"
         )
         
-        first_product = await repository.create_product(product1)
+        first_product = repository.create_product(product1)
         assert first_product is not None
         
-        second_product = await repository.create_product(product2)
+        second_product = repository.create_product(product2)
         assert second_product is None
 
-    @pytest.mark.asyncio
-    async def test_update_product(self, repository):
+    def test_update_product(self, repository):
         original_product = ProductDB(
             name="Original Product",
             price=99.99,
@@ -82,7 +79,7 @@ class TestProductRepositoryIntegration:
             description="Original description"
         )
         
-        created_product = await repository.create_product(original_product)
+        created_product = repository.create_product(original_product)
         assert created_product is not None
         
         update_data = {
@@ -92,15 +89,14 @@ class TestProductRepositoryIntegration:
             "description": "Updated description"
         }
         
-        updated_product = await repository.update_product(created_product.id, update_data)
+        updated_product = repository.update_product(created_product.id, update_data)
         assert updated_product is not None
         assert updated_product.name == "Updated Product Name"
         assert updated_product.price == 149.99
         assert updated_product.stock == 75
         assert updated_product.description == "Updated description"
 
-    @pytest.mark.asyncio
-    async def test_patch_product(self, repository):
+    def test_patch_product(self, repository):
         original_product = ProductDB(
             name="Patch Test Product",
             price=100.0,
@@ -108,19 +104,18 @@ class TestProductRepositoryIntegration:
             description="Original description"
         )
         
-        created_product = await repository.create_product(original_product)
+        created_product = repository.create_product(original_product)
         assert created_product is not None
         
         patch_data = {"stock": 200, "price": 79.99}
-        patched_product = await repository.patch_product(created_product.id, patch_data)
+        patched_product = repository.patch_product(created_product.id, patch_data)
         
         assert patched_product is not None
         assert patched_product.stock == 200
         assert patched_product.price == 79.99
         assert patched_product.name == "Patch Test Product"
 
-    @pytest.mark.asyncio
-    async def test_delete_product(self, repository):
+    def test_delete_product(self, repository):
         product = ProductDB(
             name="Product To Delete",
             price=50.0,
@@ -128,17 +123,16 @@ class TestProductRepositoryIntegration:
             description="Will be deleted"
         )
         
-        created_product = await repository.create_product(product)
+        created_product = repository.create_product(product)
         assert created_product is not None
         
-        delete_result = await repository.delete_product(created_product.id)
+        delete_result = repository.delete_product(created_product.id)
         assert delete_result is True
         
-        deleted_product = await repository.get_product_by_id(created_product.id)
+        deleted_product = repository.get_product_by_id(created_product.id)
         assert deleted_product is None
 
-    @pytest.mark.asyncio
-    async def test_list_products_pagination(self, repository):
+    def test_list_products_pagination(self, repository):
         for i in range(5):
             product = ProductDB(
                 name=f"Pagination Product {i}",
@@ -146,19 +140,18 @@ class TestProductRepositoryIntegration:
                 stock=i * 10,
                 description=f"Description {i}"
             )
-            await repository.create_product(product)
+            repository.create_product(product)
         
-        first_page = await repository.list_products(skip=0, limit=2)
+        first_page = repository.list_products(skip=0, limit=2)
         assert len(first_page) == 2
         
-        second_page = await repository.list_products(skip=2, limit=2)
+        second_page = repository.list_products(skip=2, limit=2)
         assert len(second_page) == 2
         
-        third_page = await repository.list_products(skip=4, limit=2)
+        third_page = repository.list_products(skip=4, limit=2)
         assert len(third_page) == 1
 
-    @pytest.mark.asyncio
-    async def test_search_products(self, repository):
+    def test_search_products(self, repository):
         product1 = ProductDB(
             name="Apple iPhone",
             price=999.99,
@@ -180,23 +173,22 @@ class TestProductRepositoryIntegration:
             description="Google's smartphone"
         )
         
-        await repository.create_product(product1)
-        await repository.create_product(product2)
-        await repository.create_product(product3)
+        repository.create_product(product1)
+        repository.create_product(product2)
+        repository.create_product(product3)
         
-        apple_results = await repository.list_products(search_query="Apple")
+        apple_results = repository.list_products(search_query="Apple")
         assert len(apple_results) == 1
         assert apple_results[0].name == "Apple iPhone"
         
-        phone_results = await repository.list_products(search_query="phone")
+        phone_results = repository.list_products(search_query="phone")
         assert len(phone_results) == 3
         
-        android_results = await repository.list_products(search_query="Android")
+        android_results = repository.list_products(search_query="Android")
         assert len(android_results) == 1
         assert android_results[0].name == "Samsung Galaxy"
 
-    @pytest.mark.asyncio
-    async def test_update_inventory(self, repository):
+    def test_update_inventory(self, repository):
         product = ProductDB(
             name="Inventory Test Product",
             price=50.0,
@@ -204,18 +196,17 @@ class TestProductRepositoryIntegration:
             description="Inventory test"
         )
         
-        created_product = await repository.create_product(product)
+        created_product = repository.create_product(product)
         assert created_product is not None
         
-        updated_product = await repository.update_inventory(created_product.id, 150)
+        updated_product = repository.update_inventory(created_product.id, 150)
         assert updated_product is not None
         assert updated_product.stock == 150
         assert updated_product.name == "Inventory Test Product"
         assert updated_product.price == 50.0
 
-    @pytest.mark.asyncio
-    async def test_count_products(self, repository):
-        initial_count = await repository.count_products()
+    def test_count_products(self, repository):
+        initial_count = repository.count_products()
         
         for i in range(3):
             product = ProductDB(
@@ -223,16 +214,15 @@ class TestProductRepositoryIntegration:
                 price=10.0 * (i + 1),
                 stock=i * 5
             )
-            await repository.create_product(product)
+            repository.create_product(product)
         
-        final_count = await repository.count_products()
+        final_count = repository.count_products()
         assert final_count == initial_count + 3
         
-        search_count = await repository.count_products(search_query="Count Test")
+        search_count = repository.count_products(search_query="Count Test")
         assert search_count == 3
 
-    @pytest.mark.asyncio
-    async def test_product_persistence(self, repository, test_db_connection):
+    def test_product_persistence(self, repository, test_db_connection):
         product = ProductDB(
             name="Persistence Test Product",
             price=75.0,
@@ -240,12 +230,12 @@ class TestProductRepositoryIntegration:
             description="Persistence test"
         )
         
-        created_product = await repository.create_product(product)
+        created_product = repository.create_product(product)
         assert created_product is not None
         
         new_collection = test_db_connection.db["products"]
         new_repository = ProductRepository(collection=new_collection)
-        persisted_product = await new_repository.get_product_by_id(created_product.id)
+        persisted_product = new_repository.get_product_by_id(created_product.id)
         
         assert persisted_product is not None
         assert persisted_product.id == created_product.id

@@ -86,6 +86,7 @@ def get_db():
     return db_connection.db
 
 def get_products_collection():
-    collection = get_db()[ProductDB.COLLECTION_NAME]
+    db = get_db()
+    collection = db[ProductDB.COLLECTION_NAME]
     logger.debug("Products collection retrieved")
     return collection

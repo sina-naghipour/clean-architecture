@@ -11,7 +11,7 @@ class ProductService:
         self.logger = logger
         self.product_repository = ProductRepository()
 
-    async def create_product(
+    def create_product(
         self,
         request: Request,
         product_data: pydantic_models.ProductRequest
@@ -25,7 +25,7 @@ class ProductService:
             description=product_data.description
         )
         
-        created_product = await self.product_repository.create_product(product_db)
+        created_product = self.product_repository.create_product(product_db)
         
         if not created_product:
             return create_problem_response(
@@ -53,14 +53,14 @@ class ProductService:
         )
         return response
 
-    async def get_product(
+    def get_product(
         self,
         request: Request,
         product_id: str
     ):
         self.logger.info(f"Product retrieval attempt: {product_id}")
         
-        product_db = await self.product_repository.get_product_by_id(product_id)
+        product_db = self.product_repository.get_product_by_id(product_id)
         
         if not product_db:
             return create_problem_response(
@@ -82,7 +82,7 @@ class ProductService:
         self.logger.info(f"Product retrieved successfully: {product_id}")
         return product_response
 
-    async def list_products(
+    def list_products(
         self,
         request: Request,
         query_params: pydantic_models.ProductQueryParams
@@ -92,13 +92,13 @@ class ProductService:
         skip = (query_params.page - 1) * query_params.page_size
         limit = query_params.page_size
         
-        products_db = await self.product_repository.list_products(
+        products_db = self.product_repository.list_products(
             skip=skip,
             limit=limit,
             search_query=query_params.q
         )
         
-        total = await self.product_repository.count_products(search_query=query_params.q)
+        total = self.product_repository.count_products(search_query=query_params.q)
         
         items = [
             pydantic_models.ProductResponse(
@@ -121,7 +121,7 @@ class ProductService:
         self.logger.info(f"Products listed successfully - Found: {total}")
         return product_list
 
-    async def update_product(
+    def update_product(
         self,
         request: Request,
         product_id: str,
@@ -136,7 +136,7 @@ class ProductService:
             "description": update_data.description
         }
         
-        updated_product_db = await self.product_repository.update_product(product_id, update_dict)
+        updated_product_db = self.product_repository.update_product(product_id, update_dict)
         
         if not updated_product_db:
             return create_problem_response(
@@ -158,7 +158,7 @@ class ProductService:
         self.logger.info(f"Product updated successfully: {product_id}")
         return updated_product
 
-    async def patch_product(
+    def patch_product(
         self,
         request: Request,
         product_id: str,
@@ -168,7 +168,7 @@ class ProductService:
         
         patch_dict = patch_data.model_dump(exclude_unset=True)
         
-        patched_product_db = await self.product_repository.patch_product(product_id, patch_dict)
+        patched_product_db = self.product_repository.patch_product(product_id, patch_dict)
         
         if not patched_product_db:
             return create_problem_response(
@@ -190,14 +190,14 @@ class ProductService:
         self.logger.info(f"Product patched successfully: {product_id}")
         return patched_product
 
-    async def delete_product(
+    def delete_product(
         self,
         request: Request,
         product_id: str
     ):
         self.logger.info(f"Product deletion attempt: {product_id}")
         
-        deleted = await self.product_repository.delete_product(product_id)
+        deleted = self.product_repository.delete_product(product_id)
         
         if not deleted:
             return create_problem_response(
@@ -211,7 +211,7 @@ class ProductService:
         self.logger.info(f"Product deleted successfully: {product_id}")
         return None
 
-    async def update_inventory(
+    def update_inventory(
         self,
         request: Request,
         product_id: str,
@@ -219,7 +219,7 @@ class ProductService:
     ):
         self.logger.info(f"Inventory update attempt: {product_id}")
         
-        updated_product_db = await self.product_repository.update_inventory(
+        updated_product_db = self.product_repository.update_inventory(
             product_id, 
             inventory_data.stock
         )
