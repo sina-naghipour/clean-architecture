@@ -2,7 +2,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 import os
 import logging
-from .database_models import ProductDB
+from .database_models import ProductDB, ImageDB
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,6 @@ class MongoDBConnection:
             self.client = AsyncIOMotorClient(connection_string, serverSelectionTimeoutMS=5000)
             self.db = self.client[db_name]
             
-            # Test connection
             await self.client.admin.command('ping')
             self.logger.info("Successfully connected to MongoDB")
             
@@ -52,25 +51,38 @@ class MongoDBConnection:
 
     async def _setup_indexes(self):
         try:
-            collection = self.db[ProductDB.COLLECTION_NAME]
-            indexes = ProductDB.get_indexes()
+            product_collection = self.db[ProductDB.COLLECTION_NAME]
+            product_indexes = ProductDB.get_indexes()
             
-            if indexes:
-                # For Motor, we need to handle index creation differently
-                for index_spec in indexes:
-                    # Handle different index formats
+            if product_indexes:
+                for index_spec in product_indexes:
                     if isinstance(index_spec, dict):
-                        # If it's already a dict with 'key' and other options
                         keys = index_spec.get('key', [])
                         options = {k: v for k, v in index_spec.items() if k != 'key'}
-                        await collection.create_index(keys, **options)
+                        await product_collection.create_index(keys, **options)
                     elif isinstance(index_spec, (list, tuple)):
-                        # If it's a list of (field, direction) pairs
-                        await collection.create_index(index_spec)
+                        await product_collection.create_index(index_spec)
                     else:
                         self.logger.warning(f"Unsupported index format: {index_spec}")
                 
                 self.logger.info(f"Database indexes created/verified for collection: {ProductDB.COLLECTION_NAME}")
+            
+            image_collection = self.db[ImageDB.COLLECTION_NAME]
+            image_indexes = ImageDB.get_indexes()
+            
+            if image_indexes:
+                for index_spec in image_indexes:
+                    if isinstance(index_spec, dict):
+                        keys = index_spec.get('key', [])
+                        options = {k: v for k, v in index_spec.items() if k != 'key'}
+                        await image_collection.create_index(keys, **options)
+                    elif isinstance(index_spec, (list, tuple)):
+                        await image_collection.create_index(index_spec)
+                    else:
+                        self.logger.warning(f"Unsupported index format: {index_spec}")
+                
+                self.logger.info(f"Database indexes created/verified for collection: {ImageDB.COLLECTION_NAME}")
+                
         except Exception as e:
             self.logger.error(f"Index creation failed: {e}")
             raise
@@ -83,6 +95,14 @@ class MongoDBConnection:
         collection_name = collection_name or ProductDB.COLLECTION_NAME
         self.logger.debug(f"Accessing collection: {collection_name}")
         return self.db[collection_name]
+
+    def get_images_collection(self):
+        if self.db is None:
+            self.logger.error("Attempted to get images collection without active database connection")
+            raise Exception("Database not connected. Call connect() first.")
+        
+        self.logger.debug(f"Accessing collection: {ImageDB.COLLECTION_NAME}")
+        return self.db[ImageDB.COLLECTION_NAME]
 
     async def close(self):
         if self.client:
@@ -102,4 +122,10 @@ async def get_products_collection():
     db = await get_db()
     collection = db[ProductDB.COLLECTION_NAME]
     logger.debug("Products collection retrieved")
+    return collection
+
+async def get_images_collection():
+    db = await get_db()
+    collection = db[ImageDB.COLLECTION_NAME]
+    logger.debug("Images collection retrieved")
     return collection
