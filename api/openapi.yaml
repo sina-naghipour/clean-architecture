@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: Ecommerce API
-  version: "1.0.0"
-  description: Ecommerce API, With Microservice Architecture.
+  version: "1.1.0"
+  description: Ecommerce API with Product Image Management
 servers:
   - url: http://localhost:8000/api
 tags:
@@ -10,6 +10,8 @@ tags:
     description: Authentication & token endpoints
   - name: Products
     description: Product catalog management
+  - name: Product Images
+    description: Secure product image management
   - name: Cart
     description: Per-user shopping cart
   - name: Orders
@@ -150,7 +152,6 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-
   /products:
     get:
       tags: [Products]
@@ -178,6 +179,8 @@ paths:
                         name: "Laptop"
                         price: 1299.99
                         stock: 5
+                        images: []
+                        primaryImageId: null
                     total: 1
                     page: 1
                     pageSize: 20
@@ -223,6 +226,8 @@ paths:
                     price: 29.99
                     stock: 100
                     description: "Ergonomic mouse"
+                    images: []
+                    primaryImageId: null
         "400": 
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -255,6 +260,8 @@ paths:
                     price: 29.99
                     stock: 100
                     description: "Ergonomic mouse"
+                    images: []
+                    primaryImageId: null
         "404":
           $ref: "#/components/responses/NotFound"
         "500":
@@ -365,10 +372,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  id: { type: string }
-                  stock: { type: integer }
+                $ref: "#/components/schemas/InventoryResponse"
               examples:
                 success:
                   value:
@@ -387,6 +391,204 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /products/{productId}/images:
+    parameters:
+      - $ref: "#/components/parameters/ProductId"
+    post:
+      tags: [Product Images]
+      summary: Upload product image (admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Image file (JPEG, PNG, WebP) - max 5MB
+                is_primary:
+                  type: boolean
+                  description: Set as primary product image
+                  default: false
+      responses:
+        "201":
+          description: Image uploaded successfully
+          headers:
+            Location:
+              description: URI of created image
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductImage"
+              examples:
+                success:
+                  value:
+                    id: "img_12345678-1234-5678-1234-567812345678"
+                    productId: "prod_42"
+                    filename: "prod_42_abc123.jpg"
+                    originalName: "mouse.jpg"
+                    mimeType: "image/jpeg"
+                    size: 2048576
+                    width: 800
+                    height: 600
+                    isPrimary: true
+                    url: "/static/img/products/prod_42/prod_42_abc123.jpg"
+                    uploadedAt: "2023-10-01T12:00:00Z"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "413":
+          description: File too large
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+              examples:
+                fileTooLarge:
+                  value:
+                    type: "https://example.com/errors/file-too-large"
+                    title: "File Too Large"
+                    status: 413
+                    detail: "File size exceeds maximum allowed size of 5MB"
+                    instance: "/products/prod_42/images"
+        "415":
+          description: Unsupported media type
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+              examples:
+                unsupportedMedia:
+                  value:
+                    type: "https://example.com/errors/unsupported-media-type"
+                    title: "Unsupported Media Type"
+                    status: 415
+                    detail: "Only JPEG, PNG, and WebP images are supported"
+                    instance: "/products/prod_42/images"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    get:
+      tags: [Product Images]
+      summary: List product images
+      parameters:
+        - $ref: "#/components/parameters/ProductId"
+      responses:
+        "200":
+          description: Product images list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProductImage"
+              examples:
+                success:
+                  value:
+                    - id: "img_12345678-1234-5678-1234-567812345678"
+                      productId: "prod_42"
+                      filename: "prod_42_abc123.jpg"
+                      originalName: "mouse.jpg"
+                      mimeType: "image/jpeg"
+                      size: 2048576
+                      width: 800
+                      height: 600
+                      isPrimary: true
+                      url: "/static/img/products/prod_42/prod_42_abc123.jpg"
+                      uploadedAt: "2023-10-01T12:00:00Z"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /products/{productId}/images/{imageId}:
+    parameters:
+      - $ref: "#/components/parameters/ProductId"
+      - name: imageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Product Images]
+      summary: Get product image metadata
+      responses:
+        "200":
+          description: Image metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductImage"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      tags: [Product Images]
+      summary: Delete product image (admin)
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Image deleted
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /products/{productId}/images/{imageId}/primary:
+    parameters:
+      - $ref: "#/components/parameters/ProductId"
+      - name: imageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      tags: [Product Images]
+      summary: Set image as primary for product (admin)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Primary image updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductImage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   /cart:
     get:
@@ -528,7 +730,6 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-
   /orders:
     post:
       tags: [Orders]
@@ -639,7 +840,6 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
-
 
   /profile:
     get:
@@ -817,7 +1017,6 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
-
 
 components:
 
@@ -1046,6 +1245,14 @@ components:
         price: { type: number }
         stock: { type: integer }
         description: { type: string }
+        images:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductImage"
+        primaryImageId: 
+          type: string
+          format: uuid
+          nullable: true
 
     ProductList:
       type: object
@@ -1058,11 +1265,67 @@ components:
         page: { type: integer }
         pageSize: { type: integer }
 
+    ProductImage:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        productId:
+          type: string
+        filename:
+          type: string
+          description: Server-generated filename
+        originalName:
+          type: string
+          description: Original client filename
+        mimeType:
+          type: string
+          enum: [image/jpeg, image/png, image/webp]
+        size:
+          type: integer
+          description: File size in bytes
+          minimum: 1
+        width:
+          type: integer
+          description: Image width in pixels
+          minimum: 1
+        height:
+          type: integer
+          description: Image height in pixels
+          minimum: 1
+        isPrimary:
+          type: boolean
+        url:
+          type: string
+          format: uri
+          description: Public URL to access the image
+        uploadedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - productId
+        - filename
+        - mimeType
+        - size
+        - width
+        - height
+        - isPrimary
+        - url
+        - uploadedAt
+
     InventoryUpdate:
       type: object
       properties:
         stock: { type: integer, minimum: 0 }
       required: [stock]
+
+    InventoryResponse:
+      type: object
+      properties:
+        id: { type: string }
+        stock: { type: integer }
 
     CartItemRequest:
       type: object
@@ -1147,14 +1410,6 @@ components:
       required: [line, city, postalCode, country]
 
     AddressResponse:
-      allOf:
-        - $ref: "#/components/schemas/AddressRequest"
-        - type: object
-          properties:
-            id: { type: string }
-
-
-    Address:
       allOf:
         - $ref: "#/components/schemas/AddressRequest"
         - type: object

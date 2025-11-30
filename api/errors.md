@@ -20,7 +20,7 @@ It is based on the OpenAPI specification of the Ecommerce API.
   "detail": "Malformed JSON body.",
   "instance": "/products"
 }
-````
+```
 
 ---
 
@@ -95,6 +95,44 @@ It is based on the OpenAPI specification of the Ecommerce API.
   "status": 409,
   "detail": "Duplicate resource.",
   "instance": "/auth/register"
+}
+```
+
+---
+
+## 413 — File Too Large
+
+* **Type (URI):** `https://example.com/errors/file-too-large`
+* **Title:** File Too Large
+* **Description:** Uploaded file exceeds the maximum allowed size. Returned when image upload exceeds 5MB limit.
+* **Example:**
+
+```json
+{
+  "type": "https://example.com/errors/file-too-large",
+  "title": "File Too Large",
+  "status": 413,
+  "detail": "File size exceeds maximum allowed size of 5MB",
+  "instance": "/products/prod_42/images"
+}
+```
+
+---
+
+## 415 — Unsupported Media Type
+
+* **Type (URI):** `https://example.com/errors/unsupported-media-type`
+* **Title:** Unsupported Media Type
+* **Description:** Uploaded file format is not supported. Returned when non-image files or unsupported image formats are uploaded.
+* **Example:**
+
+```json
+{
+  "type": "https://example.com/errors/unsupported-media-type",
+  "title": "Unsupported Media Type",
+  "status": 415,
+  "detail": "Only JPEG, PNG, and WebP images are supported",
+  "instance": "/products/prod_42/images"
 }
 ```
 
