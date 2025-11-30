@@ -102,7 +102,6 @@ class ProductRepository:
                     {"description": {"$regex": search_query, "$options": "i"}}
                 ]
             
-            # Tag-based filtering for read-optimized projection
             if tags:
                 query["tags"] = {"$in": tags}
             
@@ -256,4 +255,84 @@ class ProductRepository:
             
         except Exception as e:
             self.logger.error(f"Error fetching popular tags: {e}")
+            raise
+
+    async def add_image_to_product(self, product_id: str, image_id: str) -> Optional[ProductDB]:
+        try:
+            collection = await self._get_collection()
+            self.logger.info(f"Adding image {image_id} to product {product_id}")
+            
+            result = await collection.update_one(
+                {"_id": product_id},
+                {"$addToSet": {"image_ids": image_id}}
+            )
+            
+            if result.modified_count > 0:
+                self.logger.info(f"Image {image_id} added to product {product_id}")
+                return await self.get_product_by_id(product_id)
+            else:
+                self.logger.info(f"Product {product_id} not found for image addition")
+                return None
+                
+        except Exception as e:
+            self.logger.error(f"Error adding image to product {product_id}: {e}")
+            raise
+
+    async def remove_image_from_product(self, product_id: str, image_id: str) -> Optional[ProductDB]:
+        try:
+            collection = await self._get_collection()
+            self.logger.info(f"Removing image {image_id} from product {product_id}")
+            
+            result = await collection.update_one(
+                {"_id": product_id},
+                {
+                    "$pull": {"image_ids": image_id},
+                    "$set": {"updated_at": datetime.utcnow()}
+                }
+            )
+            
+            if result.modified_count > 0:
+                self.logger.info(f"Image {image_id} removed from product {product_id}")
+                product = await self.get_product_by_id(product_id)
+                
+                if product and product.primary_image_id == image_id:
+                    await collection.update_one(
+                        {"_id": product_id},
+                        {"$set": {"primary_image_id": None}}
+                    )
+                    self.logger.info(f"Primary image cleared for product {product_id}")
+                
+                return await self.get_product_by_id(product_id)
+            else:
+                self.logger.info(f"Product {product_id} not found for image removal")
+                return None
+                
+        except Exception as e:
+            self.logger.error(f"Error removing image from product {product_id}: {e}")
+            raise
+
+    async def set_primary_image(self, product_id: str, image_id: str) -> Optional[ProductDB]:
+        try:
+            collection = await self._get_collection()
+            self.logger.info(f"Setting primary image {image_id} for product {product_id}")
+            
+            result = await collection.update_one(
+                {"_id": product_id, "image_ids": image_id},
+                {
+                    "$set": {
+                        "primary_image_id": image_id,
+                        "updated_at": datetime.utcnow()
+                    }
+                }
+            )
+            
+            if result.modified_count > 0:
+                self.logger.info(f"Primary image set to {image_id} for product {product_id}")
+                return await self.get_product_by_id(product_id)
+            else:
+                self.logger.info(f"Product {product_id} or image {image_id} not found")
+                return None
+                
+        except Exception as e:
+            self.logger.error(f"Error setting primary image for product {product_id}: {e}")
             raise
