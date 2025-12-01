@@ -6,12 +6,17 @@ from pathlib import Path
 import magic
 from fastapi import UploadFile, HTTPException
 import logging
-from datetime import datetime
 
 from repositories.image_repository import ImageRepository
 from repositories.product_repository import ProductRepository
 from database.database_models import ImageDB
 from database import pydantic_models
+from decorators.product_image_service_decorators import (
+    handle_image_errors, validate_product_exists, 
+    validate_image_exists, validate_file_size,
+    validate_image_format, validate_path_security,
+    transaction_with_rollback
+)
 
 logger = logging.getLogger(__name__)
 
@@ -73,196 +78,153 @@ class ImageService:
         unique_id = str(uuid.uuid4())[:8]
         return f"{product_id}_{unique_id}{file_ext}"
     
+    @handle_image_errors
+    @validate_product_exists()
+    @validate_file_size()
+    @validate_image_format
     async def upload_product_image(self, 
                                   product_id: str, 
                                   upload_file: UploadFile,
                                   is_primary: bool = False) -> Optional[pydantic_models.ProductImage]:
         
-        try:
-            product = await self.product_repository.get_product_by_id(product_id)
-            if not product:
-                logger.error(f"Product not found: {product_id}")
-                raise HTTPException(status_code=404, detail="Product not found")
-            
-            file_content = await upload_file.read()
-            
-            if len(file_content) > self.max_file_size:
-                logger.error(f"File too large: {len(file_content)} bytes")
-                raise HTTPException(status_code=413, detail="File size exceeds maximum allowed size of 5MB")
-            
-            if not self._validate_image_content(file_content):
-                logger.error(f"Invalid image content")
-                raise HTTPException(status_code=415, detail="Invalid image format")
-            
-            mime_type = self._get_mime_type(file_content)
-            if not mime_type:
-                logger.error(f"Could not determine MIME type")
-                raise HTTPException(status_code=400, detail="Could not determine file type")
-            
-            product_dir = self.base_storage_path / "products" / product_id
-            product_dir.mkdir(parents=True, exist_ok=True)
-            
-            server_filename = self._generate_server_filename(product_id, mime_type)
-            file_path = product_dir / server_filename
-            
-            if not self._validate_file_path(file_path):
-                logger.error(f"Invalid file path: {file_path}")
-                raise HTTPException(status_code=400, detail="Invalid file path")
-            
-            temp_file_path = file_path.with_suffix(".tmp")
-            
-            with open(temp_file_path, "wb") as f:
-                f.write(file_content)
-            
-            os.rename(temp_file_path, file_path)
-            
-            from PIL import Image
-            with Image.open(file_path) as img:
-                width, height = img.size
-            
-            image_db = ImageDB(
-                product_id=product_id,
-                filename=server_filename,
-                original_name=upload_file.filename,
-                mime_type=mime_type,
-                size=len(file_content),
-                width=width,
-                height=height,
-                is_primary=is_primary
-            )
-            
-            created_image = await self.image_repository.create_image(image_db)
-            if not created_image:
-                logger.error(f"Failed to save image metadata to database")
-                os.remove(file_path)
-                raise HTTPException(status_code=500, detail="Failed to save image")
-            
-            await self.product_repository.add_image_to_product(product_id, created_image.id)
-            
-            if is_primary:
-                await self.product_repository.set_primary_image(product_id, created_image.id)
-                await self.image_repository.set_primary_image(product_id, created_image.id)
-            
-            image_url = f"/static/img/products/{product_id}/{server_filename}"
-            
-            return pydantic_models.ProductImage(
-                id=created_image.id,
-                product_id=product_id,
-                filename=server_filename,
-                original_name=upload_file.filename,
-                mime_type=mime_type,
-                size=len(file_content),
-                width=width,
-                height=height,
-                is_primary=is_primary,
-                url=image_url,
-                uploaded_at=created_image.uploaded_at
-            )
-            
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Image upload failed: {e}")
-            raise HTTPException(status_code=500, detail="Internal server error")
+        mime_type = self._get_mime_type(await upload_file.read())
+        await upload_file.seek(0)
+        
+        if not mime_type:
+            raise HTTPException(status_code=400, detail="Could not determine file type")
+        
+        file_content = await upload_file.read()
+        
+        product_dir = self.base_storage_path / "products" / product_id
+        product_dir.mkdir(parents=True, exist_ok=True)
+        
+        server_filename = self._generate_server_filename(product_id, mime_type)
+        file_path = product_dir / server_filename
+        
+        if not self._validate_file_path(file_path):
+            raise HTTPException(status_code=400, detail="Invalid file path")
+        
+        temp_file_path = file_path.with_suffix(".tmp")
+        
+        with open(temp_file_path, "wb") as f:
+            f.write(file_content)
+        
+        os.rename(temp_file_path, file_path)
+        
+        from PIL import Image
+        with Image.open(file_path) as img:
+            width, height = img.size
+        
+        image_db = ImageDB(
+            product_id=product_id,
+            filename=server_filename,
+            original_name=upload_file.filename,
+            mime_type=mime_type,
+            size=len(file_content),
+            width=width,
+            height=height,
+            is_primary=is_primary
+        )
+        
+        created_image = await self.image_repository.create_image(image_db)
+        if not created_image:
+            os.remove(file_path)
+            raise HTTPException(status_code=500, detail="Failed to save image")
+        
+        await self.product_repository.add_image_to_product(product_id, created_image.id)
+        
+        if is_primary:
+            await self.product_repository.set_primary_image(product_id, created_image.id)
+            await self.image_repository.set_primary_image(product_id, created_image.id)
+        
+        image_url = f"/static/img/products/{product_id}/{server_filename}"
+        
+        return pydantic_models.ProductImage(
+            id=created_image.id,
+            product_id=product_id,
+            filename=server_filename,
+            original_name=upload_file.filename,
+            mime_type=mime_type,
+            size=len(file_content),
+            width=width,
+            height=height,
+            is_primary=is_primary,
+            url=image_url,
+            uploaded_at=created_image.uploaded_at
+        )
     
+    @handle_image_errors
+    @validate_product_exists()
     async def get_product_images(self, product_id: str) -> List[pydantic_models.ProductImage]:
-        try:
-            product = await self.product_repository.get_product_by_id(product_id)
-            if not product:
-                raise HTTPException(status_code=404, detail="Product not found")
-            
-            image_records = await self.image_repository.get_images_by_product_id(product_id)
-            
-            images = []
-            for img in image_records:
-                image_url = f"/static/img/products/{product_id}/{img.filename}"
-                images.append(pydantic_models.ProductImage(
-                    id=img.id,
-                    product_id=img.product_id,
-                    filename=img.filename,
-                    original_name=img.original_name,
-                    mime_type=img.mime_type,
-                    size=img.size,
-                    width=img.width,
-                    height=img.height,
-                    is_primary=img.is_primary,
-                    url=image_url,
-                    uploaded_at=img.uploaded_at
-                ))
-            
-            return images
-            
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Failed to get product images: {e}")
-            raise HTTPException(status_code=500, detail="Internal server error")
-    
-    async def delete_product_image(self, product_id: str, image_id: str) -> bool:
-        try:
-            product = await self.product_repository.get_product_by_id(product_id)
-            if not product:
-                raise HTTPException(status_code=404, detail="Product not found")
-            
-            image = await self.image_repository.get_image_by_id(image_id)
-            if not image or image.product_id != product_id:
-                raise HTTPException(status_code=404, detail="Image not found")
-            
-            file_path = self.base_storage_path / "products" / product_id / image.filename
-            
-            if file_path.exists():
-                file_path.unlink()
-            
-            deleted = await self.image_repository.delete_image(image_id)
-            if deleted:
-                await self.product_repository.remove_image_from_product(product_id, image_id)
-            
-            return deleted
-            
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Failed to delete image: {e}")
-            raise HTTPException(status_code=500, detail="Internal server error")
-    
-    async def set_primary_image(self, product_id: str, image_id: str) -> Optional[pydantic_models.ProductImage]:
-        try:
-            product = await self.product_repository.get_product_by_id(product_id)
-            if not product:
-                raise HTTPException(status_code=404, detail="Product not found")
-            
-            if image_id not in product.image_ids:
-                raise HTTPException(status_code=400, detail="Image does not belong to product")
-            
-            success = await self.image_repository.set_primary_image(product_id, image_id)
-            if not success:
-                raise HTTPException(status_code=400, detail="Failed to set primary image")
-            
-            await self.product_repository.set_primary_image(product_id, image_id)
-            
-            updated_image = await self.image_repository.get_image_by_id(image_id)
-            
-            image_url = f"/static/img/products/{product_id}/{updated_image.filename}"
-            
-            return pydantic_models.ProductImage(
-                id=updated_image.id,
-                product_id=updated_image.product_id,
-                filename=updated_image.filename,
-                original_name=updated_image.original_name,
-                mime_type=updated_image.mime_type,
-                size=updated_image.size,
-                width=updated_image.width,
-                height=updated_image.height,
-                is_primary=updated_image.is_primary,
+        image_records = await self.image_repository.get_images_by_product_id(product_id)
+        
+        images = []
+        for img in image_records:
+            image_url = f"/static/img/products/{product_id}/{img.filename}"
+            images.append(pydantic_models.ProductImage(
+                id=img.id,
+                product_id=img.product_id,
+                filename=img.filename,
+                original_name=img.original_name,
+                mime_type=img.mime_type,
+                size=img.size,
+                width=img.width,
+                height=img.height,
+                is_primary=img.is_primary,
                 url=image_url,
-                uploaded_at=updated_image.uploaded_at
-            )
-            
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Failed to set primary image: {e}")
-            raise HTTPException(status_code=500, detail="Internal server error")
+                uploaded_at=img.uploaded_at
+            ))
+        
+        return images
+    
+    @handle_image_errors
+    @validate_product_exists()
+    @validate_image_exists()
+    async def delete_product_image(self, product_id: str, image_id: str) -> bool:
+        image = await self.image_repository.get_image_by_id(image_id)
+        
+        file_path = self.base_storage_path / "products" / product_id / image.filename
+        
+        if file_path.exists():
+            file_path.unlink()
+        
+        deleted = await self.image_repository.delete_image(image_id)
+        if deleted:
+            await self.product_repository.remove_image_from_product(product_id, image_id)
+        
+        return deleted
+    
+    @handle_image_errors
+    @validate_product_exists()
+    async def set_primary_image(self, product_id: str, image_id: str) -> Optional[pydantic_models.ProductImage]:
+        product = await self.product_repository.get_product_by_id(product_id)
+        
+        if image_id not in product.image_ids:
+            raise HTTPException(status_code=400, detail="Image does not belong to product")
+        
+        success = await self.image_repository.set_primary_image(product_id, image_id)
+        if not success:
+            raise HTTPException(status_code=400, detail="Failed to set primary image")
+        
+        await self.product_repository.set_primary_image(product_id, image_id)
+        
+        updated_image = await self.image_repository.get_image_by_id(image_id)
+        
+        image_url = f"/static/img/products/{product_id}/{updated_image.filename}"
+        
+        return pydantic_models.ProductImage(
+            id=updated_image.id,
+            product_id=updated_image.product_id,
+            filename=updated_image.filename,
+            original_name=updated_image.original_name,
+            mime_type=updated_image.mime_type,
+            size=updated_image.size,
+            width=updated_image.width,
+            height=updated_image.height,
+            is_primary=updated_image.is_primary,
+            url=image_url,
+            uploaded_at=updated_image.uploaded_at
+        )
     
     def _update_docusaurus_metadata(self, product_id: str):
         try:
