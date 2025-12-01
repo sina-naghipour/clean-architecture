@@ -60,14 +60,16 @@ def test_read_existing_metadata_with_content(temp_storage):
     
     assert metadata == test_data
 
-def test_read_existing_metadata_invalid_json(temp_storage, metadata_generator):
+def test_read_existing_metadata_invalid_json(temp_storage):
     metadata_file = temp_storage / "metadata.json"
     
     with open(metadata_file, 'w') as f:
         f.write("invalid json")
     
-    metadata = metadata_generator._read_existing_metadata()
-    assert metadata == {}
+    generator = MetadataGenerator(base_storage_path=temp_storage)
+    
+    with pytest.raises(json.JSONDecodeError):
+        generator._read_existing_metadata()
 
 def test_write_metadata_atomic_success(metadata_generator):
     test_metadata = {"product_1": {"name": "Test", "images": []}}

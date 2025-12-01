@@ -22,7 +22,7 @@ class MetadataGenerator:
             return {}
         except (json.JSONDecodeError, IOError) as e:
             logger.error(f"Failed to read metadata file: {e}")
-            return {}
+            raise
     
     def _write_metadata_atomic(self, metadata: Dict[str, Any]) -> bool:
         try:
