@@ -3,13 +3,15 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from database import pydantic_models
 from repositories.product_repository import ProductRepository
+from repositories.image_repository import ImageRepository  # NEW
 from database.database_models import ProductDB
 from datetime import datetime
-
+from services.image_services import ImageService
 class ProductService:
     def __init__(self, logger):
         self.logger = logger
         self.product_repository = ProductRepository()
+        self.image_repository = ImageRepository()  # NEW
 
     async def create_product(
         self,
@@ -41,7 +43,9 @@ class ProductService:
             name=created_product.name,
             price=created_product.price,
             stock=created_product.stock,
-            description=created_product.description
+            description=created_product.description,
+            images=[],  # NEW: Empty images array
+            primary_image_id=None  # NEW: No primary image initially
         )
         
         self.logger.info(f"Product created successfully: {created_product.id}")
@@ -71,12 +75,35 @@ class ProductService:
                 instance=str(request.url)
             )
         
+        # NEW: Get product images
+        images = []
+        if product_db.image_ids:
+            for image_id in product_db.image_ids:
+                image = await self.image_repository.get_image_by_id(image_id)
+                if image:
+                    image_url = f"/static/img/products/{product_id}/{image.filename}"
+                    images.append(pydantic_models.ProductImage(
+                        id=image.id,
+                        product_id=image.product_id,
+                        filename=image.filename,
+                        original_name=image.original_name,
+                        mime_type=image.mime_type,
+                        size=image.size,
+                        width=image.width,
+                        height=image.height,
+                        is_primary=image.is_primary,
+                        url=image_url,
+                        uploaded_at=image.uploaded_at
+                    ))
+        
         product_response = pydantic_models.ProductResponse(
             id=product_db.id,
             name=product_db.name,
             price=product_db.price,
             stock=product_db.stock,
-            description=product_db.description
+            description=product_db.description,
+            images=images,  # NEW: Include images
+            primary_image_id=product_db.primary_image_id  # NEW: Include primary image ID
         )
         
         self.logger.info(f"Product retrieved successfully: {product_id}")
@@ -100,16 +127,39 @@ class ProductService:
         
         total = await self.product_repository.count_products(search_query=query_params.q)
         
-        items = [
-            pydantic_models.ProductResponse(
+        items = []
+        for product in products_db:
+            # NEW: Get images for each product
+            images = []
+            if product.image_ids:
+                # Get first few images (for listing, maybe just primary or first image)
+                for i, image_id in enumerate(product.image_ids[:3]):  # Limit to 3 images for listing
+                    image = await self.image_repository.get_image_by_id(image_id)
+                    if image:
+                        image_url = f"/static/img/products/{product.id}/{image.filename}"
+                        images.append(pydantic_models.ProductImage(
+                            id=image.id,
+                            product_id=image.product_id,
+                            filename=image.filename,
+                            original_name=image.original_name,
+                            mime_type=image.mime_type,
+                            size=image.size,
+                            width=image.width,
+                            height=image.height,
+                            is_primary=image.is_primary,
+                            url=image_url,
+                            uploaded_at=image.uploaded_at
+                        ))
+            
+            items.append(pydantic_models.ProductResponse(
                 id=product.id,
                 name=product.name,
                 price=product.price,
                 stock=product.stock,
-                description=product.description
-            )
-            for product in products_db
-        ]
+                description=product.description,
+                images=images,  # NEW: Include images
+                primary_image_id=product.primary_image_id  # NEW: Include primary image ID
+            ))
         
         product_list = pydantic_models.ProductList(
             items=items,
@@ -147,12 +197,35 @@ class ProductService:
                 instance=str(request.url)
             )
         
+        # NEW: Get product images for response
+        images = []
+        if updated_product_db.image_ids:
+            for image_id in updated_product_db.image_ids:
+                image = await self.image_repository.get_image_by_id(image_id)
+                if image:
+                    image_url = f"/static/img/products/{product_id}/{image.filename}"
+                    images.append(pydantic_models.ProductImage(
+                        id=image.id,
+                        product_id=image.product_id,
+                        filename=image.filename,
+                        original_name=image.original_name,
+                        mime_type=image.mime_type,
+                        size=image.size,
+                        width=image.width,
+                        height=image.height,
+                        is_primary=image.is_primary,
+                        url=image_url,
+                        uploaded_at=image.uploaded_at
+                    ))
+        
         updated_product = pydantic_models.ProductResponse(
             id=updated_product_db.id,
             name=updated_product_db.name,
             price=updated_product_db.price,
             stock=updated_product_db.stock,
-            description=updated_product_db.description
+            description=updated_product_db.description,
+            images=images,  # NEW: Include images
+            primary_image_id=updated_product_db.primary_image_id  # NEW: Include primary image ID
         )
         
         self.logger.info(f"Product updated successfully: {product_id}")
@@ -179,12 +252,35 @@ class ProductService:
                 instance=str(request.url)
             )
         
+        # NEW: Get product images for response
+        images = []
+        if patched_product_db.image_ids:
+            for image_id in patched_product_db.image_ids:
+                image = await self.image_repository.get_image_by_id(image_id)
+                if image:
+                    image_url = f"/static/img/products/{product_id}/{image.filename}"
+                    images.append(pydantic_models.ProductImage(
+                        id=image.id,
+                        product_id=image.product_id,
+                        filename=image.filename,
+                        original_name=image.original_name,
+                        mime_type=image.mime_type,
+                        size=image.size,
+                        width=image.width,
+                        height=image.height,
+                        is_primary=image.is_primary,
+                        url=image_url,
+                        uploaded_at=image.uploaded_at
+                    ))
+        
         patched_product = pydantic_models.ProductResponse(
             id=patched_product_db.id,
             name=patched_product_db.name,
             price=patched_product_db.price,
             stock=patched_product_db.stock,
-            description=patched_product_db.description
+            description=patched_product_db.description,
+            images=images,  # NEW: Include images
+            primary_image_id=patched_product_db.primary_image_id  # NEW: Include primary image ID
         )
         
         self.logger.info(f"Product patched successfully: {product_id}")
@@ -197,6 +293,9 @@ class ProductService:
     ):
         self.logger.info(f"Product deletion attempt: {product_id}")
         
+        # NEW: Get product info before deletion for metadata cleanup
+        product = await self.product_repository.get_product_by_id(product_id)
+        
         deleted = await self.product_repository.delete_product(product_id)
         
         if not deleted:
@@ -207,6 +306,17 @@ class ProductService:
                 detail="Product not found",
                 instance=str(request.url)
             )
+        
+        # NEW: Delete associated images from storage and metadata
+        if product and product.image_ids:
+            from services.image_services import ImageService
+            image_service = ImageService()
+            
+            for image_id in product.image_ids:
+                try:
+                    await image_service.delete_product_image(product_id, image_id)
+                except Exception as e:
+                    self.logger.error(f"Failed to delete image {image_id} for product {product_id}: {e}")
         
         self.logger.info(f"Product deleted successfully: {product_id}")
         return None

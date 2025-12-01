@@ -66,7 +66,6 @@ async def test_db_setup():
     await collection.delete_many({})
     await connection.close()
 
-# EXISTING TESTS (unchanged)
 @pytest.mark.asyncio
 async def test_create_product_success(test_db_setup):
     repository, connection, collection = test_db_setup
@@ -333,7 +332,6 @@ async def test_index_effectiveness(test_db_setup):
     
     assert time_with_index < time_without_index
 
-# NEW IMAGE-RELATED TESTS
 @pytest.mark.asyncio
 async def test_add_image_to_product_success(test_db_setup):
     repository, connection, collection = test_db_setup
