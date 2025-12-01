@@ -97,7 +97,7 @@ async def root():
     }
 
 app.include_router(product_router)
-
+app.include_router(image_router)
 if __name__ == "__main__":
     uvicorn.run(
         "main:app",

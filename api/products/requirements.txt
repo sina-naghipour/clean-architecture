@@ -14,3 +14,4 @@ mongomock_motor
 asyncio
 python-magic-bin
 pillow
+python-multipart
