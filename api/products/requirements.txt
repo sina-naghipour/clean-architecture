@@ -12,3 +12,5 @@ pymongo==4.5.0
 motor==3.3.2
 mongomock_motor
 asyncio
+python-magic-bin
+pillow
