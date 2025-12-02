@@ -3,6 +3,7 @@ import os
 from fastapi import APIRouter, Request, Depends, UploadFile, File, Form
 from services.image_services import ImageService
 from database import pydantic_models
+from typing import List
 from decorators.image_routes_decorators import ImageErrorDecorators
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,26 @@ async def upload_product_image(
         product_id=product_id,
         upload_file=file,
         is_primary=is_primary
+    )
+
+@router.post(
+    '/products/{product_id}/batch',
+    response_model=pydantic_models.ProductImageBatchResponse,
+    status_code=207,
+    summary="Upload multiple product images"
+)
+@ImageErrorDecorators.handle_batch_upload_errors
+async def upload_product_images_batch(
+    request: Request,
+    product_id: str,
+    files: List[UploadFile] = File(...),
+    make_primary_first: bool = Form(False),
+    image_service: ImageService = Depends(get_image_service),
+) -> pydantic_models.ProductImageBatchResponse:
+    return await image_service.upload_product_images_batch(
+        product_id=product_id,
+        upload_files=files,
+        make_primary_first=make_primary_first
     )
 
 @router.get(

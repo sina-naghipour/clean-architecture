@@ -375,3 +375,108 @@ def test_allowed_mime_types(image_service):
 def test_max_file_size(image_service):
     """Test maximum file size configuration"""
     assert image_service.max_file_size == 5 * 1024 * 1024
+
+@pytest.mark.asyncio
+async def test_upload_product_images_batch_success(image_service, mock_product_repository, mock_image_repository):
+    """Test batch upload with all files successful."""
+    product_id = "prod123"
+    mock_product = MagicMock()
+    mock_product.id = product_id
+    mock_product_repository.get_product_by_id.return_value = mock_product
+    
+    mock_file1 = MagicMock()
+    mock_file1.filename = "test1.jpg"
+    mock_file1.read = AsyncMock(return_value=b"fake image data 1")
+    
+    mock_file2 = MagicMock()
+    mock_file2.filename = "test2.png"
+    mock_file2.read = AsyncMock(return_value=b"fake image data 2")
+    
+    mock_image = MagicMock()
+    mock_image.id = "img123"
+    mock_image.filename = "generated.jpg"
+    mock_image.url = "/static/img/generated.jpg"
+    mock_image.is_primary = False
+    mock_image.uploaded_at = "2023-01-01T00:00:00"
+    
+    image_service.upload_product_image = AsyncMock(return_value=mock_image)
+    
+    result = await image_service.upload_product_images_batch(
+        product_id=product_id,
+        upload_files=[mock_file1, mock_file2],
+        make_primary_first=True
+    )
+    
+    assert result["total"] == 2
+    assert result["successful_count"] == 2
+    assert len(result["success"]) == 2
+    assert len(result["failed"]) == 0
+    assert image_service.upload_product_image.call_args_list[0][1]['is_primary'] == True
+    assert image_service.upload_product_image.call_args_list[1][1]['is_primary'] == False
+
+@pytest.mark.asyncio
+async def test_upload_product_images_batch_partial_failure(image_service, mock_product_repository):
+    """Test batch upload with some files failing."""
+    product_id = "prod123"
+    mock_product = MagicMock()
+    mock_product.id = product_id
+    mock_product_repository.get_product_by_id.return_value = mock_product
+    
+    mock_file1 = MagicMock()
+    mock_file1.filename = "test1.jpg"
+    mock_file1.read = AsyncMock(return_value=b"fake image data 1")
+    
+    mock_file2 = MagicMock()
+    mock_file2.filename = "test2.gif"
+    mock_file2.read = AsyncMock(return_value=b"fake image data 2")
+    
+    mock_image = MagicMock()
+    mock_image.id = "img123"
+    
+    from fastapi import HTTPException
+    image_service.upload_product_image = AsyncMock(side_effect=[
+        mock_image,
+        HTTPException(status_code=415, detail="Invalid image format")
+    ])
+    
+    result = await image_service.upload_product_images_batch(
+        product_id=product_id,
+        upload_files=[mock_file1, mock_file2]
+    )
+    
+    assert result["total"] == 2
+    assert result["successful_count"] == 1
+    assert len(result["success"]) == 1
+    assert len(result["failed"]) == 1
+    assert result["failed"][0]["filename"] == "test2.gif"
+    assert result["failed"][0]["error"] == "Invalid image format"
+
+@pytest.mark.asyncio
+async def test_upload_product_images_batch_product_not_found(image_service, mock_product_repository):
+    """Test batch upload for non-existent product."""
+    product_id = "nonexistent"
+    mock_product_repository.get_product_by_id.return_value = None
+    
+    mock_file = MagicMock()
+    mock_file.filename = "test.jpg"
+    
+    result = await image_service.upload_product_images_batch(
+            product_id=product_id,
+            upload_files=[mock_file]
+    )
+    assert result["successful_count"] == 0
+    assert len(result["failed"]) == 1
+    assert result["failed"][0]["status_code"] == 404
+    
+@pytest.mark.asyncio
+async def test_upload_product_images_batch_empty_files(image_service):
+    """Test batch upload with empty file list."""
+    result = await image_service.upload_product_images_batch(
+        product_id="prod123",
+        upload_files=[]
+    )
+    
+    assert result["total"] == 0
+    assert result["successful_count"] == 0
+    assert len(result["success"]) == 0
+    assert len(result["failed"]) == 0

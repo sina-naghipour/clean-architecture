@@ -25,7 +25,7 @@ class ImageService:
         self.product_repository = product_repository or ProductRepository()
         self.metadata_generator = metadata_generator or MetadataGenerator()
         
-        self.base_storage_path = Path(os.getenv("IMAGE_STORAGE_PATH", "/static/img"))
+        self.base_storage_path = Path(os.getenv("IMAGE_STORAGE_PATH", "static/img"))
         self.max_file_size = 5 * 1024 * 1024
         self.allowed_mime_types = {
             "image/jpeg": ".jpg",
@@ -42,10 +42,12 @@ class ImageService:
             
             if not str(absolute_path).startswith(str(allowed_path)):
                 logger.error(f"Path traversal attempt: {filepath}")
+                print('filepath-startswith: ', filepath)
                 return False
             
             if ".." in str(filepath) or filepath.is_absolute():
                 logger.error(f"Invalid path pattern: {filepath}")
+                print('filepath-..: ', filepath)
                 return False
                 
             return True
@@ -187,7 +189,44 @@ class ImageService:
         except Exception as e:
             logger.error(f"Image upload failed: {e}")
             raise HTTPException(status_code=500, detail="Internal server error")
-    
+
+    async def upload_product_images_batch(self, product_id: str, upload_files: List[UploadFile], make_primary_first: bool = False):
+        success = []
+        failed = []
+        primary_set = False
+        
+        for upload_file in upload_files:
+            try:
+                is_primary = False
+                if make_primary_first and not primary_set:
+                    is_primary = True
+                
+                image = await self.upload_product_image(
+                    product_id=product_id,
+                    upload_file=upload_file,
+                    is_primary=is_primary
+                )
+                
+                success.append(image)
+                
+                if is_primary:
+                    primary_set = True
+                    
+            except HTTPException as e:
+                failed.append({
+                    "filename": upload_file.filename,
+                    "error": e.detail,
+                    "status_code": e.status_code
+                })
+
+        return {
+            "success": success,
+            "failed": failed,
+            "total": len(upload_files),
+            "successful_count": len(success),
+            "primary_image_id": success[0].id if success and make_primary_first else None
+        }
+
     async def get_product_images(self, product_id: str) -> List[pydantic_models.ProductImage]:
         try:
             product = await self.product_repository.get_product_by_id(product_id)

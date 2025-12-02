@@ -5,6 +5,38 @@ It is based on the OpenAPI specification of the Ecommerce API.
 
 ---
 
+# 207 — Multi-Status (Partial Success)
+
+* **Type (URI):** `https://example.com/errors/multi-status`
+* **Title:** Multi-Status
+* **Description:** Batch operation completed with mixed results. Some items succeeded while others failed. Returned for batch uploads where some files uploaded successfully and others failed.
+* **Example:**
+```json
+{
+  "type": "https://example.com/errors/multi-status",
+  "title": "Multi-Status",
+  "status": 207,
+  "detail": "Batch operation completed with partial success",
+  "instance": "/products/prod_42/images/batch",
+  "successful_count": 3,
+  "failed_count": 2,
+  "success": [
+    {
+      "filename": "image1.jpg",
+      "id": "img_123",
+      "url": "/static/img/products/prod_42/img_123.jpg"
+    }
+  ],
+  "failed": [
+    {
+      "filename": "image5.gif",
+      "error": "Unsupported image format",
+      "status_code": 415
+    }
+  ]
+}
+```
+
 ## 400 — Bad Request
 
 - **Type (URI):** `https://example.com/errors/bad-request`  

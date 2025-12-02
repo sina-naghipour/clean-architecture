@@ -227,6 +227,97 @@ class TestImageRoutesContentTypes:
         
         assert response.status_code == 422
 
+def test_batch_upload_images_success(client, mock_image_service):
+    """Test successful batch upload with multiple files."""
+    files = [
+        ("files", ("image1.jpg", b"fake image data 1", "image/jpeg")),
+        ("files", ("image2.png", b"fake image data 2", "image/png")),
+    ]
+    
+    mock_response = {
+        "success": [
+            {
+                "id": "img1", "filename": "test1.jpg", "url": "/static/img/test1.jpg",
+                "product_id": "prod123", "original_name": "image1.jpg",
+                "mime_type": "image/jpeg", "size": 100, "width": 100, "height": 100,
+                "is_primary": True, "uploaded_at": "2023-01-01T00:00:00"
+            },
+            {
+                "id": "img2", "filename": "test2.png", "url": "/static/img/test2.png",
+                "product_id": "prod123", "original_name": "image2.png",
+                "mime_type": "image/png", "size": 200, "width": 200, "height": 200,
+                "is_primary": False, "uploaded_at": "2023-01-01T00:00:00"
+            }
+        ],
+        "failed": [],
+        "total": 2,
+        "successful_count": 2
+    }
+    
+    mock_image_service.upload_product_images_batch = AsyncMock(return_value=mock_response)
+    
+    response = client.post(
+        "/images/products/prod123/batch",
+        files=files,
+        data={"make_primary_first": "true"}
+    )
+    
+    assert response.status_code == 207
+    data = response.json()
+    assert data["total"] == 2
+    assert data["successful_count"] == 2
+    assert len(data["success"]) == 2
+    assert len(data["failed"]) == 0
+
+def test_batch_upload_partial_success(client, mock_image_service):
+    """Test batch upload with partial success (some files fail)."""
+    files = [
+        ("files", ("image1.jpg", b"fake data 1", "image/jpeg")),
+        ("files", ("image2.gif", b"fake data 2", "image/gif")),  
+    ]
+    
+    mock_response = {
+        "success": [
+            {
+                "id": "img1", "filename": "test1.jpg", "url": "/static/img/test1.jpg",
+                "product_id": "prod123", "original_name": "image1.jpg",
+                "mime_type": "image/jpeg", "size": 100, "width": 100, "height": 100,
+                "is_primary": True, "uploaded_at": "2023-01-01T00:00:00"
+            }
+        ],
+        "failed": [
+            {"filename": "image2.gif", "error": "Invalid image format", "status_code": 415}
+        ],
+        "total": 2,
+        "successful_count": 1
+    }
+    
+    mock_image_service.upload_product_images_batch = AsyncMock(return_value=mock_response)
+    
+    response = client.post("/images/products/prod123/batch", files=files)
+    assert response.status_code == 207
+    data = response.json()
+    assert data["successful_count"] == 1
+    assert len(data["failed"]) == 1
+    assert data["failed"][0]["filename"] == "image2.gif"
+
+def test_batch_upload_no_files(client):
+    """Test batch upload with no files."""
+    response = client.post("/images/products/prod123/batch", files=[])
+    assert response.status_code == 422  
+    
+def test_batch_upload_product_not_found(client, mock_image_service):
+    """Test batch upload for non-existent product."""
+    from fastapi import HTTPException
+    files = [("files", ("image1.jpg", b"fake data", "image/jpeg"))]
+    
+    mock_image_service.upload_product_images_batch = AsyncMock(
+        side_effect=HTTPException(status_code=404, detail="Product not found")
+    )
+    
+    response = client.post("/images/products/nonexistent/batch", files=files)
+    assert response.status_code == 404
+
 if __name__ == "__main__":
     import asyncio
     

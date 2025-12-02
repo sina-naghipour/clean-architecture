@@ -31,6 +31,16 @@ class ProductImageList(BaseModel):
 class PrimaryImageUpdate(BaseModel):
     image_id: str = Field(..., description="Image ID to set as primary")
 
+
+class ProductImageBatchUpload(BaseModel):
+    make_primary_first: bool = Field(False, description="Make first uploaded image primary")
+
+class ProductImageBatchResponse(BaseModel):
+    success: List[ProductImage] = Field(..., description="Successfully uploaded images")
+    failed: List[dict] = Field(default_factory=list, description="Failed uploads with reasons")
+    total: int = Field(..., description="Total files attempted")
+    successful_count: int = Field(..., description="Number of successful uploads")
+
 class ProductRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255, description="Product name is required")
     price: float = Field(..., gt=0, description="Price must be greater than 0")
