@@ -9,20 +9,44 @@ logger = logging.getLogger(__name__)
 
 class MetadataGenerator:
     def __init__(self, base_storage_path: Path = None):
-        self.base_storage_path = base_storage_path or Path(os.getenv("IMAGE_STORAGE_PATH", "/static/img"))
+        self.base_storage_path = base_storage_path or Path(os.getenv("IMAGE_STORAGE_PATH", "static/img"))
         self.metadata_file = self.base_storage_path / "metadata.json"
         
         self.base_storage_path.mkdir(parents=True, exist_ok=True)
-    
+        
+        if not self.metadata_file.exists():
+            logger.info(f"Creating empty metadata.json at {self.metadata_file}")
+            with open(self.metadata_file, 'w') as f:
+                json.dump({}, f)
+        else:
+            try:
+                with open(self.metadata_file, 'r') as f:
+                    content = f.read().strip()
+                    if not content:
+                        logger.warning("metadata.json exists but is empty. Recreating...")
+                        with open(self.metadata_file, 'w') as f:
+                            json.dump({}, f)
+            except Exception:
+                logger.warning("metadata.json corrupted. Recreating...")
+                with open(self.metadata_file, 'w') as f:
+                    json.dump({}, f)
+
     def _read_existing_metadata(self) -> Dict[str, Any]:
         try:
             if self.metadata_file.exists():
+                if self.metadata_file.stat().st_size == 0:
+                    logger.warning("metadata.json is empty, returning empty dict")
+                    return {}
+                
                 with open(self.metadata_file, 'r') as f:
-                    return json.load(f)
+                    content = f.read().strip()
+                    if not content:
+                        return {}
+                    return json.loads(content)
             return {}
         except (json.JSONDecodeError, IOError) as e:
             logger.error(f"Failed to read metadata file: {e}")
-            raise
+            return {}
     
     def _write_metadata_atomic(self, metadata: Dict[str, Any]) -> bool:
         try:

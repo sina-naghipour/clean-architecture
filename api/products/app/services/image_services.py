@@ -174,14 +174,14 @@ class ImageService:
                 "mime_type": mime_type,
                 "uploaded_at": created_image.uploaded_at.isoformat() if hasattr(created_image.uploaded_at, 'isoformat') else str(created_image.uploaded_at)
             }
-            
+
             self.metadata_generator.update_product_images(
                 product_id=product_id,
                 product_name=product.name,
                 image_data=image_metadata,
                 operation="add"
             )
-            
+
             return product_image
             
         except HTTPException:

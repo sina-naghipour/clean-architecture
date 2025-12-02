@@ -15,6 +15,7 @@ api/profile/.venv-profile
 >>>>>>> feat/authentication
 # C extensions
 *.c
+api/products/app/static
 
 # Distribution / packaging
 .Python
