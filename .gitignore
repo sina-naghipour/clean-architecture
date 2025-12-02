@@ -4,18 +4,18 @@ __pycache__/
 *$py.class
 *.so
 <<<<<<< HEAD
-api/.api-venv
-api/auth/.auth-venv
-api/products/.venv-products
-api/cart/.venv-cart
-api/orders/.venv-orders
-api/profile/.venv-profile
+api/services/.api/services-venv
+api/services/auth/.auth-venv
+api/services/products/.venv-products
+api/services/cart/.venv-cart
+api/services/orders/.venv-orders
+api/services/profile/.venv-profile
 =======
 
 >>>>>>> feat/authentication
 # C extensions
 *.c
-api/products/app/static
+api/services/products/app/static
 
 # Distribution / packaging
 .Python

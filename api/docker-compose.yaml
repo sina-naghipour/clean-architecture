@@ -39,46 +39,46 @@ services:
       - app-network
 
   auth:
-    build: ./auth
+    build: ./services/auth
     ports:
       - "8000:8000"
     environment:
       - ENVIRONMENT=development
       - DATABASE_URL=postgresql+asyncpg://postgres:toor@auth_db:5432/auth
     volumes:
-      - ./auth/app:/app
+      - ./services/auth/app:/app
     depends_on:
       - auth_db
     networks:
       - app-network
 
   cart:
-    build: ./cart
+    build: ./services/cart
     ports:
       - "8001:8001"
     environment:
       - ENVIRONMENT=development
     volumes:
-      - ./cart/app:/app
+      - ./services/cart/app:/app
     networks:
       - app-network
 
   orders:
-    build: ./orders
+    build: ./services/orders
     ports:
       - "8002:8002"
     environment:
       - ENVIRONMENT=development
       - DATABASE_URL=postgresql+asyncpg://postgres:toor@orders_db:5432/orders_db
     volumes:
-      - ./orders/app:/app
+      - ./services/orders/app:/app
     depends_on:
       - orders_db
     networks:
       - app-network
 
   products:
-    build: ./products
+    build: ./services/products
     ports:
       - "8003:8003"
     environment:
@@ -86,20 +86,21 @@ services:
       - MONGODB_URI=mongodb://mongodb:27017/
       - MONGODB_DB_NAME=product_db
     volumes:
-      - ./products/app:/app
+      - ./services/products/app:/app
+      - ./services/products/static:/app/static
     depends_on:
       - mongodb
     networks:
       - app-network
 
   profile:
-    build: ./profile
+    build: ./services/profile
     ports:
       - "8004:8004"
     environment:
       - ENVIRONMENT=development
     volumes:
-      - ./profile/app:/app
+      - ./services/profile/app:/app
     networks:
       - app-network
 
@@ -108,7 +109,7 @@ services:
     ports:
       - "80:80"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./services/nginx/nginx.conf:/etc/nginx/nginx.conf
     depends_on:
       - auth
       - cart
