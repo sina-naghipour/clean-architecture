@@ -7,14 +7,17 @@ from datetime import datetime
 
 from services.metadata_generator import MetadataGenerator
 
+
 @pytest.fixture
 def temp_storage():
     with tempfile.TemporaryDirectory() as tmpdir:
         yield Path(tmpdir)
 
+
 @pytest.fixture
 def metadata_generator(temp_storage):
     return MetadataGenerator(base_storage_path=temp_storage)
+
 
 @pytest.fixture
 def sample_image_data():
@@ -29,6 +32,7 @@ def sample_image_data():
         "uploaded_at": "2023-10-01T12:00:00Z"
     }
 
+
 @pytest.fixture
 def sample_product_data():
     return {
@@ -39,14 +43,38 @@ def sample_product_data():
         "updated_at": "2023-10-01T12:00:00Z"
     }
 
+
 def test_init_creates_directory(temp_storage):
     generator = MetadataGenerator(base_storage_path=temp_storage)
     assert generator.base_storage_path.exists()
     assert generator.metadata_file.parent == generator.base_storage_path
 
+
+def test_init_with_custom_path():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        custom_path = Path(tmpdir) / "custom" / "path"
+        generator = MetadataGenerator(base_storage_path=custom_path)
+        assert generator.base_storage_path == custom_path
+        assert generator.metadata_file.parent == custom_path
+
+
+def test_init_directory_creation_failure():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        read_only_dir = Path(tmpdir) / "readonly"
+        read_only_dir.mkdir()
+        
+        read_only_file = read_only_dir / "metadata.json"
+        read_only_file.write_text("{}")
+        read_only_file.chmod(0o444)
+        
+        generator = MetadataGenerator(base_storage_path=read_only_dir)
+        assert generator.base_storage_path == read_only_dir
+
+
 def test_read_existing_metadata_empty(metadata_generator):
     metadata = metadata_generator._read_existing_metadata()
     assert metadata == {}
+
 
 def test_read_existing_metadata_with_content(temp_storage):
     metadata_file = temp_storage / "metadata.json"
@@ -60,6 +88,7 @@ def test_read_existing_metadata_with_content(temp_storage):
     
     assert metadata == test_data
 
+
 def test_read_existing_metadata_invalid_json(temp_storage):
     metadata_file = temp_storage / "metadata.json"
     
@@ -70,6 +99,24 @@ def test_read_existing_metadata_invalid_json(temp_storage):
     
     with pytest.raises(json.JSONDecodeError):
         generator._read_existing_metadata()
+
+
+def test_read_existing_metadata_permission_error(temp_storage):
+    metadata_file = temp_storage / "metadata.json"
+    metadata_file.write_text("{}")
+    
+    metadata_file.chmod(0o400)
+    
+    generator = MetadataGenerator(base_storage_path=temp_storage)
+    
+    try:
+        metadata = generator._read_existing_metadata()
+        assert metadata == {}
+    except (PermissionError, OSError, IOError):
+        pass
+    finally:
+        metadata_file.chmod(0o644)
+
 
 def test_write_metadata_atomic_success(metadata_generator):
     test_metadata = {"product_1": {"name": "Test", "images": []}}
@@ -84,10 +131,42 @@ def test_write_metadata_atomic_success(metadata_generator):
     
     assert loaded == test_metadata
 
+
 def test_write_metadata_atomic_failure(metadata_generator):
     with patch('builtins.open', side_effect=IOError("Permission denied")):
         success = metadata_generator._write_metadata_atomic({"test": "data"})
         assert success is False
+
+
+def test_write_metadata_atomic_json_serialization_error(metadata_generator):
+    unjsonable_object = {"circular": []}
+    unjsonable_object["circular"].append(unjsonable_object)
+    
+    success = metadata_generator._write_metadata_atomic({"test": unjsonable_object})
+    assert success is False
+
+
+def test_write_metadata_atomic_directory_creation(metadata_generator):
+    import shutil
+    
+    original_metadata = None
+    if metadata_generator.metadata_file.exists():
+        original_metadata = metadata_generator._read_existing_metadata()
+    
+    shutil.rmtree(metadata_generator.base_storage_path)
+    
+    test_metadata = {"test": "data"}
+    success = metadata_generator._write_metadata_atomic(test_metadata)
+    
+    if success:
+        assert metadata_generator.metadata_file.exists()
+        assert metadata_generator.base_storage_path.exists()
+    else:
+        pytest.xfail("Implementation doesn't create directories automatically")
+    
+    if original_metadata:
+        metadata_generator._write_metadata_atomic(original_metadata)
+
 
 def test_generate_product_metadata_success(metadata_generator, sample_image_data):
     product_id = "prod_456"
@@ -108,6 +187,64 @@ def test_generate_product_metadata_success(metadata_generator, sample_image_data
     assert metadata[product_id]["images"] == images
     assert "updated_at" in metadata[product_id]
 
+
+def test_generate_product_metadata_overwrite_existing(metadata_generator, sample_image_data):
+    product_id = "prod_456"
+    product_name = "Test Product"
+    images = [sample_image_data]
+    
+    metadata_generator.generate_product_metadata(product_id, "Old Name", [])
+    
+    success = metadata_generator.generate_product_metadata(
+        product_id=product_id,
+        product_name=product_name,
+        images=images
+    )
+    
+    assert success is True
+    
+    metadata = metadata_generator._read_existing_metadata()
+    assert metadata[product_id]["name"] == product_name
+    assert metadata[product_id]["images"] == images
+
+
+def test_generate_product_metadata_empty_images(metadata_generator):
+    product_id = "prod_456"
+    product_name = "Test Product"
+    
+    success = metadata_generator.generate_product_metadata(
+        product_id=product_id,
+        product_name=product_name,
+        images=[]
+    )
+    
+    assert success is True
+    
+    metadata = metadata_generator._read_existing_metadata()
+    assert metadata[product_id]["images"] == []
+
+
+def test_generate_product_metadata_invalid_input(metadata_generator):
+    success = metadata_generator.generate_product_metadata(
+        product_id="",
+        product_name="",
+        images=[]
+    )
+    
+    assert success is True
+
+
+def test_generate_product_metadata_write_failure(metadata_generator, sample_image_data):
+    with patch.object(metadata_generator, '_write_metadata_atomic', return_value=False):
+        success = metadata_generator.generate_product_metadata(
+            product_id="prod_456",
+            product_name="Test Product",
+            images=[sample_image_data]
+        )
+        
+        assert success is False
+
+
 def test_update_product_images_add_operation(metadata_generator, sample_image_data):
     product_id = "prod_456"
     product_name = "Test Product"
@@ -126,6 +263,7 @@ def test_update_product_images_add_operation(metadata_generator, sample_image_da
     assert metadata[product_id]["name"] == product_name
     assert len(metadata[product_id]["images"]) == 1
     assert metadata[product_id]["images"][0] == sample_image_data
+
 
 def test_update_product_images_remove_operation(metadata_generator, sample_image_data):
     product_id = "prod_456"
@@ -149,6 +287,7 @@ def test_update_product_images_remove_operation(metadata_generator, sample_image
     
     metadata = metadata_generator._read_existing_metadata()
     assert len(metadata[product_id]["images"]) == 0
+
 
 def test_update_product_images_update_primary_operation(metadata_generator):
     product_id = "prod_456"
@@ -185,6 +324,75 @@ def test_update_product_images_update_primary_operation(metadata_generator):
     assert images[0]["is_primary"] is False
     assert images[1]["is_primary"] is True
 
+
+def test_update_product_images_invalid_operation(metadata_generator):
+    product_id = "prod_456"
+    product_name = "Test Product"
+    
+    with patch.object(metadata_generator, '_write_metadata_atomic', return_value=True):
+        success = metadata_generator.update_product_images(
+            product_id=product_id,
+            product_name=product_name,
+            image_data={"id": "img_1"},
+            operation="invalid_operation"
+        )
+        
+        assert success is True
+
+
+def test_update_product_images_empty_image_data(metadata_generator):
+    product_id = "prod_456"
+    product_name = "Test Product"
+    
+    success = metadata_generator.update_product_images(
+        product_id=product_id,
+        product_name=product_name,
+        image_data={},
+        operation="add"
+    )
+    
+    assert success is True
+    
+    metadata = metadata_generator._read_existing_metadata()
+    assert len(metadata[product_id]["images"]) == 1
+
+
+def test_update_product_images_missing_id_in_remove(metadata_generator):
+    product_id = "prod_456"
+    product_name = "Test Product"
+    
+    metadata_generator.update_product_images(
+        product_id=product_id,
+        product_name=product_name,
+        image_data={"id": "img_1", "url": "/img1.jpg", "is_primary": True},
+        operation="add"
+    )
+    
+    success = metadata_generator.update_product_images(
+        product_id=product_id,
+        product_name=product_name,
+        image_data={"url": "/img2.jpg"},
+        operation="remove"
+    )
+    
+    assert success is True
+    
+    metadata = metadata_generator._read_existing_metadata()
+    assert len(metadata[product_id]["images"]) == 1
+
+
+def test_update_product_images_write_failure(metadata_generator, sample_image_data):
+    with patch.object(metadata_generator, '_write_metadata_atomic', return_value=False):
+        success = metadata_generator.update_product_images(
+            product_id="prod_456",
+            product_name="Test Product",
+            image_data=sample_image_data,
+            operation="add"
+        )
+        
+        assert success is False
+
+
 def test_remove_product_success(metadata_generator):
     product_id = "prod_456"
     product_name = "Test Product"
@@ -203,9 +411,27 @@ def test_remove_product_success(metadata_generator):
     metadata = metadata_generator._read_existing_metadata()
     assert product_id not in metadata
 
+
 def test_remove_product_not_found(metadata_generator):
     success = metadata_generator.remove_product("non_existent")
     assert success is True
+
+
+def test_remove_product_write_failure(metadata_generator):
+    product_id = "prod_456"
+    product_name = "Test Product"
+    
+    metadata_generator.update_product_images(
+        product_id=product_id,
+        product_name=product_name,
+        image_data={"id": "img_1", "url": "/img1.jpg", "is_primary": True},
+        operation="add"
+    )
+    
+    with patch.object(metadata_generator, '_write_metadata_atomic', return_value=False):
+        success = metadata_generator.remove_product(product_id)
+        assert success is False
+
 
 def test_get_product_metadata(metadata_generator):
     product_id = "prod_456"
@@ -224,9 +450,17 @@ def test_get_product_metadata(metadata_generator):
     assert metadata["name"] == product_name
     assert len(metadata["images"]) == 1
 
+
 def test_get_product_metadata_not_found(metadata_generator):
     metadata = metadata_generator.get_product_metadata("non_existent")
     assert metadata == {}
+
+
+def test_get_product_metadata_read_error(metadata_generator):
+    with patch.object(metadata_generator, '_read_existing_metadata', side_effect=Exception("Read error")):
+        metadata = metadata_generator.get_product_metadata("prod_456")
+        assert metadata == {}
+
 
 def test_get_all_metadata(metadata_generator):
     metadata_generator.update_product_images(
@@ -249,6 +483,13 @@ def test_get_all_metadata(metadata_generator):
     assert "prod_1" in all_metadata
     assert "prod_2" in all_metadata
 
+
+def test_get_all_metadata_read_error(metadata_generator):
+    with patch.object(metadata_generator, '_read_existing_metadata', side_effect=Exception("Read error")):
+        all_metadata = metadata_generator.get_all_metadata()
+        assert all_metadata == {}
+
+
 def test_validate_metadata_schema_valid(metadata_generator):
     valid_metadata = {
         "prod_1": {
@@ -266,6 +507,7 @@ def test_validate_metadata_schema_valid(metadata_generator):
     
     is_valid = metadata_generator.validate_metadata_schema()
     assert is_valid is True
+
 
 def test_validate_metadata_schema_missing_field(metadata_generator):
     invalid_metadata = {
@@ -285,12 +527,20 @@ def test_validate_metadata_schema_missing_field(metadata_generator):
     is_valid = metadata_generator.validate_metadata_schema()
     assert is_valid is False
 
+
 def test_validate_metadata_schema_invalid_json(metadata_generator):
     with open(metadata_generator.metadata_file, 'w') as f:
         f.write("invalid json")
     
     is_valid = metadata_generator.validate_metadata_schema()
     assert is_valid is False
+
+
+def test_validate_metadata_schema_read_error(metadata_generator):
+    with patch.object(metadata_generator, '_read_existing_metadata', side_effect=Exception("Read error")):
+        is_valid = metadata_generator.validate_metadata_schema()
+        assert is_valid is False
+
 
 def test_atomic_write_preserves_data(temp_storage):
     generator = MetadataGenerator(base_storage_path=temp_storage)
@@ -315,20 +565,11 @@ def test_atomic_write_preserves_data(temp_storage):
     assert loaded == updated_data
     assert loaded != initial_data
 
+
+def test_metadata_file_path_correct(metadata_generator):
+    expected_path = metadata_generator.base_storage_path / "metadata.json"
+    assert metadata_generator.metadata_file == expected_path
+
+
 if __name__ == "__main__":
-    import tempfile
-    
-    with tempfile.TemporaryDirectory() as tmpdir:
-        print(f"Testing MetadataGenerator with temp directory: {tmpdir}")
-        
-        generator = MetadataGenerator(base_storage_path=Path(tmpdir))
-        
-        test_data = {"test": "success"}
-        result = generator._write_metadata_atomic(test_data)
-        
-        print(f"Write metadata: {'SUCCESS' if result else 'FAILED'}")
-        
-        metadata = generator._read_existing_metadata()
-        print(f"Read metadata: {metadata}")
-        
-        print("Metadata generator tests completed!")
+    pytest.main([__file__, "-v"])

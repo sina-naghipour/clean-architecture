@@ -171,3 +171,15 @@ create a virtual enviroment for any service you desire to develop to have isolat
 ```bash
 python -m venv .venv-ServiceName
 ```
+
+## Python Magic Issue
+
+to run `products` service in windows, you need to change the requirements in `products` service.
+
+```text
+# change this to
+python-magic
+
+# this
+python-magic-bin
+```

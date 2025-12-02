@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from routes.product_routes import router as product_router
+from routes.image_routes import router as image_router
 
 # Environment variables with defaults
 HOST = os.getenv('HOST', '0.0.0.0')

@@ -48,19 +48,39 @@ def log_operation(operation_name: str = None):
 def validate_image_id(func: C) -> C:
     @wraps(func)
     async def wrapper(self, image_id: str, *args, **kwargs):
-        if not image_id or not isinstance(image_id, str):
+        print('Image_ID : ', image_id, '*args :', args)
+        if not isinstance(image_id, str) or image_id.strip() == "":
             raise ValueError("Invalid image ID")
         return await func(self, image_id, *args, **kwargs)
+    return wrapper
+
+
+def validate_image_id_set_primary_image(func: C) -> C:
+    @wraps(func)
+    async def wrapper(self, product_id: str, image_id: str, *args, **kwargs):
+        print('Image_ID : ', image_id, '*args :', args)
+        if not isinstance(image_id, str) or image_id.strip() == "":
+            raise ValueError("Invalid image ID")
+        return await func(self, product_id, image_id, *args, **kwargs)
     return wrapper
 
 
 def validate_product_id(func: C) -> C:
     @wraps(func)
     async def wrapper(self, product_id: str, *args, **kwargs):
-        if not product_id or not isinstance(product_id, str):
+        if not isinstance(product_id, str) or product_id.strip() == "":
             raise ValueError("Invalid product ID")
         return await func(self, product_id, *args, **kwargs)
     return wrapper
+
+def validate_product_id_set_primary_image(func: C) -> C:
+    @wraps(func)
+    async def wrapper(self, product_id: str, image_id: str, *args, **kwargs):
+        if not isinstance(product_id, str) or product_id.strip() == "":
+            raise ValueError("Invalid product ID")
+        return await func(self, product_id, image_id, *args, **kwargs)
+    return wrapper
+
 
 
 def transaction_safe(func: C) -> C:
