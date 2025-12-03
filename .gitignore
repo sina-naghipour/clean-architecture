@@ -10,6 +10,7 @@ api/services/products/.venv-products
 api/services/cart/.venv-cart
 api/services/orders/.venv-orders
 api/services/profile/.venv-profile
+api/services/statics/.venv-statics
 =======
 
 >>>>>>> feat/authentication

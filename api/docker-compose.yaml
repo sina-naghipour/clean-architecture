@@ -87,7 +87,6 @@ services:
       - MONGODB_DB_NAME=product_db
     volumes:
       - ./services/products/app:/app
-      - ./services/products/static:/app/static
     depends_on:
       - mongodb
     networks:
@@ -104,18 +103,38 @@ services:
     networks:
       - app-network
 
+  statics:
+    build: ./services/statics
+    ports:
+      - "8005:8005"
+    environment:
+      - ENVIRONMENT=development
+      - HOST=0.0.0.0
+      - PORT=8005
+      - MAX_FILE_SIZE=5242880
+      - ALLOWED_MIME_TYPES=image/jpeg,image/png,image/webp
+      - UPLOAD_DIR=./static/img
+      - METADATA_FILE=./metadata.json
+    volumes:
+      - ./services/statics/app:/app
+      - statics_storage:/app/static
+    networks:
+      - app-network
+
   nginx:
     image: nginx:alpine
     ports:
       - "80:80"
     volumes:
       - ./services/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - statics_storage:/usr/share/nginx/html/static
     depends_on:
       - auth
       - cart
       - orders
       - products
       - profile
+      - statics
     networks:
       - app-network
 
@@ -123,6 +142,7 @@ volumes:
   auth_db_data:
   orders_db_data:
   mongodb_data:
+  statics_storage:
 
 networks:
   app-network:
