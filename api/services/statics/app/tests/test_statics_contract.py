@@ -91,6 +91,11 @@ def test_upload_file_service_error(client, mock_file_service):
     assert response.status_code == 413
     assert response.headers["content-type"] == "application/problem+json"
     data = response.json()
+    # Check RFC 7807 format
+    assert "type" in data
+    assert "title" in data
+    assert "status" in data
+    assert "detail" in data
     assert "File too large" in data["detail"]
 
 
@@ -114,15 +119,30 @@ def test_batch_upload_success(client, mock_file_service):
     
     assert response.status_code == 207
     data = response.json()
-    assert data["total"] == 2
+    # Check RFC 7807 multi-status format
+    assert "type" in data
+    assert "title" in data
+    assert "status" in data
+    assert "detail" in data
+    assert "successful" in data
+    assert "failed" in data
     assert data["successful_count"] == 2
 
 
 def test_batch_upload_partial_success(client, mock_file_service):
     from fastapi import HTTPException
     
+    # Mock needs complete return values
     mock_file_service.upload_file.side_effect = [
-        {"id": "file_123", "filename": "test1.jpg"},
+        {
+            "id": "file_123", 
+            "filename": "test1.jpg",
+            "original_filename": "test1.jpg",
+            "path": "test1.jpg",
+            "size": 1000,
+            "mime_type": "image/jpeg",
+            "url": "/static/img/test1.jpg"
+        },
         HTTPException(status_code=415, detail="Invalid type")
     ]
     
@@ -135,8 +155,15 @@ def test_batch_upload_partial_success(client, mock_file_service):
     
     assert response.status_code == 207
     data = response.json()
-    assert data["total"] == 2
     assert data["successful_count"] == 1
+    assert data["failed_count"] == 1
+    assert len(data["successful"]) == 1
+    assert len(data["failed"]) == 1
+    # Check failed item has proper structure
+    failed_item = data["failed"][0]
+    assert "filename" in failed_item
+    assert "error" in failed_item
+    assert "status_code" in failed_item
 
 
 def test_get_file_success(client, mock_file_service, tmp_path):
@@ -153,14 +180,20 @@ def test_get_file_success(client, mock_file_service, tmp_path):
 
 
 def test_get_file_not_found(client, mock_file_service):
-    mock_file_service.get_file_path.return_value = Mock(exists=Mock(return_value=False))
+    # Create a Mock that has exists() method returning False
+    mock_path = Mock()
+    mock_path.exists.return_value = False
+    mock_file_service.get_file_path.return_value = mock_path
     
     response = client.get("/files/nonexistent")
     
     assert response.status_code == 404
     assert response.headers["content-type"] == "application/problem+json"
     data = response.json()
-    assert data["title"] == "File Not Found"
+    assert "type" in data
+    assert "title" in data
+    assert "status" in data
+    assert "detail" in data
 
 
 def test_delete_file_success(client, mock_file_service):
@@ -180,7 +213,10 @@ def test_delete_file_not_found(client, mock_file_service):
     assert response.status_code == 404
     assert response.headers["content-type"] == "application/problem+json"
     data = response.json()
-    assert data["title"] == "File Not Found"
+    assert "type" in data
+    assert "title" in data
+    assert "status" in data
+    assert "detail" in data
 
 
 def test_get_metadata(client, mock_file_service):
@@ -213,7 +249,12 @@ def test_method_not_allowed(client):
 def test_upload_file_with_subdirectory(client, mock_file_service):
     mock_file_service.upload_file.return_value = {
         "id": "file_123",
-        "path": "products/123/safe_test.jpg"
+        "filename": "safe_test.jpg",
+        "original_filename": "test.jpg",
+        "path": "products/123/safe_test.jpg",
+        "size": 1024000,
+        "mime_type": "image/jpeg",
+        "url": "/static/img/products/123/safe_test.jpg"
     }
     
     files = {"file": ("test.jpg", b"fake image data", "image/jpeg")}
@@ -223,6 +264,39 @@ def test_upload_file_with_subdirectory(client, mock_file_service):
     mock_file_service.upload_file.assert_called_once()
     call_kwargs = mock_file_service.upload_file.call_args[1]
     assert call_kwargs.get("subdirectory") == "products/123"
+
+
+def test_error_response_follows_rfc7807(client, mock_file_service):
+    """Test that all error responses follow RFC 7807 problem details format."""
+    from fastapi import HTTPException
+    
+    # Test different error types
+    error_cases = [
+        (413, "file-too-large", "File Too Large"),
+        (415, "unsupported-media-type", "Unsupported Media Type"),
+        (404, "not-found", "Not Found"),
+        (422, "validation", "Validation Failed"),
+    ]
+    
+    for status_code, error_type, title in error_cases:
+        mock_file_service.upload_file.side_effect = HTTPException(
+            status_code=status_code,
+            detail=f"Test error {status_code}"
+        )
+        
+        response = client.post("/files", files={"file": ("test.jpg", b"data", "image/jpeg")})
+        
+        assert response.status_code == status_code
+        assert response.headers["content-type"] == "application/problem+json"
+        
+        data = response.json()
+        # Check RFC 7807 required fields
+        assert "type" in data
+        assert "title" in data
+        assert "status" in data
+        assert "detail" in data
+        assert data["status"] == status_code
+        assert error_type in data["type"]
 
 
 if __name__ == "__main__":

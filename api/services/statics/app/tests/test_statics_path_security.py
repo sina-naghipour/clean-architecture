@@ -71,10 +71,15 @@ def test_validate_and_sanitize_windows_absolute_path():
 def test_validate_and_sanitize_empty_path():
     with tempfile.TemporaryDirectory() as tmp:
         security = PathSecurity(Path(tmp))
-        with pytest.raises(HTTPException) as exc_info:
-            security.validate_and_sanitize("")
-        assert exc_info.value.status_code == 400
-        assert "Path cannot be empty" in exc_info.value.detail
+        
+        result = security.validate_and_sanitize("")
+        
+        assert isinstance(result, Path)
+        assert str(result).startswith(tmp)
+        
+        result_with_file = security.validate_and_sanitize("", "test.jpg")
+        assert isinstance(result_with_file, Path)
+        assert result_with_file.name == "test.jpg"
 
 
 def test_validate_and_sanitize_path_outside_base():

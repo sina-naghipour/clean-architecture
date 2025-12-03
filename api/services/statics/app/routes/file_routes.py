@@ -27,6 +27,23 @@ def get_file_service() -> FileUploadService:
         allowed_mime_types=allowed_types
     )
 
+
+def _map_status_to_error(status_code: int) -> tuple[str, str]:
+    """Map HTTP status code to error type and title from catalog."""
+    mapping = {
+        400: ("bad-request", "Bad Request"),
+        401: ("unauthorized", "Unauthorized"),
+        403: ("forbidden", "Forbidden"),
+        404: ("not-found", "Not Found"),
+        409: ("conflict", "Conflict"),
+        413: ("file-too-large", "File Too Large"),
+        415: ("unsupported-media-type", "Unsupported Media Type"),
+        422: ("validation", "Validation Failed"),
+        500: ("internal", "Internal Server Error"),
+    }
+    return mapping.get(status_code, ("internal", "Internal Server Error"))
+
+
 @router.post("/files", status_code=201)
 async def upload_file(
     request: Request,
@@ -48,13 +65,23 @@ async def upload_file(
         return response
         
     except HTTPException as he:
+        error_type, title = _map_status_to_error(he.status_code)
         return create_problem_response(
             status_code=he.status_code,
-            error_type="file-upload-error",
-            title="File Upload Error",
+            error_type=error_type,
+            title=title,
             detail=he.detail,
             instance=str(request.url)
         )
+    except Exception as e:
+        return create_problem_response(
+            status_code=500,
+            error_type="internal",
+            title="Internal Server Error",
+            detail=f"An unexpected error occurred: {str(e)}",
+            instance=str(request.url)
+        )
+
 
 @router.post("/files/batch", status_code=207)
 async def upload_files_batch(
@@ -74,18 +101,42 @@ async def upload_files_batch(
             )
             successful.append(result)
         except HTTPException as he:
+            error_type, title = _map_status_to_error(he.status_code)
             failed.append({
                 "filename": file.filename,
                 "error": he.detail,
-                "status_code": he.status_code
+                "status_code": he.status_code,
+                "error_type": error_type,
+                "title": title
+            })
+        except Exception as e:
+            failed.append({
+                "filename": file.filename,
+                "error": f"Unexpected error: {str(e)}",
+                "status_code": 500,
+                "error_type": "internal",
+                "title": "Internal Server Error"
             })
     
-    return {
+    # Return multi-status response following catalog format
+    multi_status_response = {
+        "type": "https://example.com/errors/multi-status",
+        "title": "Multi-Status",
+        "status": 207,
+        "detail": "Batch operation completed with partial success",
+        "instance": str(request.url),
+        "successful_count": len(successful),
+        "failed_count": len(failed),
         "successful": successful,
-        "failed": failed,
-        "total": len(files),
-        "successful_count": len(successful)
+        "failed": failed
     }
+    
+    return JSONResponse(
+        status_code=207,
+        content=multi_status_response,
+        media_type="application/problem+json"
+    )
+
 
 @router.get("/files/{file_id}")
 async def get_file(
@@ -100,7 +151,7 @@ async def get_file(
             return create_problem_response(
                 status_code=404,
                 error_type="not-found",
-                title="File Not Found",
+                title="Not Found",
                 detail="The requested file does not exist",
                 instance=str(request.url)
             )
@@ -112,13 +163,23 @@ async def get_file(
         )
         
     except HTTPException as he:
+        error_type, title = _map_status_to_error(he.status_code)
         return create_problem_response(
             status_code=he.status_code,
-            error_type="file-error",
-            title="File Error",
+            error_type=error_type,
+            title=title,
             detail=he.detail,
             instance=str(request.url)
         )
+    except Exception as e:
+        return create_problem_response(
+            status_code=500,
+            error_type="internal",
+            title="Internal Server Error",
+            detail=f"An unexpected error occurred: {str(e)}",
+            instance=str(request.url)
+        )
+
 
 @router.delete("/files/{file_id}", status_code=204)
 async def delete_file(
@@ -133,7 +194,7 @@ async def delete_file(
             return create_problem_response(
                 status_code=404,
                 error_type="not-found",
-                title="File Not Found",
+                title="Not Found",
                 detail="The file does not exist",
                 instance=str(request.url)
             )
@@ -141,22 +202,43 @@ async def delete_file(
         return None
         
     except HTTPException as he:
+        error_type, title = _map_status_to_error(he.status_code)
         return create_problem_response(
             status_code=he.status_code,
-            error_type="delete-error",
-            title="Delete Error",
+            error_type=error_type,
+            title=title,
             detail=he.detail,
             instance=str(request.url)
         )
+    except Exception as e:
+        return create_problem_response(
+            status_code=500,
+            error_type="internal",
+            title="Internal Server Error",
+            detail=f"An unexpected error occurred: {str(e)}",
+            instance=str(request.url)
+        )
+
 
 @router.get("/metadata")
 async def get_metadata(
+    request: Request,
     file_service: FileUploadService = Depends(get_file_service)
 ):
-    metadata_updater = file_service.metadata_updater
-    files = metadata_updater.list_files()
-    
-    return {
-        "files_count": len(files),
-        "files": files
-    }
+    try:
+        metadata_updater = file_service.metadata_updater
+        files = metadata_updater.list_files()
+        
+        return {
+            "files_count": len(files),
+            "files": files
+        }
+        
+    except Exception as e:
+        return create_problem_response(
+            status_code=500,
+            error_type="internal",
+            title="Internal Server Error",
+            detail=f"An unexpected error occurred: {str(e)}",
+            instance=str(request.url) if request else ""
+        )
