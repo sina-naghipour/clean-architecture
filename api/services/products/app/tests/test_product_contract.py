@@ -8,8 +8,8 @@ from database import pydantic_models
 from database.database_models import ProductDB
 from routes.product_routes import router, get_product_service
 import logging
-from database.pydantic_models import ProductImage
 
+# Create test FastAPI app
 app = FastAPI()
 app.include_router(router, prefix="/api/products")
 
@@ -27,6 +27,7 @@ def mock_product_service():
 
 @pytest.fixture
 def client(mock_product_service):
+    # Override dependency
     app.dependency_overrides[get_product_service] = lambda: mock_product_service
     with TestClient(app) as test_client:
         yield test_client
@@ -48,22 +49,15 @@ def sample_product_response():
         "name": "Test Product",
         "price": 99.99,
         "stock": 10,
-        "description": "Test Description",
-        "images": [],
-        "primary_image_id": None
+        "description": "Test Description"
     }
 
 class TestProductRoutesContract:
     def test_create_product_success(self, client, mock_product_service, sample_product_data, sample_product_response):
         from fastapi.responses import JSONResponse
-        
-        create_response = sample_product_response.copy()
-        del create_response["images"]
-        del create_response["primary_image_id"]
-        
         json_response = JSONResponse(
             status_code=201,
-            content=create_response,
+            content=sample_product_response,
             headers={"Location": "/api/products/prod_123"}
         )
         mock_product_service.create_product.return_value = json_response
@@ -71,15 +65,12 @@ class TestProductRoutesContract:
         response = client.post("/api/products/create", json=sample_product_data)
         
         assert response.status_code == 201
-        assert response.json() == create_response
+        assert response.json() == sample_product_response
         assert "Location" in response.headers
         assert "/api/products/prod_123" in response.headers["Location"]
         mock_product_service.create_product.assert_called_once()
 
     def test_get_product_success(self, client, mock_product_service, sample_product_response):
-        
-        pydantic_models.ProductResponse.model_rebuild()
-        
         mock_response = pydantic_models.ProductResponse(**sample_product_response)
         mock_product_service.get_product.return_value = mock_response
         
@@ -91,6 +82,7 @@ class TestProductRoutesContract:
 
     def test_get_product_not_found(self, client, mock_product_service):
         from services.product_helpers import create_problem_response
+        from fastapi.responses import JSONResponse
         
         problem_response = create_problem_response(
             status_code=404,
@@ -107,11 +99,6 @@ class TestProductRoutesContract:
         assert "Not Found" in response.json()["title"]
 
     def test_list_products_success(self, client, mock_product_service, sample_product_response):
-        
-        
-        pydantic_models.ProductResponse.model_rebuild()
-        pydantic_models.ProductList.model_rebuild()
-        
         product_list = pydantic_models.ProductList(
             items=[pydantic_models.ProductResponse(**sample_product_response)],
             total=1,
@@ -131,11 +118,6 @@ class TestProductRoutesContract:
         mock_product_service.list_products.assert_called_once()
 
     def test_list_products_with_pagination(self, client, mock_product_service):
-        
-        
-        pydantic_models.ProductResponse.model_rebuild()
-        pydantic_models.ProductList.model_rebuild()
-        
         product_list = pydantic_models.ProductList(
             items=[],
             total=0,
@@ -152,11 +134,6 @@ class TestProductRoutesContract:
         assert data["page_size"] == 5
 
     def test_list_products_with_search(self, client, mock_product_service):
-        
-        
-        pydantic_models.ProductResponse.model_rebuild()
-        pydantic_models.ProductList.model_rebuild()
-        
         product_list = pydantic_models.ProductList(
             items=[],
             total=0,
@@ -171,10 +148,6 @@ class TestProductRoutesContract:
         mock_product_service.list_products.assert_called_once()
 
     def test_update_product_success(self, client, mock_product_service, sample_product_data, sample_product_response):
-        
-        
-        pydantic_models.ProductResponse.model_rebuild()
-        
         mock_response = pydantic_models.ProductResponse(**sample_product_response)
         mock_product_service.update_product.return_value = mock_response
         
@@ -185,10 +158,6 @@ class TestProductRoutesContract:
         mock_product_service.update_product.assert_called_once()
 
     def test_patch_product_success(self, client, mock_product_service, sample_product_response):
-        
-        
-        pydantic_models.ProductResponse.model_rebuild()
-        
         mock_response = pydantic_models.ProductResponse(**sample_product_response)
         mock_product_service.patch_product.return_value = mock_response
         
@@ -224,19 +193,19 @@ class TestProductRoutesContract:
         mock_product_service.update_inventory.assert_called_once()
 
     def test_update_inventory_validation_error(self, client):
-        invalid_data = {"stock": -5}
+        invalid_data = {"stock": -5}  # Invalid stock
         
         response = client.patch("/api/products/prod_123/inventory", json=invalid_data)
         
         assert response.status_code == 422
 
     def test_invalid_page_parameter(self, client):
-        response = client.get("/api/products/?page=0")
+        response = client.get("/api/products/?page=0")  # Page should be >= 1
         
         assert response.status_code == 422
 
     def test_invalid_page_size_parameter(self, client):
-        response = client.get("/api/products/?page_size=200")
+        response = client.get("/api/products/?page_size=200")  # Exceeds MAX_PAGE_SIZE
         
         assert response.status_code == 422
 
@@ -246,7 +215,7 @@ class TestProductRoutesContract:
         assert response.status_code == 404
 
     def test_method_not_allowed(self, client):
-        response = client.post("/api/products/prod_123") 
+        response = client.post("/api/products/prod_123")  # POST not allowed on detail endpoint
         
         assert response.status_code == 405
 
@@ -256,6 +225,7 @@ class TestProductRoutesErrorScenarios:
         
         response = client.get("/api/products/prod_123")
         
+        # Should be handled by decorators and return 500
         assert response.status_code == 500
 
     def test_malformed_json(self, client):
@@ -264,7 +234,7 @@ class TestProductRoutesErrorScenarios:
         assert response.status_code == 422
 
     def test_missing_required_fields(self, client):
-        incomplete_data = {"name": "Test"}
+        incomplete_data = {"name": "Test"}  # Missing price, stock, etc.
         
         response = client.post("/api/products/create", json=incomplete_data)
         
@@ -272,11 +242,6 @@ class TestProductRoutesErrorScenarios:
 
 class TestProductRoutesEdgeCases:
     def test_empty_product_list(self, client, mock_product_service):
-        
-        
-        pydantic_models.ProductResponse.model_rebuild()
-        pydantic_models.ProductList.model_rebuild()
-        
         product_list = pydantic_models.ProductList(
             items=[],
             total=0,
@@ -293,11 +258,6 @@ class TestProductRoutesEdgeCases:
         assert data["items"] == []
 
     def test_special_characters_in_search(self, client, mock_product_service):
-        
-        
-        pydantic_models.ProductResponse.model_rebuild()
-        pydantic_models.ProductList.model_rebuild()
-        
         product_list = pydantic_models.ProductList(
             items=[],
             total=0,
@@ -311,10 +271,6 @@ class TestProductRoutesEdgeCases:
         assert response.status_code == 200
 
     def test_long_product_id(self, client, mock_product_service, sample_product_response):
-        
-        
-        pydantic_models.ProductResponse.model_rebuild()
-        
         mock_response = pydantic_models.ProductResponse(**sample_product_response)
         mock_product_service.get_product.return_value = mock_response
         
@@ -325,10 +281,6 @@ class TestProductRoutesEdgeCases:
 
 class TestProductRoutesContentTypes:
     def test_json_content_type(self, client, mock_product_service, sample_product_response):
-        
-        
-        pydantic_models.ProductResponse.model_rebuild()
-        
         mock_response = pydantic_models.ProductResponse(**sample_product_response)
         mock_product_service.get_product.return_value = mock_response
         
@@ -337,15 +289,7 @@ class TestProductRoutesContentTypes:
         assert response.headers["content-type"] == "application/json"
 
     def test_create_product_content_type(self, client, mock_product_service, sample_product_data, sample_product_response):
-        
-        
-        pydantic_models.ProductResponse.model_rebuild()
-        
-        create_response = sample_product_response.copy()
-        del create_response["images"]
-        del create_response["primary_image_id"]
-        
-        mock_response = pydantic_models.ProductResponse(**create_response)
+        mock_response = pydantic_models.ProductResponse(**sample_product_response)
         mock_product_service.create_product.return_value = mock_response
         
         response = client.post(
@@ -365,12 +309,5 @@ class TestProductRoutesContentTypes:
         
         assert response.status_code == 422
 
-def setup_module():
-    """Setup module to resolve Pydantic forward references"""
-    
-    pydantic_models.ProductResponse.model_rebuild()
-    pydantic_models.ProductList.model_rebuild()
-
 if __name__ == "__main__":
-    setup_module()
     pytest.main([__file__, "-v"])

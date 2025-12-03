@@ -11,7 +11,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from routes.product_routes import router as product_router
-from routes.image_routes import router as image_router
 
 # Environment variables with defaults
 HOST = os.getenv('HOST', '0.0.0.0')
@@ -98,7 +97,7 @@ async def root():
     }
 
 app.include_router(product_router)
-app.include_router(image_router)
+
 if __name__ == "__main__":
     uvicorn.run(
         "main:app",

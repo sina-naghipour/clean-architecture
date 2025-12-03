@@ -26,8 +26,6 @@ async def test_db_setup():
             "price": 999.99,
             "stock": 10,
             "tags": ["electronics", "computers"],
-            "image_ids": [],
-            "primary_image_id": None,
             "created_at": "2023-01-01T00:00:00",
             "updated_at": "2023-01-01T00:00:00"
         },
@@ -38,8 +36,6 @@ async def test_db_setup():
             "price": 29.99,
             "stock": 50,
             "tags": ["electronics", "accessories"],
-            "image_ids": [],
-            "primary_image_id": None,
             "created_at": "2023-01-02T00:00:00",
             "updated_at": "2023-01-02T00:00:00"
         },
@@ -50,8 +46,6 @@ async def test_db_setup():
             "price": 199.99,
             "stock": 5,
             "tags": ["furniture", "office"],
-            "image_ids": [],
-            "primary_image_id": None,
             "created_at": "2023-01-03T00:00:00", 
             "updated_at": "2023-01-03T00:00:00"
         }
@@ -287,7 +281,6 @@ async def test_search_query_performance(test_db_setup):
     
     print(f"Search query time for 100 iterations: {query_time:.4f} seconds")
     assert query_time < 2.0
-
 @pytest.mark.asyncio
 async def test_index_effectiveness(test_db_setup):
     repository, connection, collection = test_db_setup
@@ -303,8 +296,6 @@ async def test_index_effectiveness(test_db_setup):
             "price": i * 10.0,
             "stock": i % 100,
             "tags": ["electronics"] if i % 10 == 0 else ["furniture"],
-            "image_ids": [],
-            "primary_image_id": None,
             "created_at": "2023-01-01T00:00:00",
             "updated_at": "2023-01-01T00:00:00"
         })
@@ -330,118 +321,8 @@ async def test_index_effectiveness(test_db_setup):
     improvement = ((time_without_index - time_with_index) / time_without_index) * 100
     print(f"Without index: {time_without_index:.4f}s, With index: {time_with_index:.4f}s, Improvement: {improvement:.1f}%")
     
-    assert time_with_index < time_without_index
-
-@pytest.mark.asyncio
-async def test_add_image_to_product_success(test_db_setup):
-    repository, connection, collection = test_db_setup
+    assert time_with_index < time_without_index 
     
-    result = await repository.add_image_to_product("prod_1", "img_123")
-    
-    assert result is not None
-    assert "img_123" in result.image_ids
-
-@pytest.mark.asyncio
-async def test_add_image_to_product_not_found(test_db_setup):
-    repository, connection, collection = test_db_setup
-    
-    result = await repository.add_image_to_product("non_existent", "img_123")
-    assert result is None
-
-@pytest.mark.asyncio
-async def test_remove_image_from_product_success(test_db_setup):
-    repository, connection, collection = test_db_setup
-    
-    await repository.add_image_to_product("prod_1", "img_123")
-    await repository.add_image_to_product("prod_1", "img_456")
-    
-    result = await repository.remove_image_from_product("prod_1", "img_123")
-    
-    assert result is not None
-    assert "img_123" not in result.image_ids
-    assert "img_456" in result.image_ids
-
-@pytest.mark.asyncio
-async def test_remove_image_clears_primary_image(test_db_setup):
-    repository, connection, collection = test_db_setup
-    
-    await repository.add_image_to_product("prod_1", "img_123")
-    await repository.set_primary_image("prod_1", "img_123")
-    
-    product_before = await repository.get_product_by_id("prod_1")
-    assert product_before.primary_image_id == "img_123"
-    
-    result = await repository.remove_image_from_product("prod_1", "img_123")
-    
-    assert result is not None
-    assert result.primary_image_id is None
-
-@pytest.mark.asyncio
-async def test_remove_image_from_product_not_found(test_db_setup):
-    repository, connection, collection = test_db_setup
-    
-    result = await repository.remove_image_from_product("non_existent", "img_123")
-    assert result is None
-
-@pytest.mark.asyncio
-async def test_set_primary_image_success(test_db_setup):
-    repository, connection, collection = test_db_setup
-    
-    await repository.add_image_to_product("prod_1", "img_123")
-    
-    result = await repository.set_primary_image("prod_1", "img_123")
-    
-    assert result is not None
-    assert result.primary_image_id == "img_123"
-
-@pytest.mark.asyncio
-async def test_set_primary_image_not_found(test_db_setup):
-    repository, connection, collection = test_db_setup
-    
-    result = await repository.set_primary_image("non_existent", "img_123")
-    assert result is None
-
-@pytest.mark.asyncio
-async def test_set_primary_image_image_not_in_product(test_db_setup):
-    repository, connection, collection = test_db_setup
-    
-    result = await repository.set_primary_image("prod_1", "img_123")
-    assert result is None
-
-@pytest.mark.asyncio
-async def test_product_creation_with_image_fields(test_db_setup):
-    repository, connection, collection = test_db_setup
-    
-    new_product = ProductDB(
-        id="prod_4",
-        name="Camera",
-        description="Digital camera",
-        price=299.99,
-        stock=8,
-        tags=["electronics", "photography"],
-        image_ids=["img_1", "img_2"],
-        primary_image_id="img_1"
-    )
-    
-    result = await repository.create_product(new_product)
-    
-    assert result is not None
-    assert result.image_ids == ["img_1", "img_2"]
-    assert result.primary_image_id == "img_1"
-    
-    fetched = await repository.get_product_by_id("prod_4")
-    assert fetched.image_ids == ["img_1", "img_2"]
-    assert fetched.primary_image_id == "img_1"
-
-@pytest.mark.asyncio
-async def test_backward_compatibility_empty_image_fields(test_db_setup):
-    repository, connection, collection = test_db_setup
-    
-    product = await repository.get_product_by_id("prod_1")
-    
-    assert product.image_ids == []
-    assert product.primary_image_id is None
-
 if __name__ == "__main__":
     import asyncio
     
