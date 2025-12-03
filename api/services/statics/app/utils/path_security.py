@@ -4,13 +4,11 @@ from fastapi import HTTPException
 
 class PathSecurity:
     def __init__(self, base_upload_dir: Path):
-        self.base_upload_dir = base_upload_dir.resolve()
+        self.base_upload_dir = base_upload_dir
         self.base_upload_dir.mkdir(parents=True, exist_ok=True)
     
     def validate_and_sanitize(self, user_path: str, filename: str = None) -> Path:
-        if not user_path:
-            raise HTTPException(status_code=400, detail="Path cannot be empty")
-        
+
         if ".." in user_path:
             raise HTTPException(status_code=400, detail="Path traversal detected")
         
@@ -23,8 +21,8 @@ class PathSecurity:
             raise HTTPException(status_code=400, detail="Absolute paths not allowed")
         
         try:
-            full_path = (self.base_upload_dir / user_path).resolve()
-            
+            full_path = (self.base_upload_dir / user_path)
+            print('self.base_upload_dir: ', self.base_upload_dir, ' user_path: ', user_path, ' full_path after resolve: ', full_path)
             if filename:
                 full_path = full_path / filename
             

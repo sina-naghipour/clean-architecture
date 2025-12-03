@@ -6,6 +6,7 @@ import uvicorn
 from contextlib import asynccontextmanager
 import os
 from pathlib import Path
+import json
 
 from routes.file_routes import router as file_router
 from utils.problem_details import create_problem_response
@@ -26,6 +27,10 @@ async def lifespan(app: FastAPI):
     upload_dir.mkdir(parents=True, exist_ok=True)
     metadata_file.parent.mkdir(parents=True, exist_ok=True)
     
+    if not metadata_file.exists():
+        with open(metadata_file, 'w') as f:
+            json.dump({}, f)
+            
     logger.info(f"Static service starting...")
     logger.info(f"Upload directory: {upload_dir}")
     logger.info(f"Metadata file: {metadata_file}")
@@ -99,7 +104,7 @@ async def root():
         }
     }
 
-app.include_router(file_router, prefix="/api")
+app.include_router(file_router)
 
 if __name__ == "__main__":
     uvicorn.run(

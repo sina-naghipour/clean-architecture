@@ -1,1 +1,28 @@
-{}
+{
+  "files": {
+    "a95bef4699a64806981eaafe7d4bd054": {
+      "original_filename": "photo_2024-11-13_06-26-14.jpg",
+      "safe_filename": "a95bef4699a64806981eaafe7d4bd054.jpg",
+      "path": "a95bef4699a64806981eaafe7d4bd054.jpg",
+      "full_path": "static/img/a95bef4699a64806981eaafe7d4bd054.jpg",
+      "size_bytes": 84942,
+      "mime_type": "image/jpeg",
+      "uploaded_at": "2025-12-03T19:09:02.519418",
+      "custom_metadata": {},
+      "id": "a95bef4699a64806981eaafe7d4bd054",
+      "updated_at": "2025-12-03T19:09:02.531430+00:00"
+    },
+    "42315f644372449fbf64b093154851c1": {
+      "original_filename": "photo_2024-11-26_22-41-14.jpg",
+      "safe_filename": "42315f644372449fbf64b093154851c1.jpg",
+      "path": "42315f644372449fbf64b093154851c1.jpg",
+      "full_path": "static/img/42315f644372449fbf64b093154851c1.jpg",
+      "size_bytes": 73820,
+      "mime_type": "image/jpeg",
+      "uploaded_at": "2025-12-03T19:09:02.534092",
+      "custom_metadata": {},
+      "id": "42315f644372449fbf64b093154851c1",
+      "updated_at": "2025-12-03T19:09:02.540092+00:00"
+    }
+  }
+}

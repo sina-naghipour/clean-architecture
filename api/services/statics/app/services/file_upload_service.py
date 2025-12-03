@@ -40,7 +40,6 @@ class FileUploadService:
             
             safe_filename = self.path_security.create_safe_filename(original_filename)
             full_path = self.path_security.validate_and_sanitize(subdirectory, safe_filename)
-            
             with AtomicWriter.write_atomic(full_path) as temp_path:
                 with open(temp_path, 'wb') as f:
                     f.write(file_content)

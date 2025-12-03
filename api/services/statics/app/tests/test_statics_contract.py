@@ -61,7 +61,7 @@ def test_upload_file_success(client, mock_file_service):
     }
     
     files = {"file": ("test.jpg", b"fake image data", "image/jpeg")}
-    response = client.post("/api/files", files=files)
+    response = client.post("/files", files=files)
     
     print(f"DEBUG - Response status: {response.status_code}")
     print(f"DEBUG - Response body: {response.text[:200]}")
@@ -74,7 +74,7 @@ def test_upload_file_success(client, mock_file_service):
 
 def test_upload_file_bad_request(client, mock_file_service):
     # Missing file
-    response = client.post("/api/files")
+    response = client.post("/files")
     assert response.status_code == 422
 
 
@@ -86,7 +86,7 @@ def test_upload_file_service_error(client, mock_file_service):
     )
     
     files = {"file": ("test.jpg", b"fake image data", "image/jpeg")}
-    response = client.post("/api/files", files=files)
+    response = client.post("/files", files=files)
     
     assert response.status_code == 413
     assert response.headers["content-type"] == "application/problem+json"
@@ -110,7 +110,7 @@ def test_batch_upload_success(client, mock_file_service):
         ("files", ("test2.jpg", b"fake image data 2", "image/jpeg"))
     ]
     
-    response = client.post("/api/files/batch", files=files)
+    response = client.post("/files/batch", files=files)
     
     assert response.status_code == 207
     data = response.json()
@@ -131,7 +131,7 @@ def test_batch_upload_partial_success(client, mock_file_service):
         ("files", ("test2.gif", b"fake data 2", "image/gif"))
     ]
     
-    response = client.post("/api/files/batch", files=files)
+    response = client.post("/files/batch", files=files)
     
     assert response.status_code == 207
     data = response.json()
@@ -145,7 +145,7 @@ def test_get_file_success(client, mock_file_service, tmp_path):
     
     mock_file_service.get_file_path.return_value = test_file
     
-    response = client.get("/api/files/file_123")
+    response = client.get("/files/file_123")
     
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/octet-stream"
@@ -155,7 +155,7 @@ def test_get_file_success(client, mock_file_service, tmp_path):
 def test_get_file_not_found(client, mock_file_service):
     mock_file_service.get_file_path.return_value = Mock(exists=Mock(return_value=False))
     
-    response = client.get("/api/files/nonexistent")
+    response = client.get("/files/nonexistent")
     
     assert response.status_code == 404
     assert response.headers["content-type"] == "application/problem+json"
@@ -166,7 +166,7 @@ def test_get_file_not_found(client, mock_file_service):
 def test_delete_file_success(client, mock_file_service):
     mock_file_service.delete_file.return_value = True
     
-    response = client.delete("/api/files/file_123")
+    response = client.delete("/files/file_123")
     
     assert response.status_code == 204
     assert response.content == b""
@@ -175,7 +175,7 @@ def test_delete_file_success(client, mock_file_service):
 def test_delete_file_not_found(client, mock_file_service):
     mock_file_service.delete_file.return_value = False
     
-    response = client.delete("/api/files/nonexistent")
+    response = client.delete("/files/nonexistent")
     
     assert response.status_code == 404
     assert response.headers["content-type"] == "application/problem+json"
@@ -191,7 +191,7 @@ def test_get_metadata(client, mock_file_service):
     }
     mock_file_service.metadata_updater = mock_metadata_updater
     
-    response = client.get("/api/metadata")
+    response = client.get("/metadata")
     
     assert response.status_code == 200
     data = response.json()
@@ -201,12 +201,12 @@ def test_get_metadata(client, mock_file_service):
 
 
 def test_nonexistent_endpoint(client):
-    response = client.get("/api/nonexistent")
+    response = client.get("/nonexistent")
     assert response.status_code == 404
 
 
 def test_method_not_allowed(client):
-    response = client.post("/api/files/file_123")
+    response = client.post("/files/file_123")
     assert response.status_code == 405
 
 
@@ -217,7 +217,7 @@ def test_upload_file_with_subdirectory(client, mock_file_service):
     }
     
     files = {"file": ("test.jpg", b"fake image data", "image/jpeg")}
-    response = client.post("/api/files?subdirectory=products/123", files=files)
+    response = client.post("/files?subdirectory=products/123", files=files)
     
     assert response.status_code == 201
     mock_file_service.upload_file.assert_called_once()
