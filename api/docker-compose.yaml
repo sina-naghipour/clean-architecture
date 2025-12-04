@@ -85,10 +85,12 @@ services:
       - ENVIRONMENT=development
       - MONGODB_URI=mongodb://mongodb:27017/
       - MONGODB_DB_NAME=product_db
+      - STATIC_SERVICE_URL=http://statics:8005  # ADD THIS LINE - CRITICAL!
     volumes:
       - ./services/products/app:/app
     depends_on:
       - mongodb
+      - statics  # Also add dependency on statics
     networks:
       - app-network
 

@@ -95,3 +95,29 @@ class ProductErrorDecorators:
                 logger.error(f"Update inventory error: {e}")
                 raise HTTPException(status_code=500, detail="Internal server error")
         return wrapper
+
+    @staticmethod
+    def handle_image_errors(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            try:
+                return await func(*args, **kwargs)
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.error(f"Product image operation error: {e}")
+                raise HTTPException(status_code=500, detail="Internal server error")
+        return wrapper
+
+    @staticmethod
+    def handle_tag_errors(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            try:
+                return await func(*args, **kwargs)
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.error(f"Product tag operation error: {e}")
+                raise HTTPException(status_code=500, detail="Internal server error")
+        return wrapper

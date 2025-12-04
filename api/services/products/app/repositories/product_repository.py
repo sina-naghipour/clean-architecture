@@ -89,22 +89,33 @@ class ProductRepository:
         skip: int = 0, 
         limit: int = 20,
         search_query: Optional[str] = None,
-        tags: Optional[List[str]] = None
+        tags: Optional[List[str]] = None,
+        min_price: Optional[float] = None,
+        max_price: Optional[float] = None
     ) -> List[ProductDB]:
         try:
             collection = await self._get_collection()
-            self.logger.info(f"Listing products - skip: {skip}, limit: {limit}, search: {search_query}, tags: {tags}")
+            self.logger.info(f"Listing products - skip: {skip}, limit: {limit}, search: {search_query}, tags: {tags}, min_price: {min_price}, max_price: {max_price}")
             
             query = {}
+            
             if search_query:
                 query["$or"] = [
                     {"name": {"$regex": search_query, "$options": "i"}},
                     {"description": {"$regex": search_query, "$options": "i"}}
                 ]
             
-            # Tag-based filtering for read-optimized projection
             if tags:
                 query["tags"] = {"$in": tags}
+            
+            price_filter = {}
+            if min_price is not None:
+                price_filter["$gte"] = min_price
+            if max_price is not None:
+                price_filter["$lte"] = max_price
+            
+            if price_filter:
+                query["price"] = price_filter
             
             cursor = collection.find(query).sort("created_at", -1).skip(skip).limit(limit)
             products_data = await cursor.to_list(length=limit)
@@ -117,11 +128,18 @@ class ProductRepository:
         except Exception as e:
             self.logger.error(f"Error listing products: {e}")
             raise
-
-    async def count_products(self, search_query: Optional[str] = None, tags: Optional[List[str]] = None) -> int:
+    async def count_products(
+        self, 
+        search_query: Optional[str] = None, 
+        tags: Optional[List[str]] = None,
+        min_price: Optional[float] = None,
+        max_price: Optional[float] = None
+    ) -> int:
         try:
             collection = await self._get_collection()
+            
             query = {}
+            
             if search_query:
                 query["$or"] = [
                     {"name": {"$regex": search_query, "$options": "i"}},
@@ -131,6 +149,15 @@ class ProductRepository:
             if tags:
                 query["tags"] = {"$in": tags}
             
+            price_filter = {}
+            if min_price is not None:
+                price_filter["$gte"] = min_price
+            if max_price is not None:
+                price_filter["$lte"] = max_price
+            
+            if price_filter:
+                query["price"] = price_filter
+            
             count = await collection.count_documents(query)
             self.logger.debug(f"Counted {count} products")
             
@@ -139,7 +166,7 @@ class ProductRepository:
         except Exception as e:
             self.logger.error(f"Error counting products: {e}")
             raise
-
+        
     async def update_product(self, product_id: str, update_data: Dict[str, Any]) -> Optional[ProductDB]:
         try:
             collection = await self._get_collection()
@@ -172,7 +199,41 @@ class ProductRepository:
         except Exception as e:
             self.logger.error(f"Error updating product {product_id}: {e}")
             raise
-
+        
+    async def update_product_images(self, product_id: str, images: List[str]) -> bool:
+        """
+        Update the images array for a product
+        """
+        try:
+            collection = await self._get_collection()
+            self.logger.info(f"Updating images for product: {product_id}")
+            
+            result = await collection.update_one(
+                {"_id": product_id},
+                {
+                    "$set": {
+                        "images": images,
+                        "updated_at": datetime.utcnow()
+                    }
+                }
+            )
+            
+            if result.modified_count > 0:
+                self.logger.info(f"Images updated successfully for product: {product_id}")
+                return True
+            else:
+                # Check if product exists
+                product_exists = await collection.find_one({"_id": product_id})
+                if product_exists:
+                    self.logger.info(f"No images changes made for product: {product_id}")
+                else:
+                    self.logger.warning(f"Product not found when updating images: {product_id}")
+                return False
+                
+        except Exception as e:
+            self.logger.error(f"Error updating images for product {product_id}: {e}")
+            raise
+        
     async def delete_product(self, product_id: str) -> bool:
         try:
             collection = await self._get_collection()

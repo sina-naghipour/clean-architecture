@@ -179,6 +179,78 @@
       "custom_metadata": {},
       "id": "cf5705d04f9344a59aad34f5f45e8cd5",
       "updated_at": "2025-12-04T16:49:09.037100+00:00"
+    },
+    "1e574d6af498456e86b09211691eb7bb": {
+      "original_filename": "3.png",
+      "safe_filename": "1e574d6af498456e86b09211691eb7bb.png",
+      "path": "products/b4aa8f06-1fbb-4df3-9b9a-787d11bf566b/1e574d6af498456e86b09211691eb7bb.png",
+      "full_path": "static/img/products/b4aa8f06-1fbb-4df3-9b9a-787d11bf566b/1e574d6af498456e86b09211691eb7bb.png",
+      "size_bytes": 99035,
+      "mime_type": "image/png",
+      "uploaded_at": "2025-12-04T22:59:01.290507",
+      "custom_metadata": {},
+      "id": "1e574d6af498456e86b09211691eb7bb",
+      "updated_at": "2025-12-04T22:59:01.292168+00:00"
+    },
+    "bb68dc0790ec423e928d681ccc0ed8ce": {
+      "original_filename": "2.png",
+      "safe_filename": "bb68dc0790ec423e928d681ccc0ed8ce.png",
+      "path": "products/b4aa8f06-1fbb-4df3-9b9a-787d11bf566b/bb68dc0790ec423e928d681ccc0ed8ce.png",
+      "full_path": "static/img/products/b4aa8f06-1fbb-4df3-9b9a-787d11bf566b/bb68dc0790ec423e928d681ccc0ed8ce.png",
+      "size_bytes": 35874,
+      "mime_type": "image/png",
+      "uploaded_at": "2025-12-04T22:59:01.296031",
+      "custom_metadata": {},
+      "id": "bb68dc0790ec423e928d681ccc0ed8ce",
+      "updated_at": "2025-12-04T22:59:01.304052+00:00"
+    },
+    "62225114f9a04458a85d23b23a4a5926": {
+      "original_filename": "1.png",
+      "safe_filename": "62225114f9a04458a85d23b23a4a5926.png",
+      "path": "products/b4aa8f06-1fbb-4df3-9b9a-787d11bf566b/62225114f9a04458a85d23b23a4a5926.png",
+      "full_path": "static/img/products/b4aa8f06-1fbb-4df3-9b9a-787d11bf566b/62225114f9a04458a85d23b23a4a5926.png",
+      "size_bytes": 128736,
+      "mime_type": "image/png",
+      "uploaded_at": "2025-12-04T22:59:01.308092",
+      "custom_metadata": {},
+      "id": "62225114f9a04458a85d23b23a4a5926",
+      "updated_at": "2025-12-04T22:59:01.313515+00:00"
+    },
+    "0a27bd466fcd400da9a2ce9aebb3553c": {
+      "original_filename": "2.png",
+      "safe_filename": "0a27bd466fcd400da9a2ce9aebb3553c.png",
+      "path": "products/b4aa8f06-1fbb-4df3-9b9a-787d11bf566b/0a27bd466fcd400da9a2ce9aebb3553c.png",
+      "full_path": "static/img/products/b4aa8f06-1fbb-4df3-9b9a-787d11bf566b/0a27bd466fcd400da9a2ce9aebb3553c.png",
+      "size_bytes": 35874,
+      "mime_type": "image/png",
+      "uploaded_at": "2025-12-04T22:59:27.778254",
+      "custom_metadata": {},
+      "id": "0a27bd466fcd400da9a2ce9aebb3553c",
+      "updated_at": "2025-12-04T22:59:27.780489+00:00"
+    },
+    "3591e8ec41994a7cb2c3826c0cec1630": {
+      "original_filename": "1.png",
+      "safe_filename": "3591e8ec41994a7cb2c3826c0cec1630.png",
+      "path": "products/b4aa8f06-1fbb-4df3-9b9a-787d11bf566b/3591e8ec41994a7cb2c3826c0cec1630.png",
+      "full_path": "static/img/products/b4aa8f06-1fbb-4df3-9b9a-787d11bf566b/3591e8ec41994a7cb2c3826c0cec1630.png",
+      "size_bytes": 128736,
+      "mime_type": "image/png",
+      "uploaded_at": "2025-12-04T22:59:27.784813",
+      "custom_metadata": {},
+      "id": "3591e8ec41994a7cb2c3826c0cec1630",
+      "updated_at": "2025-12-04T22:59:27.791634+00:00"
+    },
+    "7e6387cd9140498aa1e1ad39596e75c5": {
+      "original_filename": "3.png",
+      "safe_filename": "7e6387cd9140498aa1e1ad39596e75c5.png",
+      "path": "products/b4aa8f06-1fbb-4df3-9b9a-787d11bf566b/7e6387cd9140498aa1e1ad39596e75c5.png",
+      "full_path": "static/img/products/b4aa8f06-1fbb-4df3-9b9a-787d11bf566b/7e6387cd9140498aa1e1ad39596e75c5.png",
+      "size_bytes": 99035,
+      "mime_type": "image/png",
+      "uploaded_at": "2025-12-04T22:59:27.795942",
+      "custom_metadata": {},
+      "id": "7e6387cd9140498aa1e1ad39596e75c5",
+      "updated_at": "2025-12-04T22:59:27.802491+00:00"
     }
   }
 }
