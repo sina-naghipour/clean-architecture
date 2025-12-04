@@ -13,7 +13,7 @@ from decorators.statics_path_decorators import (
 
 class PathSecurity:
     def __init__(self, base_upload_dir: Path):
-        self.base_upload_dir = Path(base_upload_dir).resolve()
+        self.base_upload_dir = Path(base_upload_dir)
         self._ensure_base_directory()
     
     @create_directory_if_missing
@@ -24,6 +24,8 @@ class PathSecurity:
     @prevent_path_traversal
     @ensure_within_base_dir
     def validate_and_sanitize(self, user_path: str, filename: str = None) -> Path:
+        if user_path == "":
+            raise ValueError("user_path cannot be empty string")
         if user_path:
             user_path = user_path.strip('/\\')
         

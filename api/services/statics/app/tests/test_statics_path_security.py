@@ -72,15 +72,17 @@ def test_validate_and_sanitize_empty_path():
     with tempfile.TemporaryDirectory() as tmp:
         security = PathSecurity(Path(tmp))
         
-        result = security.validate_and_sanitize("")
+        with pytest.raises(HTTPException) as exc_info:
+            security.validate_and_sanitize("")
         
-        assert isinstance(result, Path)
-        assert str(result).startswith(tmp)
+        assert "user_path cannot be empty string" in str(exc_info.value.detail)
+        assert exc_info.value.status_code == 500
         
-        result_with_file = security.validate_and_sanitize("", "test.jpg")
-        assert isinstance(result_with_file, Path)
-        assert result_with_file.name == "test.jpg"
-
+        with pytest.raises(HTTPException) as exc_info:
+            security.validate_and_sanitize("", "test.jpg")
+        
+        assert "user_path cannot be empty string" in str(exc_info.value.detail)
+        assert exc_info.value.status_code == 500
 
 def test_validate_and_sanitize_path_outside_base():
     with tempfile.TemporaryDirectory() as tmp:

@@ -15,6 +15,7 @@ from decorators.statics_service_decorators import (
     validate_path_security
 )
 
+DEFAULT_SUBDIRECTORY = os.getenv("DEFAULT_SUBDIRECTORY", "./general")
 
 class FileUploadService:
     def __init__(
@@ -39,7 +40,7 @@ class FileUploadService:
     async def upload_file(
         self,
         upload_file: UploadFile,
-        subdirectory: str = "",
+        subdirectory: str = DEFAULT_SUBDIRECTORY,
         custom_metadata: Optional[dict] = None
     ) -> dict:
         

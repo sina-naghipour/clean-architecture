@@ -8,7 +8,7 @@ from services.file_upload_service import FileUploadService
 from services.metadata_updater import MetadataUpdater
 from utils.problem_details import create_problem_response
 
-
+DEFAULT_SUBDIRECTORY = os.getenv("DEFAULT_SUBDIRECTORY", "./general")
 router = APIRouter()
 
 def get_file_service() -> FileUploadService:
@@ -47,7 +47,7 @@ def _map_status_to_error(status_code: int) -> tuple[str, str]:
 async def upload_file(
     request: Request,
     file: UploadFile = File(...),
-    subdirectory: str = "",
+    subdirectory: str = DEFAULT_SUBDIRECTORY,
     file_service: FileUploadService = Depends(get_file_service)
 ):
     try:
@@ -86,7 +86,7 @@ async def upload_file(
 async def upload_files_batch(
     request: Request,
     files: List[UploadFile] = File(...),
-    subdirectory: str = "",
+    subdirectory: str = DEFAULT_SUBDIRECTORY,
     file_service: FileUploadService = Depends(get_file_service)
 ):
     successful = []

@@ -10,7 +10,8 @@ class ProductDB:
         price: float,
         stock: int,
         description: str = None,
-        tags: List[str] = None,  # Add this line
+        tags: List[str] = None,
+        images: List[str] = None,
         id: str = None,
         created_at: datetime = None,
         updated_at: datetime = None
@@ -20,7 +21,8 @@ class ProductDB:
         self.price = price
         self.stock = stock
         self.description = description
-        self.tags = tags or []  # Initialize tags
+        self.tags = tags or []
+        self.images = images or []
         self.created_at = created_at or datetime.utcnow()
         self.updated_at = updated_at or datetime.utcnow()
 
@@ -31,7 +33,8 @@ class ProductDB:
             "price": self.price,
             "stock": self.stock,
             "description": self.description,
-            "tags": self.tags,  # Add this line
+            "tags": self.tags,
+            "images": self.images,
             "created_at": self.created_at,
             "updated_at": self.updated_at
         }
@@ -47,6 +50,7 @@ class ProductDB:
             stock=data["stock"],
             description=data.get("description"),
             tags=data.get("tags", []),
+            images=data.get("images", []),
             created_at=data.get("created_at"),
             updated_at=data.get("updated_at")
         )
