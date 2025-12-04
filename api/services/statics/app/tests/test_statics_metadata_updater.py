@@ -301,7 +301,6 @@ def test_read_only_metadata_file():
         metadata_file = Path(tmp) / "metadata.json"
         updater = MetadataUpdater(metadata_file)
         
-        # Add a file first
         file_id = "test_id"
         updater.add_file(file_id, {"test": "data"})
         

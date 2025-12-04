@@ -50,7 +50,6 @@ def test_write_atomic_temp_file_removed_on_success():
             with open(temp_path, 'wb') as f:
                 f.write(test_content)
         
-        # Temp file should be gone after context manager exits
         assert not temp_file_path.exists()
         assert target_path.exists()
 
@@ -70,7 +69,6 @@ def test_write_atomic_temp_file_removed_on_error():
             assert e.status_code == 500
             assert "Failed to write file" in e.detail
         
-        # Temp file should be cleaned up even on error
         if temp_file_path:
             assert not temp_file_path.exists()
         assert not target_path.exists()

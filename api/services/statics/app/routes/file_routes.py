@@ -29,7 +29,6 @@ def get_file_service() -> FileUploadService:
 
 
 def _map_status_to_error(status_code: int) -> tuple[str, str]:
-    """Map HTTP status code to error type and title from catalog."""
     mapping = {
         400: ("bad-request", "Bad Request"),
         401: ("unauthorized", "Unauthorized"),

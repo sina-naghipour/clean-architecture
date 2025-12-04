@@ -48,7 +48,7 @@ def test_validate_magic_number_invalid_type(mock_magic):
     with pytest.raises(HTTPException) as exc_info:
         validator.validate_magic_number(pdf_magic)
     
-    assert exc_info.value.status_code == 415  # Changed from 400 to 415
+    assert exc_info.value.status_code == 415
     assert "not allowed" in exc_info.value.detail or "invalid" in exc_info.value.detail.lower()
 
 
@@ -63,7 +63,7 @@ def test_validate_magic_number_detection_fails(mock_magic):
     with pytest.raises(HTTPException) as exc_info:
         validator.validate_magic_number(b"test")
     
-    assert exc_info.value.status_code == 415  # Changed from 400 to 415
+    assert exc_info.value.status_code == 415
     assert "validation failed" in exc_info.value.detail.lower() or "type" in exc_info.value.detail.lower()
 
 
@@ -76,7 +76,6 @@ def test_validate_magic_number_magic_exception(mock_magic):
     with pytest.raises(HTTPException) as exc_info:
         validator.validate_magic_number(b"test")
     
-    # Could be 415 or 400 depending on your implementation
     assert exc_info.value.status_code in [400, 415]
 
 
@@ -90,7 +89,7 @@ def test_validate_filename_empty():
     validator = FileValidator(max_size=5*1024*1024, allowed_mime_types=[])
     with pytest.raises(HTTPException) as exc_info:
         validator.validate_filename("")
-    assert exc_info.value.status_code == 422  # Changed from 400 to 422
+    assert exc_info.value.status_code == 422 
     assert "cannot be empty" in exc_info.value.detail.lower()
 
 
@@ -98,7 +97,7 @@ def test_validate_filename_whitespace():
     validator = FileValidator(max_size=5*1024*1024, allowed_mime_types=[])
     with pytest.raises(HTTPException) as exc_info:
         validator.validate_filename("   ")
-    assert exc_info.value.status_code == 422  # Changed from 400 to 422
+    assert exc_info.value.status_code == 422
     assert "cannot be empty" in exc_info.value.detail.lower()
 
 
@@ -107,7 +106,7 @@ def test_validate_filename_too_long():
     long_name = "a" * 300
     with pytest.raises(HTTPException) as exc_info:
         validator.validate_filename(long_name)
-    assert exc_info.value.status_code == 422  # Changed from 400 to 422
+    assert exc_info.value.status_code == 422
     assert "too long" in exc_info.value.detail.lower()
 
 

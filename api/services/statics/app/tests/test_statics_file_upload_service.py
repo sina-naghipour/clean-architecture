@@ -233,7 +233,6 @@ def test_get_file_url_not_found(file_upload_service, mock_metadata_updater):
 
 
 def test_upload_directory_created(file_upload_service, temp_upload_dir):
-    # Upload directory should be created during initialization
     assert temp_upload_dir.exists()
 
 
@@ -246,7 +245,6 @@ async def test_upload_file_general_exception(file_upload_service, mock_upload_fi
             await file_upload_service.upload_file(mock_upload_file)
         
         assert exc_info.value.status_code == 500
-        # Updated to match decorator message
         assert "Upload operation failed" in exc_info.value.detail
         assert "Unexpected error" in exc_info.value.detail
 
@@ -259,7 +257,6 @@ async def test_delete_file_general_exception(file_upload_service, mock_metadata_
         await file_upload_service.delete_file("test_id")
     
     assert exc_info.value.status_code == 500
-    # Updated to match decorator message  
     assert "Delete operation failed" in exc_info.value.detail
     assert "Unexpected error" in exc_info.value.detail
 

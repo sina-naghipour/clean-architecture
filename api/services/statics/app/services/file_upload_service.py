@@ -33,7 +33,6 @@ class FileUploadService:
     
     @validate_path_security
     def _ensure_upload_dir(self):
-        """Ensure upload directory exists and is valid."""
         self.upload_dir.mkdir(parents=True, exist_ok=True)
     
     @handle_upload_errors
@@ -43,26 +42,20 @@ class FileUploadService:
         subdirectory: str = "",
         custom_metadata: Optional[dict] = None
     ) -> dict:
-        """Upload a file with validation and metadata tracking."""
-        # All error handling is now in the decorator
         
-        # Validate and process file
         original_filename = self.file_validator.validate_filename(upload_file.filename)
         file_content = await upload_file.read()
         
         self.file_validator.validate_size(file_content)
         mime_type = self.file_validator.validate_magic_number(file_content)
         
-        # Create safe path
         safe_filename = self.path_security.create_safe_filename(original_filename)
         full_path = self.path_security.validate_and_sanitize(subdirectory, safe_filename)
         
-        # Save file atomically
         with AtomicWriter.write_atomic(full_path) as temp_path:
             with open(temp_path, 'wb') as f:
                 f.write(file_content)
         
-        # Generate metadata
         file_id = Path(safe_filename).stem
         relative_path = str(full_path.relative_to(self.upload_dir))
         
@@ -77,10 +70,8 @@ class FileUploadService:
             "custom_metadata": custom_metadata or {}
         }
         
-        # Update metadata store
         self.metadata_updater.add_file(file_id, file_data)
         
-        # Return upload result
         return {
             "id": file_id,
             "filename": safe_filename,
@@ -93,14 +84,10 @@ class FileUploadService:
     
     @handle_delete_errors
     async def delete_file(self, file_id: str) -> bool:
-        """Delete a file by ID."""
-        # Get file info from metadata
         file_info = self.metadata_updater.get_file(file_id)
         file_path = self.upload_dir / file_info["path"]
         
-        # Delete file atomically
         if AtomicWriter.delete_atomic(file_path):
-            # Remove from metadata
             self.metadata_updater.remove_file(file_id)
             return True
         
@@ -108,12 +95,10 @@ class FileUploadService:
     
     @handle_get_errors
     def get_file_path(self, file_id: str) -> Path:
-        """Get the filesystem path for a file ID."""
         file_info = self.metadata_updater.get_file(file_id)
         return self.upload_dir / file_info["path"]
     
     @handle_get_errors
     def get_file_url(self, file_id: str) -> str:
-        """Get the public URL for a file ID."""
         file_info = self.metadata_updater.get_file(file_id)
         return f"/static/img/{file_info['path']}"

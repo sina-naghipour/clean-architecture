@@ -20,7 +20,6 @@ def create_problem_response(
     if instance:
         problem_details["instance"] = instance
     
-    # Add any extra fields (like for multi-status)
     problem_details.update(extra_fields)
     
     return JSONResponse(

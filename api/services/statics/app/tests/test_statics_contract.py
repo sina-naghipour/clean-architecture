@@ -8,7 +8,6 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# Import the actual app
 from main import app
 from routes.file_routes import get_file_service
 
@@ -25,13 +24,11 @@ def mock_file_service():
 
 @pytest.fixture
 def client(mock_file_service):
-    # Override the dependency
     app.dependency_overrides[get_file_service] = lambda: mock_file_service
     
     with TestClient(app) as test_client:
         yield test_client
     
-    # Clean up after test
     app.dependency_overrides.clear()
 
 
@@ -73,7 +70,6 @@ def test_upload_file_success(client, mock_file_service):
 
 
 def test_upload_file_bad_request(client, mock_file_service):
-    # Missing file
     response = client.post("/files")
     assert response.status_code == 422
 
@@ -91,7 +87,6 @@ def test_upload_file_service_error(client, mock_file_service):
     assert response.status_code == 413
     assert response.headers["content-type"] == "application/problem+json"
     data = response.json()
-    # Check RFC 7807 format
     assert "type" in data
     assert "title" in data
     assert "status" in data
@@ -119,7 +114,6 @@ def test_batch_upload_success(client, mock_file_service):
     
     assert response.status_code == 207
     data = response.json()
-    # Check RFC 7807 multi-status format
     assert "type" in data
     assert "title" in data
     assert "status" in data
@@ -132,7 +126,6 @@ def test_batch_upload_success(client, mock_file_service):
 def test_batch_upload_partial_success(client, mock_file_service):
     from fastapi import HTTPException
     
-    # Mock needs complete return values
     mock_file_service.upload_file.side_effect = [
         {
             "id": "file_123", 
@@ -159,7 +152,6 @@ def test_batch_upload_partial_success(client, mock_file_service):
     assert data["failed_count"] == 1
     assert len(data["successful"]) == 1
     assert len(data["failed"]) == 1
-    # Check failed item has proper structure
     failed_item = data["failed"][0]
     assert "filename" in failed_item
     assert "error" in failed_item
@@ -180,7 +172,6 @@ def test_get_file_success(client, mock_file_service, tmp_path):
 
 
 def test_get_file_not_found(client, mock_file_service):
-    # Create a Mock that has exists() method returning False
     mock_path = Mock()
     mock_path.exists.return_value = False
     mock_file_service.get_file_path.return_value = mock_path

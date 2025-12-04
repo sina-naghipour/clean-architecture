@@ -19,7 +19,6 @@ class FileValidator:
     @validate_input_not_none
     @handle_validation_errors
     def validate_size(self, file_content: bytes) -> bool:
-        """Validate file size."""
         if len(file_content) > self.max_size:
             raise HTTPException(
                 status_code=413,
@@ -31,9 +30,7 @@ class FileValidator:
     @validate_input_not_none
     @handle_validation_errors
     def validate_magic_number(self, file_content: bytes) -> str:
-        """Validate file type using magic numbers."""
         try:
-            # Use magic library to detect MIME type
             mime_type = magic.from_buffer(file_content[:1024], mime=True)
             
             if mime_type not in self.allowed_mime_types:
@@ -50,7 +47,6 @@ class FileValidator:
                 detail=f"Could not determine file type: {str(e)}"
             )
         except Exception as e:
-            # Fallback to content type if magic fails
             raise HTTPException(
                 status_code=415,
                 detail=f"File type validation failed: {str(e)}"
@@ -60,7 +56,6 @@ class FileValidator:
     @validate_input_not_none
     @handle_validation_errors
     def validate_filename(self, filename: str) -> str:
-        """Validate and sanitize filename."""
         if not filename or filename.strip() == "":
             raise HTTPException(
                 status_code=422,
@@ -69,14 +64,12 @@ class FileValidator:
         
         filename = filename.strip()
         
-        # Check length
         if len(filename) > 255:
             raise HTTPException(
                 status_code=422,
                 detail="Filename too long (maximum 255 characters)"
             )
         
-        # Check for dangerous characters
         dangerous_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|', '\0']
         for char in dangerous_chars:
             if char in filename:
@@ -85,14 +78,12 @@ class FileValidator:
                     detail=f"Filename contains invalid character: {repr(char)}"
                 )
         
-        # Check for path traversal attempts
         if '..' in filename:
             raise HTTPException(
                 status_code=422,
                 detail="Filename contains path traversal attempt"
             )
         
-        # Check for reserved names (Windows + Unix)
         reserved_names = [
             'CON', 'PRN', 'AUX', 'NUL',
             'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9',
@@ -109,7 +100,6 @@ class FileValidator:
     
     @handle_validation_errors
     def validate_extension(self, filename: str, allowed_extensions: list = None) -> str:
-        """Validate file extension (optional)."""
         if allowed_extensions is None:
             allowed_extensions = ['.jpg', '.jpeg', '.png', '.webp']
         
