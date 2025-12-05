@@ -391,6 +391,7 @@ class ProductService:
         failed_count = 0
         for result in results:
             if result.success:
+                print('inja file upload shode, result.url: ', result.url)
                 new_image_urls.append(result.url)
                 self.logger.info(f"Image uploaded for product {product_id}: {result.url}")
             else:
@@ -398,6 +399,7 @@ class ProductService:
                 self.logger.error(f"Image upload failed: {result.error}")
         
         all_images = product.images + new_image_urls
+        print('inja all_images:', all_images)
         await self.product_repository.update_product_images(product_id, all_images)
         
         response_data = {

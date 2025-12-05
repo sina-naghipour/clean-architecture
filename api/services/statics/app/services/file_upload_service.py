@@ -97,6 +97,7 @@ class FileUploadService:
     @handle_get_errors
     def get_file_path(self, file_id: str) -> Path:
         file_info = self.metadata_updater.get_file(file_id)
+        print('file_info in get_file_path: ', file_info)
         return self.upload_dir / file_info["path"]
     
     @handle_get_errors

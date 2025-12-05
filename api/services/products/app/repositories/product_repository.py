@@ -33,6 +33,7 @@ class ProductRepository:
                 return None
             
             product_dict = product_data.to_dict()
+            print('product_dict: ', product_dict)
             result = await collection.insert_one(product_dict)
             
             if result.inserted_id:
@@ -201,13 +202,10 @@ class ProductRepository:
             raise
         
     async def update_product_images(self, product_id: str, images: List[str]) -> bool:
-        """
-        Update the images array for a product
-        """
         try:
             collection = await self._get_collection()
             self.logger.info(f"Updating images for product: {product_id}")
-            
+            print('alan toye update_product_images hastim, images:', images)
             result = await collection.update_one(
                 {"_id": product_id},
                 {

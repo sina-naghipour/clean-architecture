@@ -105,19 +105,21 @@ class ProductImageClient:
     async def validate_image(self, image_url: str) -> bool:
         try:
             if '/static/img/' in image_url:
-                file_id = image_url.split('/')[-1].split('.')[0]
-                response = await self.client.head(f"{self.base_url}/files/{file_id}")
+                filename = image_url.split('/')[-1]
+                file_id = filename.split('.')[0]
+                print(f"{self.base_url}/files/{file_id}")
+                response = await self.client.get(f"{self.base_url}/files/{file_id}")
                 return response.status_code == 200
             
             elif image_url.startswith('http'):
-                response = await self.client.head(image_url, timeout=5.0)
+                response = await self.client.get(image_url, timeout=5.0)
                 return response.status_code == 200
             
             return False
             
         except Exception:
             return False
-    
+
     def extract_file_id(self, image_url: str) -> Optional[str]:
         try:
             if '/static/img/' in image_url:
