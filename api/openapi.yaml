@@ -5,7 +5,12 @@ info:
   description: Ecommerce API with Product Image Management
 servers:
   - url: http://localhost:8000/api
+  - url: http://localhost:8003/
 tags:
+  - name: Health
+    description: Service health endpoints
+  - name: Root
+    description: Root information
   - name: Auth
     description: Authentication & token endpoints
   - name: Products
@@ -23,6 +28,70 @@ security:
   - bearerAuth: []
 
 paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      responses:
+        "200":
+          description: Service health status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  service:
+                    type: string
+                  timestamp:
+                    type: string
+                  environment:
+                    type: string
+
+  /ready:
+    get:
+      tags: [Health]
+      summary: Readiness check
+      responses:
+        "200":
+          description: Service readiness status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  service:
+                    type: string
+                  timestamp:
+                    type: string
+
+  /info:
+    get:
+      tags: [Root]
+      summary: Service information
+      responses:
+        "200":
+          description: Service info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  version:
+                    type: string
+                  environment:
+                    type: string
+                  docs:
+                    type: string
+                  health:
+                    type: string
+                  ready:
+                    type: string
 
   /auth/register:
     post:
@@ -89,12 +158,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  accessToken:
-                    type: string
-                  refreshToken:
-                    type: string
+                $ref: "#/components/schemas/TokenResponse"
               examples:
                 success:
                   value:
@@ -116,19 +180,22 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                refreshToken:
-                  type: string
+              $ref: "#/components/schemas/RefreshTokenRequest"
+            examples:
+              example:
+                value:
+                  refreshToken: "rft_abcdef"
       responses:
         "200":
           description: New access token
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  accessToken: { type: string }
+                $ref: "#/components/schemas/AccessTokenResponse"
+              examples:
+                success:
+                  value:
+                    accessToken: "eyJhbGciOi..."
         "400": 
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -164,6 +231,25 @@ paths:
           schema:
             type: string
           description: Full-text search across name & description
+        - in: query
+          name: tags
+          schema:
+            type: array
+            items:
+              type: string
+          description: Filter by tags
+        - in: query
+          name: min_price
+          schema:
+            type: number
+            minimum: 0
+          description: Minimum price filter
+        - in: query
+          name: max_price
+          schema:
+            type: number
+            minimum: 0
+          description: Maximum price filter
       responses:
         "200":
           description: Paginated product list
@@ -179,8 +265,12 @@ paths:
                         name: "Laptop"
                         price: 1299.99
                         stock: 5
-                        images: []
-                        primaryImageId: null
+                        description: "High-performance laptop"
+                        tags: ["electronics", "computer"]
+                        images: ["/static/img/products/prod_1/image1.jpg"]
+                        primaryImageId: "img_123"
+                        created_at: "2023-10-01T12:00:00Z"
+                        updated_at: "2023-10-01T12:00:00Z"
                     total: 1
                     page: 1
                     pageSize: 20
@@ -205,6 +295,8 @@ paths:
                   price: 29.99
                   stock: 100
                   description: "Ergonomic mouse"
+                  tags: ["electronics", "peripheral"]
+                  images: []
       responses:
         "201":
           description: Product created
@@ -226,8 +318,11 @@ paths:
                     price: 29.99
                     stock: 100
                     description: "Ergonomic mouse"
+                    tags: ["electronics", "peripheral"]
                     images: []
                     primaryImageId: null
+                    created_at: "2023-10-01T12:00:00Z"
+                    updated_at: "2023-10-01T12:00:00Z"
         "400": 
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -260,8 +355,11 @@ paths:
                     price: 29.99
                     stock: 100
                     description: "Ergonomic mouse"
-                    images: []
-                    primaryImageId: null
+                    tags: ["electronics", "peripheral"]
+                    images: ["/static/img/products/prod_42/image1.jpg"]
+                    primaryImageId: "img_123"
+                    created_at: "2023-10-01T12:00:00Z"
+                    updated_at: "2023-10-01T12:00:00Z"
         "404":
           $ref: "#/components/responses/NotFound"
         "500":
@@ -391,9 +489,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /products/{productId}/images:
-    parameters:
-      - $ref: "#/components/parameters/ProductId"
+  /files:
     post:
       tags: [Product Images]
       summary: Upload product image (admin)
@@ -462,7 +558,7 @@ paths:
                     title: "File Too Large"
                     status: 413
                     detail: "File size exceeds maximum allowed size of 5MB"
-                    instance: "/products/prod_42/images"
+                    instance: "/files"
         "415":
           description: Unsupported media type
           content:
@@ -476,7 +572,7 @@ paths:
                     title: "Unsupported Media Type"
                     status: 415
                     detail: "Only JPEG, PNG, and WebP images are supported"
-                    instance: "/products/prod_42/images"
+                    instance: "/files"
         "422":
           $ref: "#/components/responses/UnprocessableEntity"
         "500":
@@ -485,8 +581,6 @@ paths:
     get:
       tags: [Product Images]
       summary: List product images
-      parameters:
-        - $ref: "#/components/parameters/ProductId"
       responses:
         "200":
           description: Product images list
@@ -510,20 +604,16 @@ paths:
                       isPrimary: true
                       url: "/static/img/products/prod_42/prod_42_abc123.jpg"
                       uploadedAt: "2023-10-01T12:00:00Z"
-        "404":
-          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /products/{productId}/images/{imageId}:
+  /files/{fileId}:
     parameters:
-      - $ref: "#/components/parameters/ProductId"
-      - name: imageId
+      - name: fileId
         in: path
         required: true
         schema:
           type: string
-          format: uuid
     get:
       tags: [Product Images]
       summary: Get product image metadata
@@ -558,15 +648,13 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /products/{productId}/images/{imageId}/primary:
+  /files/{fileId}/primary:
     parameters:
-      - $ref: "#/components/parameters/ProductId"
-      - name: imageId
+      - name: fileId
         in: path
         required: true
         schema:
           type: string
-          format: uuid
     patch:
       tags: [Product Images]
       summary: Set image as primary for product (admin)
@@ -609,10 +697,10 @@ paths:
                     id: "cart_123"
                     items:
                       - id: "item_1"
-                        productId: "prod_42"
+                        product_id: "prod_42"
                         name: "Wireless Mouse"
                         quantity: 2
-                        unitPrice: 29.99
+                        unit_price: 29.99
                     total: 59.98
         "401":
           $ref: "#/components/responses/Unauthorized"
@@ -649,7 +737,7 @@ paths:
             examples:
               example:
                 value:
-                  productId: "prod_42"
+                  product_id: "prod_42"
                   quantity: 2
       responses:
         "201":
@@ -668,7 +756,7 @@ paths:
                 success:
                   value:
                     id: "item_1"
-                    productId: "prod_42"
+                    product_id: "prod_42"
                     quantity: 2
         "400": 
           $ref: "#/components/responses/BadRequest"
@@ -767,6 +855,14 @@ paths:
                     id: "order_1001"
                     status: "created"
                     total: 59.98
+                    billing_address_id: "addr_1"
+                    shipping_address_id: "addr_1"
+                    items:
+                      - product_id: "prod_42"
+                        name: "Wireless Mouse"
+                        quantity: 2
+                        unit_price: 29.99
+                    created_at: "2023-10-01T12:00:00Z"
         "400": 
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -784,8 +880,19 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/page"
-        - $ref: "#/components/parameters/pageSize"
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
       responses:
         "200":
           description: Orders list
@@ -800,9 +907,17 @@ paths:
                       - id: "order_1001"
                         status: "created"
                         total: 59.98
+                        billing_address_id: "addr_1"
+                        shipping_address_id: "addr_1"
+                        items:
+                          - product_id: "prod_42"
+                            name: "Wireless Mouse"
+                            quantity: 2
+                            unit_price: 29.99
+                        created_at: "2023-10-01T12:00:00Z"
                     total: 1
                     page: 1
-                    pageSize: 20
+                    page_size: 20
         "401":
           $ref: "#/components/responses/Unauthorized"
         "500":
@@ -823,194 +938,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OrderResponse"
-              examples:
-                success:
-                  value:
-                    id: "order_1001"
-                    status: "created"
-                    total: 59.98
-                    items:
-                      - productId: "prod_42"
-                        name: "Wireless Mouse"
-                        quantity: 2
-                        unitPrice: 29.99
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
-  /profile:
-    get:
-      tags: [Profile]
-      summary: Get user profile
-      security:
-        - bearerAuth: []
-      responses:
-        "200":
-          description: Profile returned
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UserResponse"
-              examples:
-                success:
-                  value:
-                    id: "user_123"
-                    email: "alice@example.com"
-                    name: "Alice"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
-    patch:
-      tags: [Profile]
-      summary: Partially update profile
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/ProfileUpdate"
-      responses:
-        "200":
-          description: Profile updated
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UserResponse"
-        "400": 
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "422":
-          $ref: "#/components/responses/UnprocessableEntity"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
-  /profile/password:
-    patch:
-      tags: [Profile]
-      summary: Change password
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/PasswordChange"
-      responses:
-        "200":
-          description: Password changed
-        "400": 
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "422":
-          $ref: "#/components/responses/UnprocessableEntity"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
-  /profile/addresses:
-    get:
-      tags: [Profile]
-      summary: List user addresses
-      security:
-        - bearerAuth: []
-      responses:
-        "200":
-          description: Addresses returned
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/AddressResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
-    post:
-      tags: [Profile]
-      summary: Create new address
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AddressRequest"
-      responses:
-        "201":
-          description: Address created
-          headers:
-            Location:
-              description: URI of created address
-              schema:
-                type: string
-                format: uri
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AddressResponse"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "422":
-          $ref: "#/components/responses/UnprocessableEntity"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
-  /profile/addresses/{addressId}:
-    parameters:
-      - $ref: "#/components/parameters/AddressId"
-    patch:
-      tags: [Profile]
-      summary: Update address
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AddressRequest"
-      responses:
-        "200":
-          description: Address updated
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AddressResponse"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "422":
-          $ref: "#/components/responses/UnprocessableEntity"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
-    delete:
-      tags: [Profile]
-      summary: Delete address
-      security:
-        - bearerAuth: []
-      responses:
-        "204":
-          description: Address deleted
-        "400":
-          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -1045,6 +972,7 @@ components:
       required: true
       schema:
         type: string
+        format: uuid
     AddressId:
       name: addressId
       in: path
@@ -1204,6 +1132,23 @@ components:
         password: { type: string }
       required: [email, password]
 
+    RefreshTokenRequest:
+      type: object
+      properties:
+        refreshToken: { type: string }
+      required: [refreshToken]
+
+    TokenResponse:
+      type: object
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+
+    AccessTokenResponse:
+      type: object
+      properties:
+        accessToken: { type: string }
+
     UserResponse:
       type: object
       properties:
@@ -1225,6 +1170,14 @@ components:
         price: { type: number, minimum: 0 }
         stock: { type: integer, minimum: 0 }
         description: { type: string }
+        tags: 
+          type: array
+          items:
+            type: string
+        images: 
+          type: array
+          items:
+            type: string
       required: [name, price]
 
     ProductPatch:
@@ -1236,6 +1189,14 @@ components:
         price: { type: number, minimum: 0 }
         stock: { type: integer, minimum: 0 }
         description: { type: string }
+        tags: 
+          type: array
+          items:
+            type: string
+        images: 
+          type: array
+          items:
+            type: string
 
     ProductResponse:
       type: object
@@ -1245,14 +1206,23 @@ components:
         price: { type: number }
         stock: { type: integer }
         description: { type: string }
+        tags: 
+          type: array
+          items:
+            type: string
         images:
           type: array
           items:
-            $ref: "#/components/schemas/ProductImage"
+            type: string
         primaryImageId: 
           type: string
-          format: uuid
           nullable: true
+        created_at: 
+          type: string
+          format: date-time
+        updated_at: 
+          type: string
+          format: date-time
 
     ProductList:
       type: object
@@ -1315,6 +1285,15 @@ components:
         - url
         - uploadedAt
 
+    ProductImageList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductImage"
+        total: { type: integer }
+
     InventoryUpdate:
       type: object
       properties:
@@ -1330,9 +1309,9 @@ components:
     CartItemRequest:
       type: object
       properties:
-        productId: { type: string }
+        product_id: { type: string }
         quantity: { type: integer, minimum: 1 }
-      required: [productId, quantity]
+      required: [product_id, quantity]
 
     CartItemUpdate:
       type: object
@@ -1344,9 +1323,10 @@ components:
       type: object
       properties:
         id: { type: string }
-        productId: { type: string }
+        product_id: { type: string }
+        name: { type: string }
         quantity: { type: integer }
-        unitPrice: { type: number }
+        unit_price: { type: number }
 
     CartResponse:
       type: object
@@ -1365,6 +1345,14 @@ components:
         shippingAddressId: { type: string }
         paymentMethodToken: { type: string }
 
+    OrderItem:
+      type: object
+      properties:
+        product_id: { type: string }
+        name: { type: string }
+        quantity: { type: integer }
+        unit_price: { type: number }
+
     OrderResponse:
       type: object
       properties:
@@ -1373,15 +1361,13 @@ components:
           type: string
           enum: [created, paid, shipped, canceled]
         total: { type: number }
+        billing_address_id: { type: string }
+        shipping_address_id: { type: string }
         items:
           type: array
           items:
-            type: object
-            properties:
-              productId: { type: string }
-              name: { type: string }
-              quantity: { type: integer }
-              unitPrice: { type: number }
+            $ref: "#/components/schemas/OrderItem"
+        created_at: { type: string, format: date-time }
 
     OrderList:
       type: object
@@ -1392,7 +1378,7 @@ components:
             $ref: "#/components/schemas/OrderResponse"
         total: { type: integer }
         page: { type: integer }
-        pageSize: { type: integer }
+        page_size: { type: integer }
 
     ProfileUpdate:
       type: object
