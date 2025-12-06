@@ -1,0 +1,9 @@
+pytest
+fastapi
+python-magic
+filetype
+pytest-asyncio
+httpx
+uvicorn
+python-multipart
+pytest-cov
