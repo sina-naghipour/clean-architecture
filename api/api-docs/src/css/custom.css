@@ -1,0 +1,182 @@
+/**
+ * Any CSS included here will be global. The classic template
+ * bundles Infima by default. Infima is a CSS framework designed to
+ * work well for content-centric websites.
+ */
+
+/* You can override the default Infima variables here. */
+:root {
+  --ifm-color-primary: #2e8555;
+  --ifm-color-primary-dark: #29784c;
+  --ifm-color-primary-darker: #277148;
+  --ifm-color-primary-darkest: #205d3b;
+  --ifm-color-primary-light: #33925d;
+  --ifm-color-primary-lighter: #359962;
+  --ifm-color-primary-lightest: #3cad6e;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+}
+
+/* For readability concerns, you should choose a lighter palette in dark mode. */
+[data-theme='dark'] {
+  --ifm-color-primary: #25c2a0;
+  --ifm-color-primary-dark: #21af90;
+  --ifm-color-primary-darker: #1fa588;
+  --ifm-color-primary-darkest: #1a8870;
+  --ifm-color-primary-light: #29d5b0;
+  --ifm-color-primary-lighter: #32d8b4;
+  --ifm-color-primary-lightest: #4fddbf;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+:root {
+  /* Your color scheme */
+  --color-primary: #1B211A;    /* Dark green/black - background */
+  --color-secondary: #628141;  /* Olive green */
+  --color-accent: #8BAE66;     /* Light green */
+  --color-highlight: #8BAE66;  /* Light green (duplicate from your input) */
+  --color-text: #EBD5AB;       /* Cream/beige - text */
+  
+  /* Generated variations */
+  --color-primary-light: #2a3229;
+  --color-primary-lighter: #3a4339;
+  --color-secondary-light: #7a9d5d;
+  --color-secondary-dark: #4a6533;
+  --color-accent-light: #a5c88a;
+  --color-accent-dark: #719454;
+  --color-text-muted: #c9b489;
+  
+  /* API specific */
+  --api-get: #10b981;
+  --api-post: #3b82f6;
+  --api-put: #f59e0b;
+  --api-patch: #8b5cf6;
+  --api-delete: #ef4444;
+}
+
+/* Dark mode is default with your scheme */
+[data-theme='dark'] {
+  --ifm-color-primary: var(--color-accent);
+  --ifm-color-primary-dark: var(--color-accent-dark);
+  --ifm-color-primary-darker: var(--color-secondary);
+  --ifm-color-primary-darkest: var(--color-secondary-dark);
+  --ifm-color-primary-light: var(--color-accent-light);
+  --ifm-color-primary-lighter: var(--color-accent-light);
+  --ifm-color-primary-lightest: var(--color-accent-light);
+  --ifm-background-color: var(--color-primary);
+  --ifm-background-surface-color: var(--color-primary-light);
+  --ifm-color-content: var(--color-text);
+  --ifm-color-content-secondary: var(--color-text-muted);
+  --ifm-heading-color: var(--color-text);
+  --ifm-code-background: var(--color-primary-lighter);
+  --ifm-link-color: var(--color-accent);
+  --ifm-footer-background-color: var(--color-primary);
+  --ifm-navbar-background-color: var(--color-primary);
+  --ifm-menu-color-background-active: var(--color-primary-lighter);
+  --ifm-menu-color-background-hover: var(--color-primary-light);
+}
+
+/* Light mode adaptation */
+[data-theme='light'] {
+  --ifm-color-primary: var(--color-secondary);
+  --ifm-color-primary-dark: var(--color-secondary-dark);
+  --ifm-background-color: #ffffff;
+  --ifm-background-surface-color: #f8f9fa;
+  --ifm-color-content: #1c1e21;
+  --ifm-navbar-background-color: #ffffff;
+  --ifm-footer-background-color: #f8f9fa;
+}
+
+/* API method badges */
+.openapi-card__header-method-get {
+  background-color: var(--api-get) !important;
+}
+.openapi-card__header-method-post {
+  background-color: var(--api-post) !important;
+}
+.openapi-card__header-method-put {
+  background-color: var(--api-put) !important;
+}
+.openapi-card__header-method-patch {
+  background-color: var(--api-patch) !important;
+}
+.openapi-card__header-method-delete {
+  background-color: var(--api-delete) !important;
+}
+
+/* Custom styling for code blocks */
+.token-line {
+  color: var(--color-text);
+}
+
+/* Custom table styling */
+table {
+  border: 1px solid var(--color-secondary);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+table th {
+  background-color: var(--color-primary-light);
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+table tr:nth-child(even) {
+  background-color: var(--color-primary-lighter);
+}
+
+/* Endpoint cards */
+.api-endpoint-card {
+  background: var(--color-primary-light);
+  border: 1px solid var(--color-secondary);
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+  transition: all 0.2s ease;
+}
+
+.api-endpoint-card:hover {
+  border-color: var(--color-accent);
+  box-shadow: 0 4px 12px rgba(139, 174, 102, 0.2);
+}
+
+/* Request/Response examples */
+.example-tabs {
+  border: 1px solid var(--color-secondary);
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 1rem 0;
+}
+
+.example-tab-header {
+  background: var(--color-primary-light);
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--color-secondary);
+  font-weight: 600;
+}
+
+.example-tab-content {
+  padding: 1rem;
+  background: var(--color-primary);
+}
+
+/* Authentication badge */
+.auth-badge {
+  display: inline-block;
+  background: var(--color-secondary);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin: 0 0.5rem;
+}
+
+/* Status code styling */
+.status-200 { color: var(--api-get); }
+.status-201 { color: var(--api-post); }
+.status-400 { color: #f59e0b; }
+.status-401, .status-403 { color: #ef4444; }
+.status-404 { color: #8b5cf6; }
+.status-500 { color: #dc2626; }
