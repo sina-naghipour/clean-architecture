@@ -183,3 +183,68 @@ python-magic
 # this
 python-magic-bin
 ```
+
+## Docusaurus Regeneration
+
+docusaurus has compatibility issues between `docusaurus-plugin-openapi-docs` and `docusaurus-theme-openapi-docs` if ever ran into any kind of problems, you could generate docusuarus all over again using commands below:
+
+### 1. Downgrade Docusaurus to 3.8.1:
+
+**Remove current versions**
+```bash
+yarn remove @docusaurus/core @docusaurus/preset-classic
+```
+**Install compatible versions**
+```bash
+yarn add @docusaurus/core@3.8.1 @docusaurus/preset-classic@3.8.1 @docusaurus/module-type-aliases@3.8.1
+```
+**Also update/create-react-app if you have it**
+```bash
+yarn add react@^18 react-dom@^18
+```
+### 2. Update your package.json dependencies:
+Make sure it looks like this:
+
+```json
+{
+  "dependencies": {
+    "@docusaurus/core": "3.8.1",
+    "@docusaurus/preset-classic": "3.8.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "docusaurus-plugin-openapi-docs": "4.5.1",
+    "docusaurus-theme-openapi-docs": "4.5.1"
+  },
+  "devDependencies": {
+    "@docusaurus/module-type-aliases": "3.8.1"
+  }
+}
+```
+### 3. Clear everything and reinstall:
+
+**Remove node_modules and lock files**
+```bash
+rm -rf node_modules
+rm -f yarn.lock package-lock.json
+```
+
+**Clear Docusaurus cache**
+```bash
+rm -rf .docusaurus
+```
+**Reinstall**
+```bash
+yarn install
+```
+
+**Regenerate API docs**
+```bash
+yarn docusaurus gen-api-docs api
+```
+
+**Start**
+```bash
+yarn start
+```
+### 4. Alternative: Check for newer OpenAPI plugin version:
+Sometimes there might be a newer version that supports Docusaurus 3.9.2:
