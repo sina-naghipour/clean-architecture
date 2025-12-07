@@ -1,0 +1,71 @@
+---
+id: partially-update-product-admin
+title: "Partially update product (admin)"
+description: "Partially update product (admin)"
+sidebar_label: "Partially update product (admin)"
+hide_title: true
+hide_table_of_contents: true
+api: eJztWM1uGzcQfhWClySobMk/AWrdnNRGFSCpINvtwTACaklJjLnkluQ6VoUF+hB9wj5JZ5b7Q0lrwap76MEXaZecIWe+7yOXnBX1bO7o8JaOreF54h2961EnktxKv4T2FZ0KZoU9z/0CXu8K6Lbi91w4/8FwsFiVr9IKTofe5qJHE6O90B67WJYpmTAvje5/c0Zjm0sWImX45JeZoENqpt9E4mmPcuESKzO0huYxs14yRbIQGMkzzrwgf//5FzFaLYnLcXDB0SATYCscgUhJaricQTsMyDiXOBpT48aGDmdMOQgzi5pWVLNURDE5b6We0wLNZBL36DydCguDp1LLNE/pcABWzpvkPrKSAMF822wtw47JAhlNB7OWLWEM6UXqOhzAQ6ZsLvbywWmkV9hWcT5mPllgT4HcusxoF4Y8Hgzwb4OXNT4Q5n9N+DoFkndisi8zO9j4nzBQhp4yuxyh66gjbcg6V4pNkSVcVOCSWIFwf2W+y3xmbIo9FDk58BIgA5+Koj18tsUxqQRR6eO0SxIfGCfVpvC0HIBsyCf9oUMW7Yxo8ZPwTCoHI+3WS+jdkRfsYbRNqINs55nP3VNCwSg63aQGR508Y/KiF+2Ot8G4DqiZ/g6sxCNLMxXymjI+qcCEtwem8nimhfeZG/b7lcdhYtK+sNZY1wfHg5aGGlUkZ9K01ikDj22O9DNTGDhspp+ufvlCprCzH9I4UdrP6u9DUdRKONpWwo1m8KEwVv6xa2d4lcIzpZDHcO4nhnydiRrYDYJaORzFcpDOQQ7EWCI1zCk5Oa+8SgLJQjAu7KZEcOS+MnOpI5GcbIvk0tip5FzoV4W8WCGzBsv95DGLOKghjXlphXESCWOkXT6byUQCZQTQTVEo8HV4xmZxuq2DL8aTS5Pr153i5TrQxgco95MBuB3MKgpqRGNaWhmcRjKAM4HJbSIIuJPS/SkBlA9fz87OWiUcH28r4VfcY8LWUgb2KogXC+KhgXRPSUSOrSYigmaQ0Pq34/g40salFIqTN0CKVG+IdKQOvfNrYcVcOo9YVfJ433W+HAGgFm5x5ErYB2HJxatG/hONuBLOgOZ+IpEVI5FEniKpTv392onzRovHDLCGI2eIIiz8TZEYC+eM+jOyeX2rSwRqWRcH6lrBW8bh3v0OiWQW7o8eB8FiRrhM0spuxMvpsIH5Be1tlTK2rq7NHe4ObvYCjkQ8OCeLci6skUSb36qZp0AgyjxDHLlVFcCArzIJUwvj/PDHwWDQZxmKaZfNSZ8WUZnmCqOs7g5RsWaNR1olg+/BCFrCw2UtpE+/XZdCwnUzaWs8F4H+tkrSarC6gg+aK/dgk6LGtK4zVQ137cW5bSsVPzPxSr0A0aUCvzXn4xEMgwiGkY8Ojw4HW1WjNXvyXfoFqQsW5W2bfGYa/lLcNvAiDoimTEe5PUNT3TUELx59P1MMT7+9QN6qksQtbQ5EPTpsxQcgIKVosFpNmRM3VhUFNgP4Fstv8PjArAyVANANlw6feVPF2oil2RHp20ml5Xek3d/WY6zrFRqrFdXip/B4L5Zra6RAYsKRvwwi9H8MUx1ch62m9t+qAKGUg8d5kojM77SNl9X4/Prjz6jSqs6YGo5Oln3HlQq/ZbCmzL0Uf9m2oorpeQ4cQ38YFDXN1pfExhIo0+qEA3gpLa7NvdBF0aDj8R2RKYp/APlmV9c=
+sidebar_class_name: "patch api-method"
+info_path: docs/ecommerce/ecommerce-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Partially update product (admin)"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"patch"}
+  path={"/products/{productId}"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Partially update product (admin)
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"productId","in":"path","required":true,"schema":{"type":"string"}}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={{"required":true,"content":{"application/json":{"schema":{"type":"object","description":"Partial product update — only supplied properties are modified","additionalProperties":false,"properties":{"name":{"type":"string"},"price":{"type":"number","minimum":0},"stock":{"type":"integer","minimum":0},"description":{"type":"string"},"tags":{"type":"array","items":{"type":"string"}},"images":{"type":"array","items":{"type":"string"}}},"title":"ProductPatch"}}}}}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"Product updated","content":{"application/json":{"schema":{"type":"object","properties":{"id":{"type":"string"},"name":{"type":"string"},"price":{"type":"number"},"stock":{"type":"integer"},"description":{"type":"string"},"tags":{"type":"array","items":{"type":"string"}},"images":{"type":"array","items":{"type":"string"}},"primaryImageId":{"type":"string","nullable":true},"created_at":{"type":"string","format":"date-time"},"updated_at":{"type":"string","format":"date-time"}},"title":"ProductResponse"}}}},"400":{"description":"Bad request","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"badRequest":{"value":{"type":"https://example.com/errors/bad-request","title":"Bad Request","status":400,"detail":"Malformed JSON body.","instance":"/products"}}}}}},"401":{"description":"Unauthorized","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"unauthorized":{"value":{"type":"https://example.com/errors/unauthorized","title":"Unauthorized","status":401,"detail":"Missing or invalid Authorization header.","instance":"/auth/login"}}}}}},"403":{"description":"Forbidden","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"forbidden":{"value":{"type":"https://example.com/errors/forbidden","title":"Forbidden","status":403,"detail":"Insufficient permissions.","instance":"/products"}}}}}},"404":{"description":"Not Found","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"notFound":{"value":{"type":"https://example.com/errors/not-found","title":"Not Found","status":404,"detail":"Resource not found.","instance":"/products/prod_999"}}}}}},"422":{"description":"Validation error","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"validation":{"value":{"type":"https://example.com/errors/validation","title":"Validation failed","status":422,"detail":"Field 'email' is required.","instance":"/auth/register"}}}}}},"500":{"description":"Internal Server Error","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"serverError":{"value":{"type":"https://example.com/errors/internal","title":"Internal Server Error","status":500,"detail":"Unexpected server error.","instance":"/orders"}}}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

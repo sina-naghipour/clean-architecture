@@ -1,0 +1,71 @@
+---
+id: list-products-supports-paging-filtering
+title: "List products (supports paging & filtering)"
+description: "List products (supports paging & filtering)"
+sidebar_label: "List products (supports paging & filtering)"
+hide_title: true
+hide_table_of_contents: true
+api: eJylVm2L4zYQ/itGH0pLk9jOstDNt4XutVvuYOneUWgIi2IrjvZkSyvJ16Qh/70zkp3YiRyavWUhsjQzjzTzzMuOWFoYMpuTJy3zOrOGLEZEUU1LZpnGkx2p4IPMYLdgZER4Beu3muktfJhszUpKZjtitwqFeGVZwTQclbziZV2SWToiOVvRWlhY7/ejnsFn/u97jZZ006yTpAMxTRxGz2ID+BYybqzmVUH2aMJkmivLJep+qIUYW7axkWFUZ+uIZloaE6Gt6IeoKzyE53wbgKRaUxTjlpUmcJXzu3AB0YiW28iZHMID77wozTMWAq3qctn3YXKG88kfRc5ItHKow2h0851oPoAnaMA/zYySlWHON9MkwZ++6hMteEUty0HZ8TYS3FiAyyRwpbKoQZUSPKOoEb8aVNud31MuX1mGimBHMW25Bz2NzFDEhtTzIMG84wIH3o1n3oMTY2X2NZAKp84MGPWZfQ3peAkZeaUOXL2kevuIqo+BZ8OrIZHoUsCe1TUDlUwzDN0LtSHxldQlnpAchMaWg8tAp1b5lTroAW4Rtq1tfza08mfSUhF2rCt0gyeuYgVOz/E+IiVhm21oqYR3rKmzjBm3/EZFzTpkm3veIJXyl/SYZx+pslKRA0vS6d3d5O7uwI3b07z6nRfrMbDReaWC1BKthbbYMwGs1bLimXE5U6oac29xpMCcxMZC7mQxL4u4STIT+7vFTiqdvKrCtYsTCoCR4iWd3pB+qCGTpzfjNBkn6ed0OksS+P+b9EMblsGa0MQrbcOTdqOBNR//RuQ2VC0eIUa6oiJ6Zvob1NEHraUeLhbwSKBr+XOgaBwDjBK/Mku5QBdeLgf+9AJta83JkT+BXMZY1GaoDuAtgmq8AsUq+x/ge6y6bzXXLMfgO+H2Qgf4xSmZnTu9N7uEbqDW1iozi+NGZQI8ixkKm5g3ESHHpBkKUvv0W9/l/VvJl4ptFPgaOoC/ReQsT0j30SSWOscpZt/So88LTNC2gZjoR1MrJTWsFHaXApq870mw/gk7GbNrifQumAsxtWuEaPXxqu4mPpVrLRoXgAeEzKhYS2NnvyRJElPFXVcdlrmJHekNyyA6dussLmEMYfq+Rtj5onv8jAT1IekK9QLRNmn89kKw4xcfWib88ddn3weqlezS/QEiVzINleT+6RHU8JHeg+kknSTk1K89+egfbtdRUxIjVySiT7SCnxJzD6sqPBoKFSK2Je+qwIQbIY5usRKUV65/aJchPmhzojrTLvoc93a7JTXsixb7PW77aQcdn3OD/QtCv6LCsBH5yrbHebhhPXERvSDaTLqXxU+ecihQ10yjo7AH/E3evuMK/SH0Ikwj8U6k4Bh6Ea87+b4XNDSNXgbtDMBH0AV+aO4nnjmWzDWjUIUclbziPcwAyna0zkZVtHKoN789YFr+B8bLosk=
+sidebar_class_name: "get api-method"
+info_path: docs/ecommerce/ecommerce-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"List products (supports paging & filtering)"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"get"}
+  path={"/products"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+List products (supports paging & filtering)
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"page","in":"query","schema":{"type":"integer","minimum":1,"default":1}},{"name":"pageSize","in":"query","schema":{"type":"integer","minimum":1,"maximum":100,"default":20}},{"in":"query","name":"q","schema":{"type":"string"},"description":"Full-text search across name & description"},{"in":"query","name":"tags","schema":{"type":"array","items":{"type":"string"}},"description":"Filter by tags"},{"in":"query","name":"min_price","schema":{"type":"number","minimum":0},"description":"Minimum price filter"},{"in":"query","name":"max_price","schema":{"type":"number","minimum":0},"description":"Maximum price filter"}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={undefined}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"Paginated product list","content":{"application/json":{"schema":{"type":"object","properties":{"items":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"name":{"type":"string"},"price":{"type":"number"},"stock":{"type":"integer"},"description":{"type":"string"},"tags":{"type":"array","items":{"type":"string"}},"images":{"type":"array","items":{"type":"string"}},"primaryImageId":{"type":"string","nullable":true},"created_at":{"type":"string","format":"date-time"},"updated_at":{"type":"string","format":"date-time"}},"title":"ProductResponse"}},"total":{"type":"integer"},"page":{"type":"integer"},"pageSize":{"type":"integer"}},"title":"ProductList"},"examples":{"success":{"value":{"items":[{"id":"prod_1","name":"Laptop","price":1299.99,"stock":5,"description":"High-performance laptop","tags":["electronics","computer"],"images":["/static/img/products/prod_1/image1.jpg"],"primaryImageId":"img_123","created_at":"2023-10-01T12:00:00Z","updated_at":"2023-10-01T12:00:00Z"}],"total":1,"page":1,"pageSize":20}}}}}},"500":{"description":"Internal Server Error","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"serverError":{"value":{"type":"https://example.com/errors/internal","title":"Internal Server Error","status":500,"detail":"Unexpected server error.","instance":"/orders"}}}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

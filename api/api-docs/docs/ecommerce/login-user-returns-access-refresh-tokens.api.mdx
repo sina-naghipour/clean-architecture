@@ -1,0 +1,71 @@
+---
+id: login-user-returns-access-refresh-tokens
+title: "Login user (returns access + refresh tokens)"
+description: "Login user (returns access + refresh tokens)"
+sidebar_label: "Login user (returns access + refresh tokens)"
+hide_title: true
+hide_table_of_contents: true
+api: eJztVk1vGzcQ/SsETymiaOWkAYI92WndwkYTC5aNHgSh4O6OJCa75Ibk+iOC/ntnSK5EybIQoz1GB4kiZ4bD9x6Hs+JOLCzPp/ysc0s+G3AD3zqw7qOuHnm+8n+lgYrnznQw4KVWDpSjJdG2tSyFk1plX6xWNGfLJTSCRu6xBZ5zXXyB0vEBb41uwTgJllbRSNaJmXVGqgWazbVpBIaPFmt0FNbea1M9tV6vB0l+0+iSeOBxnHQ1ufylF1Jdh7NRVHgQTVvHZMKYhnei7iBJkAs8IpxGi2GpmzR+zifvys7A+NRazIY+lJFttbIh9NvRiH4qsKWRLUGFTjf6KyjLDLjOKEz9f0NVlCVY68MfQItSm2N2y+cM1lu4vMl1PMk+Xrbz++zgtbM1h8fLZfFnKa/kcDjk+xtzM3f/iKKsYL5B7ddDQH0UFYt6fB4khKCooXl9AKx4mHGw+B0ccmox0nEUw+oRaXZG8i1WB3C2TrguicUlZr4AQ2uVz+Kgm1ToqMof2HxP+N64T2iz/WyPtkJU/QVImYs7LZ1rbZ5lidQzMEYbm6Hjmy0NPapEzvVmtj8y8rg9I/8kakocKnY5ufrMCiwqJIftQTnRV3Wls4kSTp4q4VYJrE/ayO/H7stPKfygFLoUzpeJodtlogd2j6CtHE5SOUhr8QxMGyYV7ikrdha9PIFsCaICsy8RipzVVMA3Inl/qFxcILRGiZpNwNyBYeeU8U+1/Ge1WA9nQPNlYpGRkUQoz5HUH/39TgG5VfDQItZYQUIWzEfeVwg+xmD6EuKxSnXh337WYQD2Kjy6loX3ir1m8Wlizj/Kv2DgBlCS9Li32pe2VmBntCvDQcSEOie8TaaOMCAKtS5FvUTP/MNoNMpES5Qfs3mX8fWMAmInId2jj1iAMGB8S5ZPZ+nyhEQa63litEMGpefN8H8wwpkw+KNXw+XfN14NJP7rbct3vm2F+g6IcHu+AUpFONfp5TlH2wZMCexsfIFOBFfg42R4MhzxfZZ27Nm9dEs2Dm8Du2jEAtgnofCnoZtMbSHC1wh/cZVo4OU07+y+wc/Bg8vaWlCtGQTWVlEBU04KQM+gASSFKKT51aoQFm5NvV7TNKJpiEcc3gkjRUF4TOlWhfrmKf4KaMJ/C6XpzU24iPFqPW0CSULB4wxP1LqjtrNEw+OryQ2xH9v5RlfkY8Q9dWX4nXMcaI+CF5WfW/FaqEWHaON6iEmffwHrkTZI
+sidebar_class_name: "post api-method"
+info_path: docs/ecommerce/ecommerce-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Login user (returns access + refresh tokens)"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"post"}
+  path={"/auth/login"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Login user (returns access + refresh tokens)
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={undefined}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={{"required":true,"content":{"application/json":{"schema":{"type":"object","properties":{"email":{"type":"string","format":"email"},"password":{"type":"string"}},"required":["email","password"],"title":"LoginRequest"},"examples":{"example":{"value":{"email":"alice@example.com","password":"S3cureP@ss"}}}}}}}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"Tokens returned","content":{"application/json":{"schema":{"type":"object","properties":{"accessToken":{"type":"string"},"refreshToken":{"type":"string"}},"title":"TokenResponse"},"examples":{"success":{"value":{"accessToken":"eyJhbGciOi...","refreshToken":"rft_abcdef"}}}}}},"400":{"description":"Bad request","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"badRequest":{"value":{"type":"https://example.com/errors/bad-request","title":"Bad Request","status":400,"detail":"Malformed JSON body.","instance":"/products"}}}}}},"401":{"description":"Unauthorized","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"unauthorized":{"value":{"type":"https://example.com/errors/unauthorized","title":"Unauthorized","status":401,"detail":"Missing or invalid Authorization header.","instance":"/auth/login"}}}}}},"500":{"description":"Internal Server Error","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"serverError":{"value":{"type":"https://example.com/errors/internal","title":"Internal Server Error","status":500,"detail":"Unexpected server error.","instance":"/orders"}}}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

@@ -1,0 +1,63 @@
+---
+id: list-product-images
+title: "List product images"
+description: "List product images"
+sidebar_label: "List product images"
+hide_title: true
+hide_table_of_contents: true
+api: eJyNVttu2zgQ/RWBr40t2bk08FuATRcuegnaBAXWMAJKmsjMSiRLUmlcQ//eGVKWpVoJYhgQRc6cuZ0ZasccLyxbrNiNUXmduWhZ8QIsW58wA1YrafFlsWPzJKFHDjYzQjuhJFt0OsLrRKWwjp2wTEkH0pE417oUGSfx+NGSzo7ZbAMVp5XbakAUbgzfop5wUNnevkofISNAbZQG40TwROQ9GeuMkAXKPChTcbTJ6hoFGq9Evi1HpPH0QZQgeQVjUMMYv4N5AjMpQILhDvKoU0UYZUQhJC+/vAnqaysdZaXABA2QKlHBrdc+RgFZV1Qin+b4UQNthhctD+tfkGq2RiwrfvdxBJajAHPkzgc0H5FsJGSUbh2ml/yQoiJzMwT6JXK3eQOS50zkpQlLi2coj8A2IIqNezNaEH8ZTtgbg3GbbQ8xVaoELimftSlfp4kRR4Zv6hTZGt19+xQ5FfEsA2sjt4HAb4+qS8VzyK/cq+A5EmXiBFW2oT76WQsDuS9hzvrU7BGxR4G2gvv8d6nrBx0iHHiELeuEK+HQmMvgN/oAz7zSZWggW/vIaPnEyxrlV6GrkEfF/Wx+enZ+8f5yQovJcLU/G8Sw8Ov7s3k/mm7znqcZqk0fNWVo2C+sUrWF9ujQAEOeBzLPk7PL8/cXHSUvk+TAqAt66fHBmRpaBrDYOhw/WYyhxa3PNm59i0d97NcYx978dDJLJsnsdjZfJAn+/2PNuqHfCTsfG4pLpLWhLg+TI7o2RpmXxyL6kJZQvRsZj4diksQ/4LjwffD6fHQvTJEB9ZuOKyPDkVJW25FObahjyItRNSFRUWZvMP5XU7hA+uBQZ379N219OkM2D9TtTG2c03YRx63KNFNVDCRsY9FWhB0a5KUi7UM/J0rtY2V3Ep415hqnf/Ai8shT1g+axcrkYCxrmpYeQ158wtsx0oMbk2gPbqOoiQrwpeTEbhZTI9FxMGd9iwZCU5wYZqkyXm6UddQKScw11fQ1mdMYeUuAGZbAbT1iCtyAuarJ5mrdP/5OLAx57wsNsk3ueTGavF4Id8Liw77cH3/c+nIL+aD6nL7G8lRgMoiubpaoRkGGNM2ms2lyNJoH8njT4EUz+GCJPnOJj4oajC5/DLrivp/acTSe/YGRLjgHzy7WJRf9myRUZsVCZTBVlFja2O1SbuHOlE1D2z9roBm0wuUTN4KnFO9q7S9AHCvGJ/5/QBF2hXNYU9VbLh9/LlFJOob8e025/AP8kUaB
+sidebar_class_name: "get api-method"
+info_path: docs/ecommerce/ecommerce-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"List product images"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"get"}
+  path={"/files"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+List product images
+
+<ParamsDetails
+  parameters={undefined}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={undefined}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"Product images list","content":{"application/json":{"schema":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string","format":"uuid"},"productId":{"type":"string"},"filename":{"type":"string","description":"Server-generated filename"},"originalName":{"type":"string","description":"Original client filename"},"mimeType":{"type":"string","enum":["image/jpeg","image/png","image/webp"]},"size":{"type":"integer","description":"File size in bytes","minimum":1},"width":{"type":"integer","description":"Image width in pixels","minimum":1},"height":{"type":"integer","description":"Image height in pixels","minimum":1},"isPrimary":{"type":"boolean"},"url":{"type":"string","format":"uri","description":"Public URL to access the image"},"uploadedAt":{"type":"string","format":"date-time"}},"required":["id","productId","filename","mimeType","size","width","height","isPrimary","url","uploadedAt"],"title":"ProductImage"}},"examples":{"success":{"value":[{"id":"img_12345678-1234-5678-1234-567812345678","productId":"prod_42","filename":"prod_42_abc123.jpg","originalName":"mouse.jpg","mimeType":"image/jpeg","size":2048576,"width":800,"height":600,"isPrimary":true,"url":"/static/img/products/prod_42/prod_42_abc123.jpg","uploadedAt":"2023-10-01T12:00:00Z"}]}}}}},"500":{"description":"Internal Server Error","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"serverError":{"value":{"type":"https://example.com/errors/internal","title":"Internal Server Error","status":500,"detail":"Unexpected server error.","instance":"/orders"}}}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

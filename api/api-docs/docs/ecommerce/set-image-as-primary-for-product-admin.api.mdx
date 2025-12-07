@@ -1,0 +1,71 @@
+---
+id: set-image-as-primary-for-product-admin
+title: "Set image as primary for product (admin)"
+description: "Set image as primary for product (admin)"
+sidebar_label: "Set image as primary for product (admin)"
+hide_title: true
+hide_table_of_contents: true
+api: eJztWN9P3DgQ/lesPLU6IMtBpbJv27uio7pSxA/dA0KVk8zumia2z3Yo21X+95uxk6xDFg7EK09kszPjme/7xjvDOnF8YZPpdXJmVFHnjp1UfAE2udlJLOS1EW6F366TDLgBM6vdEj/eNPi1AauVtGg7XSe/Tyb0pwCbG6GdUDKZYkhRcbNigkKyWhfcQZHsJLmSDqQjB651KXJODumtJa91YvMlVJye3EoDxlHZLeQOHbVRGowT4UxRRDbWGSEXaDNXpuIYO6lrNGi8ExV2ssUav52LEiSvYFuoYTUXYO7A7C5AgqFCWO+KYZQRCyF5efqsUN9aa5aXAoEYRKpEBZfeexwFZF0RVx7Q9FYDvQwftNw8/4RMJzcYy4pfcRyBsC/AjNI5xuMZ2TIhWbZyCC/lIUVFx+1joJ+iIOL/N5IXD/PWFEuLeyhHwZYgFkv37GjB/PFwwrY6iyJmSpXAJeFZm/JpmRgxOviszlCV7Or8b+YU43kO1jK3hKBkH1WXihdQzNyTwUnxu04Qsw11zL+1MNgCRGGRxNKMhBhJoGWww7+HLi46VDjICJvTCVeCb8FwQsi7oSwOt7XqJ14wSg+se7xBMd2shOq3LY26OY4s/gTHhWfq6Q52j+h8QE7TV7Olfa3jrrZbtNQQp5TFVjch0VHmzzj8AW0u0BIS6o+nXoN7Xuky1JXx4rwFEz/d8bKOT1o6p+00TVuPvVxVKRijjE3RcXdDQ4cqkXPev+1KRh43NSZfeUmJ47X05eLbKctUsdpL4kKTtFWb9ToIStgfK+FKcrzk8T779dRd/SaFZ0qhjuF8mRjqIRMdsA8I2shhP5aDsBZrYMrgxYlnioLNWi9PIN6qeFmYhxKhyGmp8McpEsnBWCTHymSiKEC+KeTVCpn3WL5MHvOIgw7SmJeNMA4iYZxIW8/nIvdzB6JbkVBwjHvGZXE41sGpcuxY1fLtpni9DqRyAcqXyQDdductBR2iMS0bGRxGMjgHq2qTA0N35t0fE4B/+H50dNQr4cO2AeIEITQ00oYxmX2m7N5U8WpVWA9nQPNlwhAtI5EuHiOpK/3DYKS4knCvEWucKUIWzEd+KBRl8Iekuyea8dbk2v2PW6bbhRBxYa2+2Dte4Dj/ngjlBudfR8Fo4wxbmZ+L/YAsKJzmfg7e4OhMDTvjlbHjhxZVjLlURXDOl/4gWmaSlELbdB1OaFLdT9Sh3JCG3x88zghzqXJeLpV104+TySTlmjT1lM1BmjTRKn1BebYzYrRQD+hM2nL8HuON8E14OO709OWfS68nIecqbprPyH8F1NezsxN0oyoCD/t7+3uT0aIzsMe9Dde2wf8B2Fcu8U9FHUyrNFZVcd+wLTsvoHdwcl+xg3uX6pKLeFkLBF177qn1p70IOo4QU4KYjNbrjFu4MmXT0Gsck2kVvMbHO24EzwgY5LEQlp5RB3NeWhjl019UybvzVl3v2ebaGebZvuSS1NL2ZIKPP2C1kWxz45ddmrN8BuHLGW6T2kVuo3+BDDR7Nrv84y+05kOhPBCGj781KUTHW1yqHyARoS5HR58pxab5D03aMXs=
+sidebar_class_name: "patch api-method"
+info_path: docs/ecommerce/ecommerce-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Set image as primary for product (admin)"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"patch"}
+  path={"/files/{fileId}/primary"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Set image as primary for product (admin)
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"fileId","in":"path","required":true,"schema":{"type":"string"}}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={undefined}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"Primary image updated","content":{"application/json":{"schema":{"type":"object","properties":{"id":{"type":"string","format":"uuid"},"productId":{"type":"string"},"filename":{"type":"string","description":"Server-generated filename"},"originalName":{"type":"string","description":"Original client filename"},"mimeType":{"type":"string","enum":["image/jpeg","image/png","image/webp"]},"size":{"type":"integer","description":"File size in bytes","minimum":1},"width":{"type":"integer","description":"Image width in pixels","minimum":1},"height":{"type":"integer","description":"Image height in pixels","minimum":1},"isPrimary":{"type":"boolean"},"url":{"type":"string","format":"uri","description":"Public URL to access the image"},"uploadedAt":{"type":"string","format":"date-time"}},"required":["id","productId","filename","mimeType","size","width","height","isPrimary","url","uploadedAt"],"title":"ProductImage"}}}},"400":{"description":"Bad request","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"badRequest":{"value":{"type":"https://example.com/errors/bad-request","title":"Bad Request","status":400,"detail":"Malformed JSON body.","instance":"/products"}}}}}},"401":{"description":"Unauthorized","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"unauthorized":{"value":{"type":"https://example.com/errors/unauthorized","title":"Unauthorized","status":401,"detail":"Missing or invalid Authorization header.","instance":"/auth/login"}}}}}},"403":{"description":"Forbidden","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"forbidden":{"value":{"type":"https://example.com/errors/forbidden","title":"Forbidden","status":403,"detail":"Insufficient permissions.","instance":"/products"}}}}}},"404":{"description":"Not Found","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"notFound":{"value":{"type":"https://example.com/errors/not-found","title":"Not Found","status":404,"detail":"Resource not found.","instance":"/products/prod_999"}}}}}},"500":{"description":"Internal Server Error","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"serverError":{"value":{"type":"https://example.com/errors/internal","title":"Internal Server Error","status":500,"detail":"Unexpected server error.","instance":"/orders"}}}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

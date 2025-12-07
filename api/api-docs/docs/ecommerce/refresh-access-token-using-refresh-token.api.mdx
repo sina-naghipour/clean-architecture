@@ -1,0 +1,71 @@
+---
+id: refresh-access-token-using-refresh-token
+title: "Refresh access token using refresh token"
+description: "Refresh access token using refresh token"
+sidebar_label: "Refresh access token using refresh token"
+hide_title: true
+hide_table_of_contents: true
+api: eJztVl1v2jAU/SuWX0cJ3VZp4o1u3dRK/RC02gNCk5NcwG1iZ7bTliH+++61E0hCW63qHssDGPv6fpxzfO01d2Jh+XDKR6Vb8lmPG/hdgnXHOl3x4dr/lQZSPnSmhB5PtHKgHC2JoshkIpzUKrq1WtGcTZaQCxq5VQF8yHV8C4njPV4YXYBxEmxwOzdgl9f6DlTD2joj1YJvNr1G4GnbGnN00mVkPm7Mj0PeHLfCo8iLLASqxjS8F1kJ+8G5mbtfIk5SmGNg+lBwW2hlg4uPgwH9pGATIwsqFzddwAMTSQLWMuf9/DdogtcXkKmrH+0Mx1W+3ept6W1a1bf8c1idLeMfibyU/X5/W//np0o+Fimr1PF8tVhLnEH+4Ymqq7SvgsU3cEJmFj29DEdY7eLQ43NtcoHheWkk36GyB1gPR8KVDV9cYuYLMLSW+iye3CYVblTJPwTvqNUb1wltw8861MQirSXbZKeKtHSusMMoqnb0E51HYIw2NsKNBzsaalSJnPF2ti4ZedzVyM9FRolDys4mlxcsxiPe581COdGXlomzDSUc7ivhRgnsFtrIP1jxuxTeKoWyCefrxFC2maiB7RC0k8NhUw7SWqyBacOkwpgyZaNqlyeQLUGkYLoSIc9RphdSbUVy9FS7OEVojRIZm4C5B8NOKON3tbxZLdbDGdB8nVhkxUhDKM+RVJd+1GogNwoeC8QaO0jIgnnPXYVog7KpW4jHqqmL6tJu3Z6s9EqsLubtjZoDyhGh4YX2ba0Q+EapJVgZH9TGISN6y+CJMlkFBSKR6URkS/Qw/DIYDCJREO0v2XyK+GZGDhNkya28xxiEAeMfScPprLk8IaFWPb1h1CKE0vNm+D8Y4UwYfK8Vcfbz2iuCDsB49wg72T1gOu+WpuLmunlSTpD0HEwCbHR1ipEIlwD+Yf+wP+BdSlr27EG6JbsKFwE7zcUC2LlQ+JPTscVwxEYu/ClVIofXcdqKvAXJwaOLikxQU+kFatYV3VNOdPMebxOODBBftL5ex8LCjck2G5pG6AyRhsN7YaSICZMpHaPQ0Dyfd4Am/GvoRQfX4eRVZ2n/+UZ6CTvo0VW4F21nDeFeXU6uierqNZ3rlPYY8UD14PeQ40B7NMK7mObWPBNqUSLiuB580ucvvt0NWA==
+sidebar_class_name: "post api-method"
+info_path: docs/ecommerce/ecommerce-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Refresh access token using refresh token"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"post"}
+  path={"/auth/refresh-token"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Refresh access token using refresh token
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={undefined}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={{"required":true,"content":{"application/json":{"schema":{"type":"object","properties":{"refreshToken":{"type":"string"}},"required":["refreshToken"],"title":"RefreshTokenRequest"},"examples":{"example":{"value":{"refreshToken":"rft_abcdef"}}}}}}}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"New access token","content":{"application/json":{"schema":{"type":"object","properties":{"accessToken":{"type":"string"}},"title":"AccessTokenResponse"},"examples":{"success":{"value":{"accessToken":"eyJhbGciOi..."}}}}}},"400":{"description":"Bad request","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"badRequest":{"value":{"type":"https://example.com/errors/bad-request","title":"Bad Request","status":400,"detail":"Malformed JSON body.","instance":"/products"}}}}}},"401":{"description":"Unauthorized","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"unauthorized":{"value":{"type":"https://example.com/errors/unauthorized","title":"Unauthorized","status":401,"detail":"Missing or invalid Authorization header.","instance":"/auth/login"}}}}}},"500":{"description":"Internal Server Error","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"serverError":{"value":{"type":"https://example.com/errors/internal","title":"Internal Server Error","status":500,"detail":"Unexpected server error.","instance":"/orders"}}}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

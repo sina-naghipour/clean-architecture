@@ -1,0 +1,71 @@
+---
+id: remove-cart-item
+title: "Remove cart item"
+description: "Remove cart item"
+sidebar_label: "Remove cart item"
+hide_title: true
+hide_table_of_contents: true
+api: eJztVlFP2zAQ/iuWnzatNO3GpNG3bhSpaDBUQHtAaHKTa2tI7GA7HV2V/747O2mTUqYhXulLY/vOd/d9n+1bcyfmlg9u+DdhHL/tcAtxYaRb4dyaT0EYMMPCLXB4W+KyAZtrZQF91vxj75D+ErCxkbmTWvEBHzvImIFMLyHhZYcf9npPjb6KBG0eCrCOd3islQPlyEzkeSpjQWZRbvQ0hezDnSWfNbfxAjJBX066FHCbi2BxDE7I1OJObpXTvJ7eQUw74xY5GCdDvmG1/ufWGanmaDXTJhMYnmPllHK1/a4hrlgnXNHYi0vMfA6G1hKfxV43qdBRxf8RvCSIHwppEDxkxRvXCW3C36IVPIosT0NdU5FMKjBxtBRp0Yy0cC63gyiqPLqxziIwRhsboePBloYaVSJnspmtS0YetzXyM5FS4pCw08sf52yqk1WXNwvlRF9SxM5iUfQjJfSfKuFaCZSXNvIPVvwmhddKoWjC+TIxFG0mamB3CNrKod+Ug7QWa2DaMKkwpkzYsPLyBLIFiATMrkRo5yjVc6kaItlzp5xrx050od4U8nqFKO0ClC9TB7odzCoKakSbtGx1cdjQxQSsLkwMDN2Zd3/ulvAfv46OjjZK+Lzv4RgjhEaJlF2CWYJhI8ruTRWvVoX1cAY0XyYMWTHS0MVzJNWlf249JdcKHnPEGt+SkAXzO+8KRRu8QOrHxGPV1MXENxwsxi6GSexAiDhhRAaOnKiXUTggtHFxnPi9cZQLbG2aeDlTQKcpkzYP1ALhnguNpphBitv7SNQg8YiiRxTARusQp6SqfVEhicKkFZoIZqpjkS60dYMvvV4vEjkp5182nyJeNlq0S8qy6gAajVqLNF4VQ+NghDPh46RWzenPK68aqWa6eTRGyHIGdHqHF2N0oyoC2v1uv9vjuxy07Nlv6RbsIpxuNs7EHNiZUPiX0TnFcDlWlQl/LCtu9pDYirCpzMGji/JU0LvRCYCtKxZuOLkTv8QD/g8qxhE4wpEs1uupsHBt0rKkaex0DPW7+LkURoopVY9kJdLSN1I9E6mFJ8ls7hz+blIJ6D3b3iDtJKtJoVaEZDheHD/vYbVVZUnHMjyVPoOwOIxjyF3D7dkbriXP49H30dUI3URbFjsy8IH2ZocweYsrfQ+qLDfJOhpTrmX5FzpcNCk=
+sidebar_class_name: "delete api-method"
+info_path: docs/ecommerce/ecommerce-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Remove cart item"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"delete"}
+  path={"/cart/items/{itemId}"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Remove cart item
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"itemId","in":"path","required":true,"schema":{"type":"string"}}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={undefined}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"204":{"description":"Item removed"},"400":{"description":"Bad request","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"badRequest":{"value":{"type":"https://example.com/errors/bad-request","title":"Bad Request","status":400,"detail":"Malformed JSON body.","instance":"/products"}}}}}},"401":{"description":"Unauthorized","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"unauthorized":{"value":{"type":"https://example.com/errors/unauthorized","title":"Unauthorized","status":401,"detail":"Missing or invalid Authorization header.","instance":"/auth/login"}}}}}},"404":{"description":"Not Found","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"notFound":{"value":{"type":"https://example.com/errors/not-found","title":"Not Found","status":404,"detail":"Resource not found.","instance":"/products/prod_999"}}}}}},"500":{"description":"Internal Server Error","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"serverError":{"value":{"type":"https://example.com/errors/internal","title":"Internal Server Error","status":500,"detail":"Unexpected server error.","instance":"/orders"}}}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

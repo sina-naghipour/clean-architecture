@@ -1,0 +1,71 @@
+---
+id: update-product-stock-admin-idempotent
+title: "Update product stock (admin) — idempotent"
+description: "Update product stock (admin) — idempotent"
+sidebar_label: "Update product stock (admin) — idempotent"
+hide_title: true
+hide_table_of_contents: true
+api: eJztWMFu2zgQ/RWCl7ZYJ3acFNj45nYTrAu0GzjJ7iEIClqkbTYSqSWpNKlhYD9iv3C/ZGdIyqJsJ4iRHp1DTEkznJn3HimOFtSxmaWDG3phNK8yZ+lth1qRVUa6R7i/oBPBjDDDys3h8nYJj434uxLWfdAcLBb+UhrB6cCZSnRoppUTyuEjVpa5zJiTWnW/Wa3wns3momA4co+loAOqJ99E5miHlkaXwjgprLdzOrtLzCTMOhMG7AqpZFEVdNBbLjtJ+JvoAyk66XJ0Gql7SEWbx+uSMyco2IsHVpR5iBHHOLxneSWSuEd9mB3/MIIttbLBpd/r4Q8XNjOyxMogzCX6kMrH4PSnQSB5YmOdkWqGFTyFDOa6Ufg4Jr9euq2yTFjbKh3jYQr860mfdrYgcbKt+A+MkyiJp0uHWSe5KH7ZAkHM+CJY/CYck7mFmZ7HJjxdR6dDp9oUDMJTUDBtANkKI3OV3YZjByrELLa6SQWOKntB8DVxeuM6oVX42zVeJoyPI5gpNTHS3LnSDrrd6HGY6aIrjNHGdsHxoKGhRhXJGa/u1iUDj02N9DPLMXHByafLP76QCazrQ5oWSpG+sDs0SjjaVMK1YrBNaCN/PLcK9lJ4oRSqFM7dxFC1maiBXSOokcNRKgdpLdRAtCFSQUzJyTB6eQLJXDAuzLpEcOZurmdSJSI53hTJuTYTyblQe4W8WiHTFZa7yWOacFBDmvLSCOM4EcZI2Wo6lZkEygigW6BQ4N3ygs3iZFMHX7Qj57pS+53i9TpQ2gUod5MBuB1MIwU1oiktjQxOEhnAiUJXJhME3Il3f0oAfvD19PS0UUK/v6mEP3GPCVuLT2wviFcL4n4F6Y6SSBwbTSQETaGg9ruj30+0cS5FzskbIEXmb4i0pE5969vCiJm0zp9cgzzebztfjgBQo1hOLoW5F4ac7TXyUzRiPZwBzd1EIiMjNO03tpNUl/6+deK8VuKhBKzhyBmyCAt/XSTawDmjfo14rFqnTd9ukbjZEN+tkLeMQ3v4jvz3z79EclGU2msEOGWGFcLhfNjVKriIzQ44j7iPjDcY9LmdjZ52o2OrWcJ+GKadax6cs7mPhc1ysg8uVnGWAF7szBAdX3zIqDJ5RB1Az3XG8rm2bvBrr9frshIV9pzNcZcuk879EvONDUXSv7fIpbEsvA5GcCcMzmt1ffrryqsLF9O4afvPmr45Nok9r9epTtfZGUimEPimGF6MYG4sNVB3dHh02KPrhLbsyXfp5iR+lSCjgs0E+cwU/BRIKIQrofSC+TUe2dxNEa3gK2SceHDdMmd4jO0EwBeR0Bu6Otl06KAtnZpT4AApQePFYsKsuDb5com3ATyDX1RgeM+MZBPECHjn0uIY9DNluRUbea22Ofp2HFX5jjSbVjvfeJMpVFdc0RSGd+KxpfYlbgbhHO+TCM8/hlAHV2H/qP03PmGgFIPHMMtE6Z61TRfIxfDq4++osvjpqNAcnQz7jmsO/vtkta/di9ffW9CcqVkF1MPzMClqkrUlvSZhX9ZWOIAXb3Gl74QCbmp0HF4jMsvl/zZxmRw=
+sidebar_class_name: "patch api-method"
+info_path: docs/ecommerce/ecommerce-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Update product stock (admin) — idempotent"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"patch"}
+  path={"/products/{productId}/inventory"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Update product stock (admin) — idempotent
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"productId","in":"path","required":true,"schema":{"type":"string"}}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={{"required":true,"content":{"application/json":{"schema":{"type":"object","properties":{"stock":{"type":"integer","minimum":0}},"required":["stock"],"title":"InventoryUpdate"},"examples":{"example":{"value":{"stock":120}}}}}}}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"Stock updated","content":{"application/json":{"schema":{"type":"object","properties":{"id":{"type":"string"},"stock":{"type":"integer"}},"title":"InventoryResponse"},"examples":{"success":{"value":{"id":"prod_42","stock":120}}}}}},"400":{"description":"Bad request","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"badRequest":{"value":{"type":"https://example.com/errors/bad-request","title":"Bad Request","status":400,"detail":"Malformed JSON body.","instance":"/products"}}}}}},"401":{"description":"Unauthorized","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"unauthorized":{"value":{"type":"https://example.com/errors/unauthorized","title":"Unauthorized","status":401,"detail":"Missing or invalid Authorization header.","instance":"/auth/login"}}}}}},"403":{"description":"Forbidden","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"forbidden":{"value":{"type":"https://example.com/errors/forbidden","title":"Forbidden","status":403,"detail":"Insufficient permissions.","instance":"/products"}}}}}},"404":{"description":"Not Found","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"notFound":{"value":{"type":"https://example.com/errors/not-found","title":"Not Found","status":404,"detail":"Resource not found.","instance":"/products/prod_999"}}}}}},"422":{"description":"Validation error","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"validation":{"value":{"type":"https://example.com/errors/validation","title":"Validation failed","status":422,"detail":"Field 'email' is required.","instance":"/auth/register"}}}}}},"500":{"description":"Internal Server Error","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"serverError":{"value":{"type":"https://example.com/errors/internal","title":"Internal Server Error","status":500,"detail":"Unexpected server error.","instance":"/orders"}}}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

@@ -1,0 +1,71 @@
+---
+id: get-product-image-metadata
+title: "Get product image metadata"
+description: "Get product image metadata"
+sidebar_label: "Get product image metadata"
+hide_title: true
+hide_table_of_contents: true
+api: eJztVlFv4zYM/iuCnjasrdPtBqx5K3DtocN2K3pX7CEoBsVmEnW2pJPoXrPA/32k5CRynQY97HVPUWzyE8nvI+mNRLUMcjqTt95WbYniplFLCPLhRHoIzppAf6Yb+eNkwj8VhNJrh9oaOZXRVjSAqlKo5IksrUEwyJbKuVqXii2Lx8DmGxnKFTSKT7h2QAB2/gglkqPz1oFHnS7TVWYT0GuzJJuF9Y0ibNm2ZNBFJw755oA1vV3oGoxq4BDUMI1P4J/Any7BgFcIldi5Eoz1eqmNqj++CeqP3lqUtaZCDJAa3cDn6D1GAdM2zILmihaPDvhh+uPM/vwV5k4+EFbQ/+Q4msq+BD8K55quF2wrtBHzNVJ5OQ6jG77unIC+6gpXb0BKVEdrxnL6GeoR2Ar0coVvRkvmr8PpcOspb7/OEOfW1qAM17P19XGZeD26+LadkyrF/d1vAq1QZQkhCFxRfTiiiOpqqyqoLvEoOAkeTlEzsx23ypdWe6gihZXMpZkJMZNAz+C2/rvS5UmnDAcRUVeixppD6vv1JsXdcRTvJu/GPfrRori2raleb08Kdl5D88OBNt1fxhbvqdN15Ol4/+IrKh9Q0+1yOdC8ARW24YCSOmaUozjopg05mvINl78gDRMpKaDd9dxp8KwaV6e8jMVUSjo/qbrN71khujAtit7+rLRNAd5bHwpyO130FGwrmtOyTZb422cn7yDY1pcgyF1E9zOZZyiLXmQhHv66uLiIOuDUfj44ramEnmdTmnfiiqP7XxX/WRUhljNV89uEoXtGMl28RtI2dWI208i9gWdHtaadlaIQEfmlUKyvwIdeHd3LmfgBUPRSSmMw3+hOeRpdyO7TGXVA3IJxpMXZphnAqTjC9pVD38LJeNtvGelojBHmypKpXEJUCkNQpAwcik3C7zjvmFa6PA78WE8qZ21LVa9swOkvk8mkUI61c8zmp0LyxQFKohrXEXEOyoO/bPny2UP++hMHn/jNjQasyj7HuJeiET1Jh+utrH7983OUlTYLm/fOFcmgAW7vy9sbcuMkEx3nZ+dnk9HiGtjTHqY1PPhiE78rQz8NNzJ/GlHSjYp921N2lOXBXbscEZ6xcLXS+bpNTM2iBLjnp70WqHZcaX612cxVgHtfdx0//tICr/AZHZ+U12rOBaDiVzrwmUSwUHWAURS7uSS/u+ul9b3YT5lhdP1DZXhv9i0o6fg3rPd67R7iRwotUx8jSC8v6SvAYeY2+nQdCPbDFTP6L9QL1yQ=
+sidebar_class_name: "get api-method"
+info_path: docs/ecommerce/ecommerce-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Get product image metadata"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"get"}
+  path={"/files/{fileId}"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Get product image metadata
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"fileId","in":"path","required":true,"schema":{"type":"string"}}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={undefined}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"Image metadata","content":{"application/json":{"schema":{"type":"object","properties":{"id":{"type":"string","format":"uuid"},"productId":{"type":"string"},"filename":{"type":"string","description":"Server-generated filename"},"originalName":{"type":"string","description":"Original client filename"},"mimeType":{"type":"string","enum":["image/jpeg","image/png","image/webp"]},"size":{"type":"integer","description":"File size in bytes","minimum":1},"width":{"type":"integer","description":"Image width in pixels","minimum":1},"height":{"type":"integer","description":"Image height in pixels","minimum":1},"isPrimary":{"type":"boolean"},"url":{"type":"string","format":"uri","description":"Public URL to access the image"},"uploadedAt":{"type":"string","format":"date-time"}},"required":["id","productId","filename","mimeType","size","width","height","isPrimary","url","uploadedAt"],"title":"ProductImage"}}}},"404":{"description":"Not Found","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"notFound":{"value":{"type":"https://example.com/errors/not-found","title":"Not Found","status":404,"detail":"Resource not found.","instance":"/products/prod_999"}}}}}},"500":{"description":"Internal Server Error","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"serverError":{"value":{"type":"https://example.com/errors/internal","title":"Internal Server Error","status":500,"detail":"Unexpected server error.","instance":"/orders"}}}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

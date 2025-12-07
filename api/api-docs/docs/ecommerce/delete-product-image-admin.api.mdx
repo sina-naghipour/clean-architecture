@@ -1,0 +1,71 @@
+---
+id: delete-product-image-admin
+title: "Delete product image (admin)"
+description: "Delete product image (admin)"
+sidebar_label: "Delete product image (admin)"
+hide_title: true
+hide_table_of_contents: true
+api: eJztV01v2zgQ/SsETy3WjZxNCmx8yyIO4GLbBvnAHoJgQUsjmwlFqiSVxjX033eGlGzKSdoGucYXkeIMZ+a9R2q85l4sHJ9c8zNriib3bFaJBTh+M+IO8sZKv8LVNZ+DsGCPG7/E6U2LyxZcbbRD28ma/zk+pEcBLrey9tJoPuFhK1aAAg8Fb0f8cDx+bPW3KJiFbw04z0c8N9qD9mQm6lrJXJBZVlszV1D9cevIZ81dvoRK0MhLrwC3OYsWJ+CFVA538qua3pv5LeS0M25Rg/UyJhxX+yd33kq9QKvS2EpgeI6lU8rd9ruGuOK88E2yF5eY+QIsrRUhiyfdpEZHnf9G8JYw/tZIi+AhQcG4T2gT/gat4EFUtYp1zUVx3oGJs3uhmjTS0vvaTbKs89jLTZWBtca6DB0/bGnoUSVyzjdv+5KRx22N/LNQlDgU7NPF1y9sborVHk8L5UQficthUfQjJew/VsKVFqgvY+UPrPhNCq+VQpPC+TIxNEMmemB3CNrKYT+Vg3QOa2DGMqkxpizYcecVCGRLEAXYXYnQzpkyC6kTkRw8FsmpsXNZFKDfFPJqhZQbLF8mjzLhoIc05WUrjINEGDPtmrKUuUTKGKJbkVDwC/Ibl8UTH5cvxrNT0+i3m+L1OtDGRyhfJgN0+1B2FPSIprRsZXCYyOAcnGlsDgzdWXB/TgBh8N/R0dFGCR+faiBmCKHVQrELsPdg2ZSye1PFq1XhApwRzZcJQ3aMJLp4jqS+9I+DluJKw0ONWGNPEbNgYeddoRiLH5L+nghYpbo4CY0n69TEZOhG34mikvo9kSisqNDAutDgapygUykVzIoQB2e1wH43xc7bBkapZIacUF+Mey4NmvLY+IZI1DXzjPZ22TqGaKn4UFuM31jVgYqYKpMLtTTOT/4aj8eZqElAP7M5yHibtOwXlGDXECaN+4A73tVB82iEb+LgtBfPp38vg3ikLk16QqZIdgV0iI/PZuhGVUTQ9/f298Z8l4qBPfsu/ZIN/m+wz0Ljo6LjiuFqrKoS4XR2tPyCy0G0TZUeHnxWK0EtxSiCt+7IuA5E09medIwjegQmLa3Xc+Hgyqq2pdfY/Vr6E4TDe2GlmBMEyFghHY2R6lIoB4+y2Nw//N15J6D3bHubDLPrXgq9IjjjUeM4vIPVVpUtHdHYPoUM4uJxnkPtE7dnb7uBPE+m/0wvp+gmhtrY0UII9GR2CFOwuDR3oNt2k6ynOeXatv8D5ELwMA==
+sidebar_class_name: "delete api-method"
+info_path: docs/ecommerce/ecommerce-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Delete product image (admin)"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"delete"}
+  path={"/files/{fileId}"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Delete product image (admin)
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"fileId","in":"path","required":true,"schema":{"type":"string"}}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={undefined}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"204":{"description":"Image deleted"},"400":{"description":"Bad request","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"badRequest":{"value":{"type":"https://example.com/errors/bad-request","title":"Bad Request","status":400,"detail":"Malformed JSON body.","instance":"/products"}}}}}},"401":{"description":"Unauthorized","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"unauthorized":{"value":{"type":"https://example.com/errors/unauthorized","title":"Unauthorized","status":401,"detail":"Missing or invalid Authorization header.","instance":"/auth/login"}}}}}},"403":{"description":"Forbidden","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"forbidden":{"value":{"type":"https://example.com/errors/forbidden","title":"Forbidden","status":403,"detail":"Insufficient permissions.","instance":"/products"}}}}}},"404":{"description":"Not Found","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"notFound":{"value":{"type":"https://example.com/errors/not-found","title":"Not Found","status":404,"detail":"Resource not found.","instance":"/products/prod_999"}}}}}},"500":{"description":"Internal Server Error","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"serverError":{"value":{"type":"https://example.com/errors/internal","title":"Internal Server Error","status":500,"detail":"Unexpected server error.","instance":"/orders"}}}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

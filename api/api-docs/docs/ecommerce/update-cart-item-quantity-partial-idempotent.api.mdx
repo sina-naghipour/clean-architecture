@@ -1,0 +1,71 @@
+---
+id: update-cart-item-quantity-partial-idempotent
+title: "Update cart item quantity (partial, idempotent)"
+description: "Update cart item quantity (partial, idempotent)"
+sidebar_label: "Update cart item quantity (partial, idempotent)"
+hide_title: true
+hide_table_of_contents: true
+api: eJztmFFv2zYQx78KwZe2mBPZXgosfnOzBEuBdoGTbA9BENDS2WYrkSpJpckMfffdkZIl2YpRo33MSyyRPPLufz9Sx6y5E0vLJ3f8TBjH7wfcQlwY6Z6xbc3nIAyYaeFW+HpfYreBbwVY90EnOGLtX6WBhE+cKWDAY60cKEddIs9TGQsntYq+WK2ozcYryAQ9uecc+ITr+ReIHR/w3OgcjJNgqfdbIZTzTmxGSpx4CQaHZlLJrMj4ZFSWg5YHd40ZOoq/KdlRXJcOsts8EQ54WQYjm2tlw2Lj4ZB+ErCxkTn5i2Zkwgpvk/BfFpdMWmOsM1IteekHJUXsHl7oViKD3o49MmFvoaR7yI2M28aqyObUXe4qNKtEqTQ66ZPlg0hYhcDLqmA48xSy33rUqZa8CiP+BCdkanGm/bKF3m0BBnyhTSZweY7E8iaiHqWsE66w/Tol3oteM6nQUMU/sPgWiX5w7dBm+XscBU8iy9MQ11wks0pMfHsUadFeaeVcbidRVFkcxzqLwBhtbISGR00aalUpObNNax0y5rGJkX8SKTkOCft4/fdnNsd9fMzbgfKootF6DgIJo10SbpXAY0Eb+d++DfKKwg+iULTlPAyGopuJWtitBDU4jNo4SGsxBqYNkwrXlAmbVlY+gWwFIgGzjQjNHKV6KVULkpNdSD5rxy50oV4J+XlClHZBysPoQLOjRZWCWtF2WhouTlpc4LdAFyYGhubMm790SviHh9PT04aE8XiXhH+IrYCUd+wViJ8G4nEj6YFItAwbJloJWmBA3TNjPG6xcSEhTdgbTIpM3zBpWe167ylhYCmt8yVHwON9b7mFgholUnYN5hEMO39l5JcwYr2cQc3DIJFVRlqIvJSkOvT3nUrjVsFTjlpjqRG8CBt/GxJt8PtS1xpeq06V4StwFmOJyiSV5HXJy97m2CZFOmAygSzXhMk7yqswWC47mpNuMKF25mR7mfil8S0XeKEZ7Fxedqr4Ok108cE5VzoJxvHKL0S3Ih6RbxHNb6N1WKYkTXzIwYfCpJXWKHWqY5GutHWTP4bDYSRy4mrfmN8jXrbuZdfkZFU+tm5nnZTyKhZ6D4OwJTxc1Ex9/PfGM0VbaNZc6s4DCd1L2NCDutDtDXaOrGRAn4jp1SVOT9GGnI2OR8dDvp3Jznj2XboVuwqfEHaZiSWwT0LhT0a7na5EGH0m/OauUng4Ch0HNgI5eHJRngqqXQZB93WVzDtOsxMllE78nVTcoP6UDhqxXs+FhVuTliU1o3CG7sr4+CiMFHMSB3OeSEvPCMxCpBZ2nNkcbPztrMLwHWuOqa6TVaNQzyR02MMcH7/Cc8N2SXs/lGveg9B5FtY5ugnHRW28c4klBoPFNI4hd3vHtrfD1fTm7C/Cq/qPQKYTMjLiO+0w/Os91T5wT61vW/NUqGWBCcf+MCnBKLosb7Hrw+rVApPiR9zor6DKciONo3dSpiz/B4Af1U4=
+sidebar_class_name: "patch api-method"
+info_path: docs/ecommerce/ecommerce-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Update cart item quantity (partial, idempotent)"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"patch"}
+  path={"/cart/items/{itemId}"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Update cart item quantity (partial, idempotent)
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"itemId","in":"path","required":true,"schema":{"type":"string"}}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={{"required":true,"content":{"application/json":{"schema":{"type":"object","properties":{"quantity":{"type":"integer","minimum":1}},"required":["quantity"],"title":"CartItemUpdate"}}}}}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"Item updated","content":{"application/json":{"schema":{"type":"object","properties":{"id":{"type":"string"},"product_id":{"type":"string"},"name":{"type":"string"},"quantity":{"type":"integer"},"unit_price":{"type":"number"}},"title":"CartItemResponse"}}}},"400":{"description":"Bad request","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"badRequest":{"value":{"type":"https://example.com/errors/bad-request","title":"Bad Request","status":400,"detail":"Malformed JSON body.","instance":"/products"}}}}}},"401":{"description":"Unauthorized","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"unauthorized":{"value":{"type":"https://example.com/errors/unauthorized","title":"Unauthorized","status":401,"detail":"Missing or invalid Authorization header.","instance":"/auth/login"}}}}}},"404":{"description":"Not Found","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"notFound":{"value":{"type":"https://example.com/errors/not-found","title":"Not Found","status":404,"detail":"Resource not found.","instance":"/products/prod_999"}}}}}},"422":{"description":"Validation error","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"validation":{"value":{"type":"https://example.com/errors/validation","title":"Validation failed","status":422,"detail":"Field 'email' is required.","instance":"/auth/register"}}}}}},"500":{"description":"Internal Server Error","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"serverError":{"value":{"type":"https://example.com/errors/internal","title":"Internal Server Error","status":500,"detail":"Unexpected server error.","instance":"/orders"}}}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

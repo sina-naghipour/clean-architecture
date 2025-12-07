@@ -1,0 +1,71 @@
+---
+id: create-order-checkout-current-cart
+title: "Create order (checkout current cart)"
+description: "Create order (checkout current cart)"
+sidebar_label: "Create order (checkout current cart)"
+hide_title: true
+hide_table_of_contents: true
+api: eJztWF1PGzsQ/SuWX9qqgWzSIpW80ZZKqS4XxMetVBRFzq5JXHbtre2lpFH++52xvRsn2VAQfQQh8Noee+acM/5aUMumhg6u6anOuDZ01KGGp5UWdg61CzrhTHN9VNkZfI6W0Kz5z4ob+1Fl0GNBM25SLUorlKQDeuoKLCfqjmstMk5eT0SeCzntmpkoSyi8IUxmpGTzgktLCm5nKiNW3XJJOzRV0kI1DszKMhcpw/G6PwyOvqAmnfGCYcnOSw7zqckPnlowLLUqubaCG2wNcx5lmebGDLPIwlgNLXQJcQaHHu4VHD1xfl46N7e7QT8rbI5VDsdPmjPL0Zzfs6LMvVehjMU7lle83VPKoDzu0VYHV41tftGyGAOSYzZJwSf8QbpMqaTxHvSTXgtn6DFJncsZjDzjzEkBOv6jPAHbRlfnQ6JuaiuicAx0eZOggFCH3ihdMCCWgrao8+wvcS12sGuZrUybJ1xWBSp+FXHJRFbj7SpSJlOeQ3GEzCrL8mggMJ9AsNASyBszT9B4lyuBxz/1E5YXscdMazan2/U7gICvrErtrtElK3hrw8+KSevyvWkUwMzUx1hJYcelFilvgWBT90Pw1NUGbMfMPqiFDDrtWQGObQ11HnS7mUSmSlPAcC2JMGLqJDjuJYlLncB+RHKg8eBw//BDO3XbmbejORByvY65+xi/79Maa/pNaFCRMeREVRBJDHV/Hdk+eHWIq2sMHKRr/91eL9lLepe9/iBJ4Pd7k9jvk2Q7LT+yjIQFevdqCn5Ocl68bcm0wMCZ7/GZWyZyg+A9qDzf+qecbwh+TLZGCsycF+0ZI8FQpo+YfOk3LiAkw9x3nWuHmulHG1qbsOw8gBnLLcw0s7Y0g243WOynqujCpqe06YLh3oqGGlUk57yprUMGHlcx0hOWo+OwpH69OP2XTGCX3adxoLQbNGciJbSs6leSwaattPjtV7QXKTxLClUM59PEUK0zUQO7QdBKDr1YDsIYiAH2VyIkzCkychSsHIHEb9abEsGRu7maChmJ5HBbJJ+UvAEtvKwVzxdIWkP5NHGkKwZqQCNSVqI4jETxufL8cFjqjap0ylv513wqjHXbdJBAv78tgf9QVF5LzqUXKTxbCncNpE8UQ2S4kkNE0A0EtL5Y9PuRLr4InmfkFZAi8ldEGFK7/jh5HLQdKIYAqMYL3QXXcKUjxy8a+SsaMQ5Oj+bTRCICI5FEdpFUh36wdsS4kvy+BKzhjOG98Im/KRLlHwSWtTw2dg53TvX3PvIaWE5vVWVJWmmN1/qUafsGBvTXezwbK3foKRk+JDSDdwIO/jBd6TyEDpHncPXMZ2A1+JAkSZeVSPNDfd516TJ6vbhA5YVjXPSGsYZwfWHFb98JanzhS03x12+XjmJU9Pnq6eN4dZdvucI3Smm7wjeNrVf4WIE3Ks6cYxBBwWG1J0dnQzBH3DwZvf3efkI3KVrrT34JOyNn/uhIhgWbcnLCJPxDF9xDB+BYMJe14frySI7XZm3wtfzedsuc4RGk42lbBPqvqWoem5A9rFksJszwK50vl1gNOGt8gILiHdOCTRCBa0wif+Bxernlc79d4kq0d+nzLmTS9pMCqsdbHMENsrQP9h1F0j07vbhEXYQHr0JlaKPZL6jEvwMKBeXid3JzdQuaMzmtAF9o92Oiiti6CDdE56KqL/9yHnkI8LgeTiUAUSeE4t/NliMY/H/kUtV6
+sidebar_class_name: "post api-method"
+info_path: docs/ecommerce/ecommerce-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Create order (checkout current cart)"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"post"}
+  path={"/orders"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Create order (checkout current cart)
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={undefined}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={{"description":"Optional override (billing/shipping) and payment method token","content":{"application/json":{"schema":{"type":"object","properties":{"billingAddressId":{"type":"string"},"shippingAddressId":{"type":"string"},"paymentMethodToken":{"type":"string"}},"title":"OrderCreate"},"examples":{"example":{"value":{"billingAddressId":"addr_1","shippingAddressId":"addr_1","paymentMethodToken":"pm_tok_abc"}}}}}}}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"201":{"description":"Order created","headers":{"Location":{"description":"URI of created order","schema":{"type":"string","format":"uri"}}},"content":{"application/json":{"schema":{"type":"object","properties":{"id":{"type":"string"},"status":{"type":"string","enum":["created","paid","shipped","canceled"]},"total":{"type":"number"},"billing_address_id":{"type":"string"},"shipping_address_id":{"type":"string"},"items":{"type":"array","items":{"type":"object","properties":{"product_id":{"type":"string"},"name":{"type":"string"},"quantity":{"type":"integer"},"unit_price":{"type":"number"}},"title":"OrderItem"}},"created_at":{"type":"string","format":"date-time"}},"title":"OrderResponse"},"examples":{"success":{"value":{"id":"order_1001","status":"created","total":59.98,"billing_address_id":"addr_1","shipping_address_id":"addr_1","items":[{"product_id":"prod_42","name":"Wireless Mouse","quantity":2,"unit_price":29.99}],"created_at":"2023-10-01T12:00:00Z"}}}}}},"400":{"description":"Bad request","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"badRequest":{"value":{"type":"https://example.com/errors/bad-request","title":"Bad Request","status":400,"detail":"Malformed JSON body.","instance":"/products"}}}}}},"401":{"description":"Unauthorized","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"unauthorized":{"value":{"type":"https://example.com/errors/unauthorized","title":"Unauthorized","status":401,"detail":"Missing or invalid Authorization header.","instance":"/auth/login"}}}}}},"409":{"description":"Conflict","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"conflict":{"value":{"type":"https://example.com/errors/conflict","title":"Conflict","status":409,"detail":"Duplicate resource.","instance":"/auth/register"}}}}}},"422":{"description":"Validation error","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"validation":{"value":{"type":"https://example.com/errors/validation","title":"Validation failed","status":422,"detail":"Field 'email' is required.","instance":"/auth/register"}}}}}},"500":{"description":"Internal Server Error","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"serverError":{"value":{"type":"https://example.com/errors/internal","title":"Internal Server Error","status":500,"detail":"Unexpected server error.","instance":"/orders"}}}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

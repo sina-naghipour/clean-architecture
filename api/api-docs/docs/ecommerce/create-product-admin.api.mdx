@@ -1,0 +1,71 @@
+---
+id: create-product-admin
+title: "Create product (admin)"
+description: "Create product (admin)"
+sidebar_label: "Create product (admin)"
+hide_title: true
+hide_table_of_contents: true
+api: eJztmG1v2zYQx78KwTfdMCeWnRZY/C7dEsDFsgZ5WIEFQUFLtM1GIjWSSuMZ/u6744NM20o6IwW2FwmCRKLuKN7/fkfptKSWzQwd3dILrYomt4be9ajheaOFXcD4kk4401yfNHYOp3cruKz5Xw039r0qwGLpToXmBR1Z3fAezZW0XFq8xOq6FDmzQsn+F6Mkjpl8ziuGR3ZRczqiavKF55b2aK1VzbUV3OBVySqeWBmrhZzRFZqJPL0im2rCNfhXQoqqqegoAytjVX6fWAlY1GzXrOAm16LGFXbezMvTXmBaswXMISyvTIcDeIiKzfhePqteouGtDzyGCXJbYUu0Dxm69Orj4vgjq+rS3ywc4+EDKxu+lpB+gpnBypBz1Zj11KPh8eHxcavUIMu25KCneqakqkROquAZaYH5cquVFLnB+Tj4zLlmJa43CgCwuB+MztRKGr/QYTbAf5t3CrGRXHNmQYYenXNWcO08flMeoV23m8sxUdPoRWo/C3jvQBbE7tGp0hUDOCkQ7rX/TryKohOgfTF+Bt3/Ca5u6RXTizG6jjvChqibsmQTxBH3BBTZp+gzs88mpQCjAytAMvBp6mJPn1VHtXj0tsvFNHkOJbFRLphBTGrx+e2Q9v7z6tnVGVXdlBKqaXh0MMgOssH1YDjKMvj9k25K120Ta/Ntlu3W1XtWkLDL0ycLBJSCDFc/dRTKOgdo8Su3TJQY6vMV5K9+q2TbFHfgbyyzjXmqdHAVnW5CgqPM/8XNt7ZqZxwX1N7+bou1CSvipp3iFu40t7Y2o34/eBzmqupzrZU2fXA8WKchqorJuWxHY8hvPYA+RnrOSlw47Ikfrj7+TibwqD6kaaC0X8cH/pqEjo35RjJ48ist/na78isKL0OhSeXcD4ZmMxNR2K0ErXEYpDgIYyAGojQREu4pCnISvFwCiX/abiOCM/dLNRMygeRoF5IzpSeiKLh8JeTFhExbLffDY5rkIEqa5mUNxlECxliaZjoVuYCUEVC3QlDgefntzWI43OXgDyTLA+VW9YrDi3F4aCXdk4fEcQ1EkqApBLS5YwyHCRhngpcFeQNJEeUbIgyJS+/cIzSfCWNRq4DHu663ijEIqiUryRXXD1yT01dGvgsjxsnp1dwPEhEykiDyVJJi6O823jNuJH+sQWt40fCr8IW/DYnSrpdbRTw2ufjFvdDG7o38wApo0X/ETp3DM8q9lCv3rlMz/AiR7Ea9ELtxXyoaXYZwIdoSmsZyDn6jn7Ms67MaU/uczVGfrpJvH1dIW3h/S76AbKgaG00890Yw4g/OYlo/fLp2aUWKL9cfTk7X7XroM1oiQn+Rtb3FTmfRmsaGIgyk7UM75vibqrRuTgGBiuuck5OLMUyDCvqZB4eDw4zudDKpPfkq7JzEht31JuScSfhXYRFjewiKVkwmsT2Z4e5+1vJH269Lhu8dPZ+yZUj+La2TD1WYOxxbLifM8BtdrlY4DCrrhW+hHpgWvhG9RSX8e46j5Z4vcGV+7zm49pUWamf3QwCy4z1OoHGs7bO2dwm6Fx+vrpGK8LGsUgX6aPYVBvHviMKBcgo42NzYkpZMzhrQFK77OZEhtongFnIuqtjEy0WyQpDHWVyrey5Bol4IxeI5LBcm/weWCd6+
+sidebar_class_name: "post api-method"
+info_path: docs/ecommerce/ecommerce-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Create product (admin)"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"post"}
+  path={"/products"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Create product (admin)
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={undefined}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={{"required":true,"content":{"application/json":{"schema":{"type":"object","properties":{"name":{"type":"string"},"price":{"type":"number","minimum":0},"stock":{"type":"integer","minimum":0},"description":{"type":"string"},"tags":{"type":"array","items":{"type":"string"}},"images":{"type":"array","items":{"type":"string"}}},"required":["name","price"],"title":"ProductRequest"},"examples":{"example":{"value":{"name":"Wireless Mouse","price":29.99,"stock":100,"description":"Ergonomic mouse","tags":["electronics","peripheral"],"images":[]}}}}}}}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"201":{"description":"Product created","headers":{"Location":{"description":"URI of created product","schema":{"type":"string","format":"uri"}}},"content":{"application/json":{"schema":{"type":"object","properties":{"id":{"type":"string"},"name":{"type":"string"},"price":{"type":"number"},"stock":{"type":"integer"},"description":{"type":"string"},"tags":{"type":"array","items":{"type":"string"}},"images":{"type":"array","items":{"type":"string"}},"primaryImageId":{"type":"string","nullable":true},"created_at":{"type":"string","format":"date-time"},"updated_at":{"type":"string","format":"date-time"}},"title":"ProductResponse"},"examples":{"success":{"value":{"id":"prod_42","name":"Wireless Mouse","price":29.99,"stock":100,"description":"Ergonomic mouse","tags":["electronics","peripheral"],"images":[],"primaryImageId":null,"created_at":"2023-10-01T12:00:00Z","updated_at":"2023-10-01T12:00:00Z"}}}}}},"400":{"description":"Bad request","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"badRequest":{"value":{"type":"https://example.com/errors/bad-request","title":"Bad Request","status":400,"detail":"Malformed JSON body.","instance":"/products"}}}}}},"401":{"description":"Unauthorized","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"unauthorized":{"value":{"type":"https://example.com/errors/unauthorized","title":"Unauthorized","status":401,"detail":"Missing or invalid Authorization header.","instance":"/auth/login"}}}}}},"403":{"description":"Forbidden","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"forbidden":{"value":{"type":"https://example.com/errors/forbidden","title":"Forbidden","status":403,"detail":"Insufficient permissions.","instance":"/products"}}}}}},"422":{"description":"Validation error","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"validation":{"value":{"type":"https://example.com/errors/validation","title":"Validation failed","status":422,"detail":"Field 'email' is required.","instance":"/auth/register"}}}}}},"500":{"description":"Internal Server Error","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"serverError":{"value":{"type":"https://example.com/errors/internal","title":"Internal Server Error","status":500,"detail":"Unexpected server error.","instance":"/orders"}}}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

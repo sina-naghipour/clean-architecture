@@ -1,0 +1,63 @@
+---
+id: logout-user-revoke-refresh-token
+title: "Logout user (revoke refresh token)"
+description: "Logout user (revoke refresh token)"
+sidebar_label: "Logout user (revoke refresh token)"
+hide_title: true
+hide_table_of_contents: true
+api: eJztVk1P20AQ/SurPbVqGictSFVuqUolUCkRAfUQcZjYQ7Jg7y6765Q0yn9nZm0nToAKxJVc/LHz+d7zTFYywMzLwUQOyzCXVx3pMS2dCkt6t5JTBIcuHg0mV2s6duit0R7JZyW/9A74kqFPnbJBGS0H8peZzTATpgxy3ZEHvd5jk++QCYd3JfogOzI1OqAObAbW5ioFNkusM9Mci083nn1W0qdzLIDvggo5UphRZfEDA6jcU6SwtPzeTG8w5cgUwqILqqq2Om2u0gen9Iysro0rgNJL6ptLrsPvG9KJDxDKViypqPIZOj7LYhVPuilNjjp9QfI1A3xXKocZcxKNm4I26a/ICu+hsHnV1xSy8xpMelpAXrYzzUOwfpAktUc3NUWCzhnnE3L8vKWhQZXJOd+8bVomHrc9ylPIuXCi+WR89ltMTbbsynajkunLyjR4aop/rIT+YyVcaiBxGaf+UcfvUnirFMo2nK8TQ7nLRAPsHkFbOfTbclDeUw/COKE05VSZGNZekUAxR8jQ7UuEIye5mSm9EcnhU+PimKB1GnIxRrdAJ4644ne1vFktPsJZofk6saiakZZQniOpaf1wZ4Bcary3hDVNkKoKESPvK8Q4kk0zQiJWe5uGtowoKYL44HBhbpHWyjWtqLkI9KA/UrgCSYgEirQmDjQLvMy24uM91amh8HHplS6vu6fmc5NCPifXwbder5eAZab/Z/M1kevWGh2z+Oo53VqmOyBz/mhGz5URvalufjYsn/y5iCwrfW3aUj4iVgp0KYrh6JjcuIsKnX633+3Jfcx27MVfFeZiVE1qcVzADMUpaLoU/F1ROgatgPgZaYgFvgj0nZybXgPeh8TmwN97p4JwVfMxkcwHedaMEIIMKB+sVlPweOny9Zpf02Jy/OeEbhfgFEwZhglLuxoykcJbJBM5TFO0zG6t7OenBDO2EcrobHxBTrBL1B4xMU19BHrZSkL1RosLBoNq7tTVRHAoEwn5AdPHQgk=
+sidebar_class_name: "post api-method"
+info_path: docs/ecommerce/ecommerce-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Logout user (revoke refresh token)"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"post"}
+  path={"/auth/logout"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Logout user (revoke refresh token)
+
+<ParamsDetails
+  parameters={undefined}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={undefined}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"204":{"description":"Logged out"},"400":{"description":"Bad request","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"badRequest":{"value":{"type":"https://example.com/errors/bad-request","title":"Bad Request","status":400,"detail":"Malformed JSON body.","instance":"/products"}}}}}},"401":{"description":"Unauthorized","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"unauthorized":{"value":{"type":"https://example.com/errors/unauthorized","title":"Unauthorized","status":401,"detail":"Missing or invalid Authorization header.","instance":"/auth/login"}}}}}},"500":{"description":"Internal Server Error","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"serverError":{"value":{"type":"https://example.com/errors/internal","title":"Internal Server Error","status":500,"detail":"Unexpected server error.","instance":"/orders"}}}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

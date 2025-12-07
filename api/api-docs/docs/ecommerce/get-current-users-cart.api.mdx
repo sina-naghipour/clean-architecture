@@ -1,0 +1,63 @@
+---
+id: get-current-users-cart
+title: "Get current user's cart"
+description: "Get current user's cart"
+sidebar_label: "Get current user's cart"
+hide_title: true
+hide_table_of_contents: true
+api: eJztVk1PGzEQ/SuWLz00yiYBJMgtailKJSRUQBwiFDm7Q2LYtZexl5JG+e+d8XrJJgRa1Gtzydrz/eZ57JX0au7kcCK/KPTytiMdpBVqv6S9lZyBQsBR5Re0vF2TGMGV1jggm5Uc9Hr8l4FLUZdeWyOHwZFA8BUayGRHptZ4MJ4VVVnmOlWsmNw71l5Jly6gUPzllyWQvZ3dQ+rJsERbAnpdx9JZS8d51GYu1x2pPRSuJVGIailf73/MKyllVeqnb4iNKmCv4LFSxgfwXoSaqp8DsrQy2k9L1Gnb2FTFjMUkJ8scIoJjyv9HxLoWWq/yP9ttbDoSnlVR5nWhrkpTcOHzSeUVNMXLlIym/cHBBrNJlPBy2pfbaITF9HAgGxTkjUagIE6c24ritkEYbNc8OOmenDCJYi1HtD5eh19HHvb6r7l0bRRxz6L+9R6VKKVZDsXnPZSKyFzUGl/BK5078vQ+K2rpbn878s5ioSi8pBMiN8DvIYLzylduPw2ykMV+NhsyNOlfBF/zUXysCPuMT29QbhJ6CX+7Q4KqDWebCTHWwvvSDZMk2nRTWySAaNEl1XYnGmB3GtSUTc3c1CnPtXNUg7AotKGYOhOjaBUaKBagMsCubAMgE/ac5HaujWxIcrRv4IwJWjQqF5eAT4DilDP+z5Z/ZosLcNZofowsOnakRZS3mtSUTp1tMebawHNJWEMm6ixE8LzLEItEGxfZEbBq8+IMvKC7DIkDgiYTfnKChx35KIDYx8NsDqGdiu83mURpHbEehBXmsVSqNLepyhfW+eFxr9dLVMltfU/nIJHr1pV6yUyrsW1frFuIcvygRutaiXbqj29NS7/fXIWWanNn27w9pRYUgCmI0cWYzLiKGop+t9/tyV2AtvTFT+0X4qIe9WJcqDmIc2Xor+BDxJciVVWocGbi6H8b4a1ALwV6ePZJmSs+0Z0at1VEfxIuIn6AMHi8Xq1mysE15us1bz9WgPwooc8nhVrNuOQJc7aeHqFdD0AqckRXXclZRMq+fndwV15IcHZ6Rbpquxc72AfvzRPDLFu+Kc2gcWUfwFCqnZiE5zUFImL+BpQmOQc=
+sidebar_class_name: "get api-method"
+info_path: docs/ecommerce/ecommerce-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Get current user's cart"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"get"}
+  path={"/cart"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Get current user's cart
+
+<ParamsDetails
+  parameters={undefined}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={undefined}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"Cart returned","content":{"application/json":{"schema":{"type":"object","properties":{"id":{"type":"string"},"items":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"product_id":{"type":"string"},"name":{"type":"string"},"quantity":{"type":"integer"},"unit_price":{"type":"number"}},"title":"CartItemResponse"}},"total":{"type":"number"}},"title":"CartResponse"},"examples":{"success":{"value":{"id":"cart_123","items":[{"id":"item_1","product_id":"prod_42","name":"Wireless Mouse","quantity":2,"unit_price":29.99}],"total":59.98}}}}}},"401":{"description":"Unauthorized","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"unauthorized":{"value":{"type":"https://example.com/errors/unauthorized","title":"Unauthorized","status":401,"detail":"Missing or invalid Authorization header.","instance":"/auth/login"}}}}}},"500":{"description":"Internal Server Error","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"serverError":{"value":{"type":"https://example.com/errors/internal","title":"Internal Server Error","status":500,"detail":"Unexpected server error.","instance":"/orders"}}}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

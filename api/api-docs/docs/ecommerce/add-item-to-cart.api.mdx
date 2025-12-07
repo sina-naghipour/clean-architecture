@@ -1,0 +1,71 @@
+---
+id: add-item-to-cart
+title: "Add item to cart"
+description: "Add item to cart"
+sidebar_label: "Add item to cart"
+hide_title: true
+hide_table_of_contents: true
+api: eJztWEtv2zgQ/isELz2sEtneFNj45nYTwMW2DfLYPQSBQUtjm61EqiSVJjX033eGlGz6kbRGekwOMV8znPm+jzTHS+7E3PLhLX8vjON3CbeQ1Ua6Rxxb8ikIA2ZUuwV27xqcNvCtBuve6RxXLH1XGsj50JkaEp5p5UA5mhJVVchMOKlV+sVqRWM2W0ApqOUeK+BDrqdfIHM84ZXRFRgnwdIs9vI6cxOZR2utM1LNeZPwb7VQzse4mpS47xwMeiqlkmVd8mG/aZIowNvYa+QDk8LPgpwQBmMH5WVIkraCB1FWRYiqbVPzXhQ1bEfqO5OTQex9OGj8H0ViK61scDXo9ekjB5sZWRFGaE5bM5HnkDOnWUaEJHwBIgfjjf7RAc5dy5vLMdMzlhkQDq3JlEn0hvY7kLcwJnymTSmQKo58cx/ib2LvCdZ+QqoSJRzKNs7WSrpJZWQWG6u6nNJ0s4/bQMM2ubbOMrB2g1xPKuE46fPkAKpPer1djt6JnLWnhz8JNbqdFlD+sQfyNo+LsOJvcEIWFj09z0WY/Rn5K5j2wG+dcLXdD37uo9hrJhUaquwXNt86pX5xF9Bq+7stuqYi705pzFi708K5yg7TtLU4znSZgjHa2BQNj9Y0dKgSOZer0S5l5HGdI/8oCgocz9eHq8+f2BSvwGMeJ8rTViKWr5Ww55zfKIE3qjbyB+SvUnixFOoYzsPEUG8y0QG7RdBaDv1YDtJazIFpw6TCPWXORq2VJ5CFm3tbIuQ5LfRcqkgkJ7si+aQdO9e1elXIyxWitAtQHqYONDuatRR0iMa0rHVxEukCv2B0bTJgaM68+VO3hG9MTk9P10oYDHaV8C9pK0jKB/YqiBcL4n4F6YGSiAzXmogImmFCm3fGYBBp41xCkbM3SIos3jBpWRf63lvCwFxa598xQR5v970rxgioUaJgV2DuwbCzV438Fo1YD2dA8zCRyJaRSCJPkdSl/nbjpXGj4KFCrPGpEaIIB39bJNr4yqDp5LGpi1Ge+xogqiVKwO8n/3rV/p1TCSrseErTKa0ltsOO1td/tSnaVDHTAsuPYoGWw796vV4qKqL1uTV/pryJKsorUlr7eovqyg1Eu4KF+mERjoTGeUfph/+uPaWk4Mt1OXq2rs42XuorTawf6j2vnpmOVX+GBJZA9/boYoyrCYMAZP+4f9zj2/BurGffpVuwi7AtG5diDuyjUPhR0hGk4gcxKYU/caHQ2cfPxg4rXBw8uLQqBL0YkgD3sqXulreWgTwEm7Cn8eVyKizcmKJpaBhRMlTSY/NeGCmmlPMtST68UjzbX+GRCqVwbxxdh1PS6n63ICTug8UIK6fKPbv2LhLfxeera2K1/Qmh1DnZGPEdB+n/kGNDexS8WPzYkhdCzWtEFOeDT9KA2JTQlmR8Vu2UUI9RhAiPX3Gtv4JCiJI2FUd9DBed/w9MAeY8
+sidebar_class_name: "post api-method"
+info_path: docs/ecommerce/ecommerce-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Add item to cart"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"post"}
+  path={"/cart/items"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Add item to cart
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={undefined}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={{"required":true,"content":{"application/json":{"schema":{"type":"object","properties":{"product_id":{"type":"string"},"quantity":{"type":"integer","minimum":1}},"required":["product_id","quantity"],"title":"CartItemRequest"},"examples":{"example":{"value":{"product_id":"prod_42","quantity":2}}}}}}}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"201":{"description":"Item added to cart","headers":{"Location":{"description":"URI of created cart item","schema":{"type":"string","format":"uri"}}},"content":{"application/json":{"schema":{"type":"object","properties":{"id":{"type":"string"},"product_id":{"type":"string"},"name":{"type":"string"},"quantity":{"type":"integer"},"unit_price":{"type":"number"}},"title":"CartItemResponse"},"examples":{"success":{"value":{"id":"item_1","product_id":"prod_42","quantity":2}}}}}},"400":{"description":"Bad request","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"badRequest":{"value":{"type":"https://example.com/errors/bad-request","title":"Bad Request","status":400,"detail":"Malformed JSON body.","instance":"/products"}}}}}},"401":{"description":"Unauthorized","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"unauthorized":{"value":{"type":"https://example.com/errors/unauthorized","title":"Unauthorized","status":401,"detail":"Missing or invalid Authorization header.","instance":"/auth/login"}}}}}},"404":{"description":"Not Found","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"notFound":{"value":{"type":"https://example.com/errors/not-found","title":"Not Found","status":404,"detail":"Resource not found.","instance":"/products/prod_999"}}}}}},"422":{"description":"Validation error","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"validation":{"value":{"type":"https://example.com/errors/validation","title":"Validation failed","status":422,"detail":"Field 'email' is required.","instance":"/auth/register"}}}}}},"500":{"description":"Internal Server Error","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"serverError":{"value":{"type":"https://example.com/errors/internal","title":"Internal Server Error","status":500,"detail":"Unexpected server error.","instance":"/orders"}}}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

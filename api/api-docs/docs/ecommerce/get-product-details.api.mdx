@@ -1,0 +1,71 @@
+---
+id: get-product-details
+title: "Get product details"
+description: "Get product details"
+sidebar_label: "Get product details"
+hide_title: true
+hide_table_of_contents: true
+api: eJztVm1r4zgQ/itGn+64NHbSLlzyrbDdJQd7LPvCwoVSFHnqqGtL2pHcawj57ztj2YmTuOXKfr1SqOqZZzQzzzOStiLIwov5UnxEm9cqeHE7EgjeWeOBDFsxzTL+k4NXqF3Q1oh5553kEKQuvRgJZU0AE9hVOldqJdk1ffDsvxVeraGSvAobBxTBrh5ABQI6tA4w6Libzns+PqA2hdiNhJEVDBocatW3mLpaAbLFB6u+9yya8iui6aiWgaCxJ3uDRJQbylQHqPwAgBC6kgW8EkOpVxI3C4YuBsqmquuylKuSvgWsgSAKQQbI72QYcr+3WLFF5OR0ETS1jDC1y1+J4Q7owNt2PH9qBcHx4ElWrozF+lop8M3yUZY1dAwyqfnd1VR0zIlvGoFAPvlga4qzJ246G89me7ImWXbCjrjBwhpbaZVULbJTLMVTAa3RivVHGtJuDShLVnDHx1KkPpASVaqrInWtxtM2vbRxm4wfXMGgU0IoSnE3mV6K48bTREwvLybZRTb5MpnOs4x+/xHHjR722TU/I3GVXZ2P1N82JO9sbfLnh4nSJjVUfwwM1YEv9ni7H8uXpy1aX1BFjVoc5DAwKtzd2j83ZpzFIEwbAhr1Hzbf8XH0oyb55Exn49wltN/+9kSXxobYyr4w233WITg/T9PWf6xslQKiRZ8S7OK+paDraJ+Wrlji71CdoOGwNSpICJ408LHoVyhOdDebzfZKeDN0uC6ohWhkmXwGfARMbji7/1Xxy6rwTTtjN18nDN0y0tPFcyR1pb+JR1mrka8Gnhz1GvIkZpE0kU+FYjEH9K06Ti8q8R5C4s4uXieRjtjAuPly2523rd8ib3bgDzKsRb9rfKWMzu/l/QVFByKFXVs+CAtoVMIh+nLe7nfZceVNYTGLGsu2o9TQ0ipZrq0P8z+zLEulY/W85HOZCt7egyKyw6aJuAKJgNc1p7C87Zs/cwmR4b7TEa+irZT/j070JS7edcL669uXeJebe9ufnhsSQgU84NcfFwTjIiMhk/FknImzG6vvn/yrwzrpnkvN1ZJ8kIb+VDzK/AygoivZTG7L3TDPw4+WAE8hdaUkjvmux2awIlHLTgSMnh8EQa3jRrPDdruSHr5iudvx5x81IHeblo8SdXx6UO9z7XlNSriXpYezXPYHk/jtU6uv35PDMXOcY/dAMvw8amdQ0PI7bI50u+PxXYOkiWiSiPZrenC40EOePTaPhPv+hjn9CaZStf8=
+sidebar_class_name: "get api-method"
+info_path: docs/ecommerce/ecommerce-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Get product details"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"get"}
+  path={"/products/{productId}"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Get product details
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"productId","in":"path","required":true,"schema":{"type":"string"}}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={undefined}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"Product details","content":{"application/json":{"schema":{"type":"object","properties":{"id":{"type":"string"},"name":{"type":"string"},"price":{"type":"number"},"stock":{"type":"integer"},"description":{"type":"string"},"tags":{"type":"array","items":{"type":"string"}},"images":{"type":"array","items":{"type":"string"}},"primaryImageId":{"type":"string","nullable":true},"created_at":{"type":"string","format":"date-time"},"updated_at":{"type":"string","format":"date-time"}},"title":"ProductResponse"},"examples":{"success":{"value":{"id":"prod_42","name":"Wireless Mouse","price":29.99,"stock":100,"description":"Ergonomic mouse","tags":["electronics","peripheral"],"images":["/static/img/products/prod_42/image1.jpg"],"primaryImageId":"img_123","created_at":"2023-10-01T12:00:00Z","updated_at":"2023-10-01T12:00:00Z"}}}}}},"404":{"description":"Not Found","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"notFound":{"value":{"type":"https://example.com/errors/not-found","title":"Not Found","status":404,"detail":"Resource not found.","instance":"/products/prod_999"}}}}}},"500":{"description":"Internal Server Error","content":{"application/problem+json":{"schema":{"title":"ProblemDetails","type":"object","properties":{"type":{"type":"string","format":"uri"},"title":{"type":"string"},"status":{"type":"integer"},"detail":{"type":"string"},"instance":{"type":"string","format":"uri"}},"required":["type","title","status"]},"examples":{"serverError":{"value":{"type":"https://example.com/errors/internal","title":"Internal Server Error","status":500,"detail":"Unexpected server error.","instance":"/orders"}}}}}}}}
+>
+  
+</StatusCodes>
+
+
+      
