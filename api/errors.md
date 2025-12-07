@@ -186,6 +186,31 @@ It is based on the OpenAPI specification of the Ecommerce API.
   "instance": "/auth/register"
 }
 ```
+## **429 — Too Many Requests (Rate Limit Exceeded)**
+
+* **Type (URI):** `https://example.com/errors/rate-limit-exceeded`
+* **Title:** Too Many Requests
+* **Description:** Rate limit exceeded. Returned when the client has sent too many requests in a given time period.
+* **Headers included:**
+  * `Retry-After: 60` (seconds until retry is allowed)
+  * `X-RateLimit-Limit: 100` (requests allowed per minute)
+  * `X-RateLimit-Remaining: 0` (requests remaining in current window)
+  * `X-RateLimit-Reset: 1640995200` (UNIX timestamp when limit resets)
+* **Example:**
+
+```json
+{
+  "type": "https://example.com/errors/rate-limit-exceeded",
+  "title": "Too Many Requests",
+  "status": 429,
+  "detail": "Rate limit exceeded. Please try again in 60 seconds.",
+  "instance": "/api/products",
+  "limit": 100,
+  "window": "minute",
+  "retry_after": 60,
+  "reset_timestamp": 1640995200
+}
+```
 
 ---
 

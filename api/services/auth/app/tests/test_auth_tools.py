@@ -2,6 +2,7 @@ import pytest
 from authentication.tools import PasswordTools, TokenTools
 from datetime import datetime, timedelta
 import jwt
+import os
 
 class TestPasswordTools:
     def setup_method(self):
@@ -113,7 +114,8 @@ class TestTokenTools:
             'issued_at': issued_time.timestamp(),
             'type': 'access'
         }
-        expired_token = jwt.encode(expired_payload, 'random-secret-key', 'HS256')
+        JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'random-secret-key')
+        expired_token = jwt.encode(expired_payload, JWT_SECRET_KEY, 'HS256')
         
         with pytest.raises(ValueError, match="Token has expired"):
             self.token_tools.get_token_payload(expired_token)

@@ -52,7 +52,7 @@ class TokenTools:
             'issued_at': datetime.now().timestamp(),
             'type': 'access'
         }
-        return jwt.encode(token_payload, JWT_SECRET_KEY, algorithm='HS256').decode('utf-8')
+        return jwt.encode(token_payload, JWT_SECRET_KEY, algorithm='HS256')
 
     @TokenToolsDecorators.handle_creation_error
     def create_refresh_token(self, user_payload: dict) -> str:
@@ -63,7 +63,7 @@ class TokenTools:
             'issued_at': datetime.now().timestamp(),
             'type': 'refresh'
         }
-        return jwt.encode(token_payload, JWT_SECRET_KEY, algorithm='HS256').decode('utf-8')
+        return jwt.encode(token_payload, JWT_SECRET_KEY, algorithm='HS256')
 
     def validate_token(self, token: str, token_type: str = "access") -> bool:
         if token is None:

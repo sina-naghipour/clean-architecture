@@ -1,35 +1,40 @@
-const {themes} = require('prism-react-renderer');
-const Color = require('color');
+// @ts-check
+// `@type` JSDoc annotations allow editor autocompletion and type checking
+// (when paired with `@ts-check`).
+// There are various equivalent ways to declare your Docusaurus config.
+// See: https://docusaurus.io/docs/api/docusaurus-config
 
-// Function to generate color variations
-const generateColorPalette = (baseColor) => {
-  const color = Color(baseColor);
-  return {
-    base: color.hex(),
-    light: color.lighten(0.2).hex(),
-    lighter: color.lighten(0.4).hex(),
-    dark: color.darken(0.2).hex(),
-    darker: color.darken(0.4).hex(),
-    alpha10: color.alpha(0.1).hexa(),
-    alpha20: color.alpha(0.2).hexa(),
-  };
-};
+import {themes as prismThemes} from 'prism-react-renderer';
+
+// This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'Ecommerce API Documentation',
-  tagline: 'Complete API for ecommerce platform with product image management',
+  title: 'My Site',
+  tagline: 'Dinosaurs are cool',
   favicon: 'img/favicon.ico',
 
-  url: 'https://your-api-docs.com',
+  // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
+  future: {
+    v4: true, // Improve compatibility with the upcoming Docusaurus v4
+  },
+
+  // Set the production url of your site here
+  url: 'https://your-docusaurus-site.example.com',
+  // Set the /<baseUrl>/ pathname under which your site is served
+  // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: '/',
 
-  organizationName: 'sina-naghipour',
-  projectName: 'ecommerce-api',
+  // GitHub pages deployment config.
+  // If you aren't using GitHub pages, you don't need these.
+  organizationName: 'facebook', // Usually your GitHub org/user name.
+  projectName: 'docusaurus', // Usually your repo name.
 
   onBrokenLinks: 'throw',
-  onBrokenMarkdownLinks: 'warn',
 
+  // Even if you don't use internationalization, you can use this field to set
+  // useful metadata like html lang. For example, if your site is Chinese, you
+  // may want to replace "en" with "zh-Hans".
   i18n: {
     defaultLocale: 'en',
     locales: ['en'],
@@ -42,7 +47,25 @@ const config = {
       ({
         docs: {
           sidebarPath: './sidebars.js',
-          editUrl: 'https://github.com/your-repo/docs/edit/main/',
+          // Please change this to your repo.
+          // Remove this to remove the "edit this page" links.
+          editUrl:
+            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
+        },
+        blog: {
+          showReadingTime: true,
+          feedOptions: {
+            type: ['rss', 'atom'],
+            xslt: true,
+          },
+          // Please change this to your repo.
+          // Remove this to remove the "edit this page" links.
+          editUrl:
+            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
+          // Useful options to enforce blogging best practices
+          onInlineTags: 'warn',
+          onInlineAuthors: 'warn',
+          onUntruncatedBlogPosts: 'warn',
         },
         theme: {
           customCss: './src/css/custom.css',
@@ -51,35 +74,30 @@ const config = {
     ],
   ],
 
-
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
+      // Replace with your project's social card
+      image: 'img/docusaurus-social-card.jpg',
       colorMode: {
-        defaultMode: 'dark',
-        disableSwitch: false,
         respectPrefersColorScheme: true,
       },
       navbar: {
-        title: 'Ecommerce API',
+        title: 'My Site',
         logo: {
-          alt: 'Ecommerce API Logo',
+          alt: 'My Site Logo',
           src: 'img/logo.svg',
         },
         items: [
           {
             type: 'docSidebar',
-            sidebarId: 'docsSidebar',
+            sidebarId: 'tutorialSidebar',
             position: 'left',
-            label: 'Documentation',
+            label: 'Tutorial',
           },
+          {to: '/blog', label: 'Blog', position: 'left'},
           {
-            to: '/docs/api',
-            label: 'API Reference',
-            position: 'left',
-          },
-          {
-            href: 'https://github.com/your-repo/ecommerce-api',
+            href: 'https://github.com/facebook/docusaurus',
             label: 'GitHub',
             position: 'right',
           },
@@ -92,16 +110,8 @@ const config = {
             title: 'Docs',
             items: [
               {
-                label: 'Getting Started',
-                to: '/docs/getting-started/overview',
-              },
-              {
-                label: 'Authentication',
-                to: '/docs/getting-started/authentication',
-              },
-              {
-                label: 'API Reference',
-                to: '/docs/api',
+                label: 'Tutorial',
+                to: '/docs/intro',
               },
             ],
           },
@@ -110,15 +120,15 @@ const config = {
             items: [
               {
                 label: 'Stack Overflow',
-                href: 'https://stackoverflow.com/questions/tagged/ecommerce-api',
+                href: 'https://stackoverflow.com/questions/tagged/docusaurus',
               },
               {
                 label: 'Discord',
-                href: 'https://discord.gg/your-server',
+                href: 'https://discordapp.com/invite/docusaurus',
               },
               {
-                label: 'Twitter',
-                href: 'https://twitter.com/your-twitter',
+                label: 'X',
+                href: 'https://x.com/docusaurus',
               },
             ],
           },
@@ -126,41 +136,23 @@ const config = {
             title: 'More',
             items: [
               {
-                label: 'GitHub',
-                href: 'https://github.com/your-repo/ecommerce-api',
+                label: 'Blog',
+                to: '/blog',
               },
               {
-                label: 'Changelog',
-                href: 'https://github.com/your-repo/ecommerce-api/releases',
+                label: 'GitHub',
+                href: 'https://github.com/facebook/docusaurus',
               },
             ],
           },
         ],
-        copyright: `Copyright © ${new Date().getFullYear()} Your Company. Built with Docusaurus.`,
+        copyright: `Copyright © ${new Date().getFullYear()} My Project, Inc. Built with Docusaurus.`,
       },
       prism: {
-        theme: themes.github,
-        darkTheme: themes.dracula,
-        additionalLanguages: ['bash', 'json', 'yaml'],
-      },
-      docs: {
-        sidebar: {
-          hideable: true,
-        },
-      },
-      algolia: {
-        appId: 'YOUR_APP_ID',
-        apiKey: 'YOUR_SEARCH_API_KEY',
-        indexName: 'YOUR_INDEX_NAME',
-        contextualSearch: true,
+        theme: prismThemes.github,
+        darkTheme: prismThemes.dracula,
       },
     }),
-
-    stylesheets: [
-      {
-        href: 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap',
-      },
-    ],
 };
 
-module.exports = config;
+export default config;
