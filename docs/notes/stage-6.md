@@ -1,5 +1,20 @@
 # Stage 6 - Containers & Deployment
 
+## before status
+
+**Quick Stage 6 validation – what passes vs what will get you rejected**
+
+| Area                       | Status   | Comment (short & brutal)                                                                 |
+|----------------------------|----------|-------------------------------------------------------------------------------------------|
+| Slim images                | Pass     | All use `python:3.11-slim` → good                                                        |
+| Non-root user              | Fail     | Only **statics** has `USER appuser`. The other 5 services still run as root → instant fail |
+| Multi-stage builds         | Fail     | Zero multi-stage → you’re shipping build tools & source leaks → fail                      |
+| HEALTHCHECK instruction    | Fail     | None of the Dockerfiles have `HEALTHCHECK` → NGINX/Swarm can’t know if app is dead        |
+| Pin exact base image tag   | Fail     | `python:3.11-slim` (no tag) is moving target → use `python:3.11.10-slim-bookworm`        |
+| Dev volume mounts          | Fail     | `./services/*/app:/app` in production-like stage → code is mutable at runtime → fail     |
+| Image size                 | Fail     | Current images are ~350–450 MB each. Expected < 120 MB after proper multi-stage + non-root|
+| Zero-downtime / replicas   | Fail     | No `deploy: replicas:` or Swarm mode used → no blue/green or rolling swap shown           |
+| NGINX config               | Fail  | no rate limits, no healthchecks  |
 
 ## non root:
 

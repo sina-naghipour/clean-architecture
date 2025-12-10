@@ -13,6 +13,12 @@ services:
       - auth_db_data:/var/lib/postgresql/data
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d auth"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
   orders_db:
     image: postgres:15
@@ -26,6 +32,12 @@ services:
       - orders_db_data:/var/lib/postgresql/data
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d orders_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
   mongodb:
     image: mongo:6
@@ -37,6 +49,12 @@ services:
       - mongodb_data:/data/db
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --eval 'db.adminCommand(\"ping\")' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
   auth:
     build: ./services/auth
@@ -46,9 +64,16 @@ services:
       - ENVIRONMENT=production
       - DATABASE_URL=postgresql+asyncpg://postgres:toor@auth_db:5432/auth
     depends_on:
-      - auth_db
+      auth_db:
+        condition: service_healthy
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health\")' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
   cart:
     build: ./services/cart
@@ -58,6 +83,12 @@ services:
       - ENVIRONMENT=production
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8001/health\")' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
   orders:
     build: ./services/orders
@@ -67,9 +98,16 @@ services:
       - ENVIRONMENT=production
       - DATABASE_URL=postgresql+asyncpg://postgres:toor@orders_db:5432/orders_db
     depends_on:
-      - orders_db
+      orders_db:
+        condition: service_healthy
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8002/health\")' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
   products:
     build: ./services/products
@@ -81,10 +119,18 @@ services:
       - MONGODB_DB_NAME=product_db
       - STATIC_SERVICE_URL=http://statics:8005
     depends_on:
-      - mongodb
-      - statics
+      mongodb:
+        condition: service_healthy
+      statics:
+        condition: service_started
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8003/health\")' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
   profile:
     build: ./services/profile
@@ -94,6 +140,12 @@ services:
       - ENVIRONMENT=production
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8004/health\")' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
   statics:
     build: ./services/statics
@@ -111,6 +163,12 @@ services:
       - statics_storage:/app/static
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8005/health\")' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
   nginx:
     image: nginx:alpine
