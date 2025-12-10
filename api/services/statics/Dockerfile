@@ -10,12 +10,12 @@ COPY requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY app/ .
+
+RUN mkdir -p static/img && chmod 755 static/img
 
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
-
-RUN mkdir -p static/img && chmod 755 static/img
 
 EXPOSE 8005
 
