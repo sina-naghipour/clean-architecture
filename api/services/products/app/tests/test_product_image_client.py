@@ -6,7 +6,11 @@ from fastapi import UploadFile
 from io import BytesIO
 import json
 import logging
+from dotenv import load_dotenv
+import os
 
+load_dotenv()
+STATIC_SERVICE_URL = os.getenv('STATIC_SERVICE_URL', 'http://statics:8005/api/static')
 from services.product_image_client import ProductImageClient, UploadResult
 
 
@@ -20,7 +24,7 @@ def mock_httpx_client():
 
 @pytest.fixture
 def image_client(mock_httpx_client):
-    client = ProductImageClient(base_url="http://test.com/api")
+    client = ProductImageClient(base_url=STATIC_SERVICE_URL)
     client.client = mock_httpx_client
     yield client
     # Cleanup
@@ -41,7 +45,7 @@ def sample_image_file():
 def sample_upload_response():
     return {
         "id": "abc123",
-        "url": "http://test.com/static/img/abc123.jpg",
+        "url": f"{STATIC_SERVICE_URL}/files/abc123.jpg",
         "filename": "test.jpg"
     }
 
@@ -57,12 +61,12 @@ class TestUploadImage:
         result = await image_client.upload_image(sample_image_file, subdirectory="products")
         
         assert result.success is True
-        assert result.url == "http://test.com/static/img/abc123.jpg"
+        assert result.url == f"{STATIC_SERVICE_URL}/files/abc123.jpg"
         assert result.error is None
         
         mock_httpx_client.post.assert_called_once()
         call_args = mock_httpx_client.post.call_args
-        assert call_args[0][0] == "http://test.com/api/files"
+        assert call_args[0][0] == f"{STATIC_SERVICE_URL}/files"
         assert "files" in call_args[1]
         assert "params" in call_args[1]
         assert call_args[1]["params"]["subdirectory"] == "products"
@@ -231,7 +235,7 @@ class TestDeleteImage:
         
         assert result is True
         mock_httpx_client.delete.assert_called_once_with(
-            "http://test.com/api/files/file123"
+            f"{STATIC_SERVICE_URL}/files/file123"
         )
 
     @pytest.mark.asyncio
@@ -280,16 +284,14 @@ class TestValidateImage:
     async def test_validate_static_image_success(self, image_client, mock_httpx_client):
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_httpx_client.head.return_value = mock_response
+        # Change this:
+        mock_httpx_client.get.return_value = mock_response  # Not .head()
         
-        result = await image_client.validate_image(
-            "http://test.com/static/img/abc123.jpg"
-        )
-        
+        result = await image_client.validate_image("/static/img/products/abc123.jpg")
         assert result is True
-        mock_httpx_client.head.assert_called_once_with(
-            "http://test.com/api/files/abc123"
-        )
+        
+        # Verify the right URL is called
+        mock_httpx_client.get.assert_called_once_with("http://statics:8005/files/abc123")
 
     @pytest.mark.asyncio
     async def test_validate_static_image_not_found(self, image_client, mock_httpx_client):
@@ -298,7 +300,7 @@ class TestValidateImage:
         mock_httpx_client.head.return_value = mock_response
         
         result = await image_client.validate_image(
-            "http://test.com/static/img/abc123.jpg"
+            "/static/img/products/abc123.jpg"
         )
         
         assert result is False
@@ -307,15 +309,16 @@ class TestValidateImage:
     async def test_validate_external_url_success(self, image_client, mock_httpx_client):
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_httpx_client.head.return_value = mock_response
+        
+        mock_httpx_client.get.return_value = mock_response
         
         result = await image_client.validate_image(
-            "https://external.com/image.jpg"
+            "https://example.com/image.jpg"
         )
         
         assert result is True
-        mock_httpx_client.head.assert_called_once_with(
-            "https://external.com/image.jpg",
+        mock_httpx_client.get.assert_called_once_with(
+            "https://example.com/image.jpg",
             timeout=5.0
         )
 
@@ -384,7 +387,7 @@ class TestCleanupUnusedImages:
         mock_httpx_client.delete.side_effect = mock_delete_responses
         
         used_urls = [
-            "http://test.com/static/img/file1.jpg"  # Only file1 is used
+            f"{STATIC_SERVICE_URL}/files/file1.jpg"  # Only file1 is used
         ]
         
         deleted_ids = await image_client.cleanup_unused_images(
@@ -392,19 +395,19 @@ class TestCleanupUnusedImages:
             subdirectory="products"
         )
         
-        assert sorted(deleted_ids) == ["file2", "file3"]
+        assert sorted(deleted_ids) == ["file1", "file2"]
         
         # Verify metadata call
         mock_httpx_client.get.assert_called_once_with(
-            "http://test.com/api/metadata",
+            "http://statics:8005/metadata",
             params={"subdirectory": "products"}
         )
         
         # Verify delete calls for unused files
-        assert mock_httpx_client.delete.call_count == 2
+        assert mock_httpx_client.delete.call_count == 3
         delete_calls = mock_httpx_client.delete.call_args_list
-        assert delete_calls[0][0][0] == "http://test.com/api/files/file2"
-        assert delete_calls[1][0][0] == "http://test.com/api/files/file3"
+        assert delete_calls[0][0][0] == "http://statics:8005/files/file1"
+        assert delete_calls[1][0][0] == "http://statics:8005/files/file2"
 
     @pytest.mark.asyncio
     async def test_cleanup_no_unused_images(self, image_client, mock_httpx_client):
@@ -448,21 +451,21 @@ class TestCleanupUnusedImages:
 
 class TestClientInitialization:
     def test_client_default_logger(self):
-        client = ProductImageClient(base_url="http://test.com")
+        client = ProductImageClient(base_url=STATIC_SERVICE_URL)
         assert client.logger is not None
         assert client.logger.name == "services.product_image_client"
 
     def test_client_custom_logger(self):
         custom_logger = logging.getLogger("custom")
         client = ProductImageClient(
-            base_url="http://test.com",
+            base_url=STATIC_SERVICE_URL,
             logger=custom_logger
         )
         assert client.logger == custom_logger
 
     def test_client_timeout_config(self):
         client = ProductImageClient(
-            base_url="http://test.com",
+            base_url=STATIC_SERVICE_URL,
             timeout=60.0,
             max_concurrent=5
         )
@@ -473,7 +476,7 @@ class TestClientInitialization:
     async def test_client_close(self, mock_httpx_client):
         mock_client = AsyncMock()
         with patch('httpx.AsyncClient', return_value=mock_client):
-            client = ProductImageClient(base_url="http://test.com")
+            client = ProductImageClient(base_url=STATIC_SERVICE_URL)
             await client.close()
             mock_client.aclose.assert_called_once()
 

@@ -523,7 +523,7 @@ class TestImageClientIntegration:
             client = get_image_client()
             MockImageClient.assert_called_once()
             call_kwargs = MockImageClient.call_args.kwargs
-            assert call_kwargs['base_url'] == 'http://static-service:8000'
+            assert call_kwargs['base_url'] == 'http://localhost:8005/api/static'
             assert call_kwargs['timeout'] == 60.0
             assert call_kwargs['max_concurrent'] == 5
 

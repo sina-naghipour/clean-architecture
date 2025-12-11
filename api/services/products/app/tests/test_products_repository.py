@@ -8,7 +8,7 @@ from repositories.product_repository import ProductRepository
 from database.database_models import ProductDB
 
 TEST_DB_NAME = "test_product_db"
-TEST_CONNECTION_STRING = os.getenv("TEST_MONGODB_URI", "mongodb://localhost:27017/")
+TEST_CONNECTION_STRING = os.getenv("TEST_MONGODB_URI", "mongodb://mongodb:27017/")
 
 @pytest.fixture(scope="function")
 async def test_db_setup():

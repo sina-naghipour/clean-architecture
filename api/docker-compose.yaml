@@ -132,6 +132,29 @@ services:
       retries: 5
       start_period: 5s
 
+  products_green:
+    build: ./services/products
+    ports:
+      - "8013:8003"
+    environment:
+      - ENVIRONMENT=production
+      - MONGODB_URI=mongodb://mongodb:27017/
+      - MONGODB_DB_NAME=product_db
+      - STATIC_SERVICE_URL=http://statics:8005
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      statics:
+        condition: service_started
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8003/health\")' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
   profile:
     build: ./services/profile
     ports:
