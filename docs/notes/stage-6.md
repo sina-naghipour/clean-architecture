@@ -358,4 +358,40 @@ docker-compose ps -q statics
 
 k6 is a performance testing tool.
 
- 
+to use k6 as a dashboard we could use the extention kx6-dashboard.
+
+smoke test -> how the application respnods under minimum amount of load.
+
+load test -> how the application responds under typical amount of load.
+
+stress test -> how the application reponds under much higher amount of load.
+
+spike test -> how the application responds if its been overwhelmed with a sudden increase of load.
+
+soak test -> how the application reliability is over the span of time.
+
+```javascript
+
+export const options = {
+  stages: [
+    {duration: '5m', target: 50} // gradual ramp up from 0 -> 50 vitrual users
+    {duration: '3m', target: 100} // constant arrival of users for duration of 3m 
+    {duration: '3m', target: 0} // gradual ramp down from to 0 virtual users.
+  ]
+}
+
+```
+
+running k6 on grafana cloud:
+
+```bash
+k6 cloud filename.js
+```
+
+running k6 locally and output to cloud:
+
+```bash
+k6 run --out cloud filename.js
+```
+
+tests are failing not enough reliability, so make 2 replica for each container.

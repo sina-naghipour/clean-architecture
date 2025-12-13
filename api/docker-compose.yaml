@@ -7,8 +7,6 @@ services:
       POSTGRES_DB: auth
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: toor
-    ports:
-      - "5432:5432"
     volumes:
       - auth_db_data:/var/lib/postgresql/data
     networks:
@@ -26,8 +24,6 @@ services:
       POSTGRES_DB: orders_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: toor
-    ports:
-      - "5433:5432"
     volumes:
       - orders_db_data:/var/lib/postgresql/data
     networks:
@@ -43,8 +39,6 @@ services:
     image: mongo:6
     environment:
       MONGO_INITDB_DATABASE: product_db
-    ports:
-      - "27017:27017"
     volumes:
       - mongodb_data:/data/db
     networks:
@@ -58,8 +52,6 @@ services:
 
   auth:
     build: ./services/auth
-    ports:
-      - "8000:8000"
     environment:
       - ENVIRONMENT=production
       - DATABASE_URL=postgresql+asyncpg://postgres:toor@auth_db:5432/auth
@@ -74,11 +66,14 @@ services:
       timeout: 5s
       retries: 5
       start_period: 5s
+    deploy:
+      replicas: 5
+      update_config:
+        parallelism: 1
+        delay: 10s
 
   cart:
     build: ./services/cart
-    ports:
-      - "8001:8001"
     environment:
       - ENVIRONMENT=production
     networks:
@@ -89,11 +84,14 @@ services:
       timeout: 5s
       retries: 5
       start_period: 5s
+    deploy:
+      replicas: 5
+      update_config:
+        parallelism: 1
+        delay: 10s
 
   orders:
     build: ./services/orders
-    ports:
-      - "8002:8002"
     environment:
       - ENVIRONMENT=production
       - DATABASE_URL=postgresql+asyncpg://postgres:toor@orders_db:5432/orders_db
@@ -108,11 +106,14 @@ services:
       timeout: 5s
       retries: 5
       start_period: 5s
+    deploy:
+      replicas: 5
+      update_config:
+        parallelism: 1
+        delay: 10s
 
   products:
     build: ./services/products
-    ports:
-      - "8003:8003"
     environment:
       - ENVIRONMENT=production
       - MONGODB_URI=mongodb://mongodb:27017/
@@ -131,34 +132,14 @@ services:
       timeout: 5s
       retries: 5
       start_period: 5s
-
-  products_green:
-    build: ./services/products
-    ports:
-      - "8013:8003"
-    environment:
-      - ENVIRONMENT=production
-      - MONGODB_URI=mongodb://mongodb:27017/
-      - MONGODB_DB_NAME=product_db
-      - STATIC_SERVICE_URL=http://statics:8005
-    depends_on:
-      mongodb:
-        condition: service_healthy
-      statics:
-        condition: service_started
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8003/health\")' || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 5s
+    deploy:
+      replicas: 5
+      update_config:
+        parallelism: 1
+        delay: 10s
 
   profile:
     build: ./services/profile
-    ports:
-      - "8004:8004"
     environment:
       - ENVIRONMENT=production
     networks:
@@ -169,11 +150,14 @@ services:
       timeout: 5s
       retries: 5
       start_period: 5s
+    deploy:
+      replicas: 5
+      update_config:
+        parallelism: 1
+        delay: 10s
 
   statics:
     build: ./services/statics
-    ports:
-      - "8005:8005"
     environment:
       - ENVIRONMENT=production
       - HOST=0.0.0.0
@@ -192,6 +176,11 @@ services:
       timeout: 5s
       retries: 5
       start_period: 5s
+    deploy:
+      replicas: 5
+      update_config:
+        parallelism: 1
+        delay: 10s
 
   nginx:
     image: nginx:alpine

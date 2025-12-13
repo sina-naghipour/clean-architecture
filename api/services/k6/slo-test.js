@@ -11,8 +11,8 @@ export const options = {
   scenarios: {
     smoke: {
       executor: 'constant-vus',
-      vus: 1,
-      duration: '15s',
+      vus: 5,
+      duration: '1m',
       startTime: '0s',
       tags: { test_type: 'smoke' },
     },
@@ -20,9 +20,9 @@ export const options = {
       executor: 'ramping-vus',
       startVUs: 0,
       stages: [
-        { duration: '10s', target: 5 },
-        { duration: '20s', target: 10 },
-        { duration: '10s', target: 0 },
+        { duration: '1m', target: 20 },
+        { duration: '2m', target: 100 },
+        { duration: '1m', target: 0 },
       ],
       startTime: '20s',
       tags: { test_type: 'load' },
@@ -46,6 +46,10 @@ export default function () {
     '/health',
     '/api/auth/health',
     '/api/products/health',
+    '/api/orders/health',
+    '/api/static/health',
+    '/api/profile/health',
+    '/api/cart/health',
   ];
   
   const endpoint = endpoints[Math.floor(Math.random() * endpoints.length)];
