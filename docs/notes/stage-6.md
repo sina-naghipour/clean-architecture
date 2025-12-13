@@ -395,3 +395,6 @@ k6 run --out cloud filename.js
 ```
 
 tests are failing not enough reliability, so make 2 replica for each container.
+
+we made 5 replicas the tests passed very well, and overal, this was a super duper fun tool, used cloud, loved it.
+
