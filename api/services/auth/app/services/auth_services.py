@@ -97,7 +97,8 @@ class AuthService:
         token_payload = {
             "user_id": str(user.id),
             "email": user.email,
-            "name": user.name
+            "name": user.name,
+            "role": user.role
         }
         
         access_token = token_tools.create_access_token(token_payload)

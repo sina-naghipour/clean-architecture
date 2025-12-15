@@ -3,6 +3,9 @@ import jwt
 import os
 from datetime import datetime, timedelta
 from decorators.auth_tools_decorators import TokenToolsDecorators, PasswordToolsDecorators, PasswordErrorHandler, TokenErrorHandler
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Environment variables with defaults
 JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'random-secret-key')

@@ -1,6 +1,6 @@
 """add role to users
 
-Revision ID: af4769e2e9a0
+Revision ID: 99f6a08600d1
 Revises: d52dc77a7238
 Create Date: 2025-12-14 14:35:46.069764
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = "af4769e2e9a0"
+revision: str = "99f6a08600d1"
 down_revision: Union[str, Sequence[str], None] = "d52dc77a7238"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
