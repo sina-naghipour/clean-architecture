@@ -81,6 +81,24 @@ async def global_exception_handler(request: Request, exc: Exception):
         media_type="application/problem+json"
     )
 
+@app.get("/routes", tags=["Debug"])
+async def list_all_routes(request: Request):
+    routes = []
+    for route in request.app.routes:
+        route_info = {
+            "path": route.path,
+            "methods": list(route.methods) if hasattr(route, 'methods') else [],
+            "name": route.name if hasattr(route, 'name') else None,
+            "endpoint": str(route.endpoint) if hasattr(route, 'endpoint') else None
+        }
+        routes.append(route_info)
+    
+    return {
+        "service": "authentication",
+        "total_routes": len(routes),
+        "routes": routes
+    }
+    
 @app.get("/health", tags=["Health"])
 async def health_check():
     return {

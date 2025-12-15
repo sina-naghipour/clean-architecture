@@ -53,7 +53,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             return {"valid": False, "error": str(e)}
 
     async def dispatch(self, request: Request, call_next: Callable):
-        public_paths = ["/health", "/docs", "/openapi.json", "/redoc"]
+        public_paths = ["/health", "/docs", "/openapi.json", "/redoc", "/ready", "/info"]
         if request.url.path in public_paths:
             return await call_next(request)
         

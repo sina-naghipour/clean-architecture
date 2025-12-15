@@ -8,7 +8,6 @@ from services.order_services import OrderService
 from database import pydantic_models
 from database.database_models import OrderDB, OrderStatus
 
-
 class TestOrderService:
     @pytest_asyncio.fixture
     async def mock_logger(self):
@@ -64,6 +63,20 @@ class TestOrderService:
     async def test_create_order_success(self, order_service, mock_request, sample_order_db):
         user_id = "test_user_1"
         order_data = pydantic_models.OrderCreate(
+            items=[
+                pydantic_models.OrderItemCreate(
+                    product_id="prod_1",
+                    name="Laptop",
+                    quantity=1,
+                    unit_price=999.99
+                ),
+                pydantic_models.OrderItemCreate(
+                    product_id="prod_2",
+                    name="Mouse",
+                    quantity=2,
+                    unit_price=29.99
+                )
+            ],
             billing_address_id="addr_1",
             shipping_address_id="addr_1",
             payment_method_token="pm_tok_abc"
@@ -76,6 +89,22 @@ class TestOrderService:
         assert isinstance(result, JSONResponse)
         assert result.status_code == 201
         order_service.order_repo.create_order.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_create_order_empty_items(self, order_service, mock_request):
+        user_id = "test_user_1"
+        order_data = pydantic_models.OrderCreate(
+            items=[],
+            billing_address_id="addr_1",
+            shipping_address_id="addr_1",
+            payment_method_token="pm_tok_abc"
+        )
+        
+        result = await order_service.create_order(mock_request, order_data, user_id)
+
+        assert isinstance(result, JSONResponse)
+        assert result.status_code == 400
+        order_service.order_repo.create_order.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_get_order_success(self, order_service, mock_request, sample_order_db):
@@ -134,13 +163,15 @@ class TestOrderService:
                 id=uuid4(),
                 status=OrderStatus.PAID,
                 total=50.00,
+                billing_address_id="addr_2",
+                shipping_address_id="addr_2",
+                payment_method_token="pm_tok_xyz",
                 items=[{"product_id": "prod_3", "name": "Keyboard", "quantity": 1, "unit_price": 50.00}]
             )
         ]
         orders_db[1].user_id = "test_user_1"
         
         order_service.order_repo.list_orders.return_value = orders_db
-        order_service.order_repo.count_orders.return_value = len(orders_db)
 
         query_params = pydantic_models.OrderQueryParams(
             page=1,
@@ -157,7 +188,6 @@ class TestOrderService:
         user_id = "user_with_no_orders"
         
         order_service.order_repo.list_orders.return_value = []
-        order_service.order_repo.count_orders.return_value = 0
 
         query_params = pydantic_models.OrderQueryParams(
             page=1,

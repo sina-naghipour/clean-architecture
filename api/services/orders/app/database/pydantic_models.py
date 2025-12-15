@@ -9,17 +9,23 @@ class OrderStatus(str, Enum):
     SHIPPED = "shipped"
     CANCELED = "canceled"
 
+class OrderItemCreate(BaseModel):
+    product_id: str = Field(...)
+    name: str = Field(...)
+    quantity: int = Field(..., ge=1)
+    unit_price: float = Field(..., ge=0)
+
 class OrderCreate(BaseModel):
-    billing_address_id: Optional[str] = Field(None, description="Billing address ID")
-    shipping_address_id: Optional[str] = Field(None, description="Shipping address ID")
-    payment_method_token: Optional[str] = Field(None, description="Payment method token")
+    items: List[OrderItemCreate] = Field(...)
+    billing_address_id: str = Field(...)
+    shipping_address_id: str = Field(...)
+    payment_method_token: str = Field(...)
 
 class OrderItemResponse(BaseModel):
     product_id: str
     name: str
     quantity: int
     unit_price: float
-
     model_config = ConfigDict(from_attributes=True)
 
 class OrderResponse(BaseModel):
@@ -47,8 +53,8 @@ class OrderList(BaseModel):
     page_size: int
 
 class OrderQueryParams(BaseModel):
-    page: int = Field(1, ge=1, description="Page number must be positive")
-    page_size: int = Field(20, ge=1, le=100, description="Page size must be between 1 and 100")
+    page: int = Field(1, ge=1)
+    page_size: int = Field(20, ge=1, le=100)
 
 class ErrorResponse(BaseModel):
     type: str
