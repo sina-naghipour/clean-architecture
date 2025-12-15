@@ -84,6 +84,7 @@ async def health_check():
         "environment": ENVIRONMENT
     }
 
+
 @app.get("/info", tags=["Root"])
 async def root():
     return {

@@ -115,11 +115,14 @@ class TokenTools:
         
         payload = self.get_token_payload(refresh_token)
         user_id = payload.get('user_id')
+        email = payload.get('email')
+        name = payload.get('name')
+        role = payload.get('role')
         
         if not user_id:
             raise ValueError("Invalid refresh token payload")
         
-        user_data = {'user_id': user_id}
+        user_data = {'user_id': user_id, 'email': email, 'name': name, 'role': role}
         
         new_access_token = self.create_access_token(user_data)
         
