@@ -1,7 +1,7 @@
 import pytest
 import pytest_asyncio
 from uuid import uuid4
-from repository.orders_repository import OrderRepository
+from repositories.orders_repository import OrderRepository
 from database.database_models import OrderDB, OrderStatus
 from database.connection import PostgreSQLConnection
 from sqlalchemy import text

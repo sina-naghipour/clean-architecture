@@ -7,6 +7,9 @@ from contextlib import asynccontextmanager
 import os
 from dotenv import load_dotenv
 
+from middlewares.auth_middleware import AuthMiddleware
+
+
 load_dotenv()
 
 from routes.order_routes import router as order_router
@@ -59,6 +62,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(AuthMiddleware)
+
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):

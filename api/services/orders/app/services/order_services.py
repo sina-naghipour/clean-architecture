@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from database import pydantic_models
 from datetime import datetime
 from uuid import UUID
-from repository.orders_repository import OrderRepository
+from repositories.orders_repository import OrderRepository
 from database.database_models import OrderDB, OrderStatus
 
 class OrderService:
