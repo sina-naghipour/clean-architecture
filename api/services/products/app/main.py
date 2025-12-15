@@ -7,6 +7,8 @@ from contextlib import asynccontextmanager
 import os
 from dotenv import load_dotenv
 
+from middlewares.auth_middleware import AuthMiddleware
+
 # Load environment variables
 load_dotenv()
 
@@ -61,6 +63,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(AuthMiddleware)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):

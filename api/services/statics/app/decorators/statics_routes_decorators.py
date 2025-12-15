@@ -1,7 +1,7 @@
 from functools import wraps
 from typing import Callable
 from fastapi import HTTPException, Request
-from utils.problem_details import create_problem_response
+from api.services.statics.app.services.statics_helpers import create_problem_response
 
 
 # Error type URIs from your catalog

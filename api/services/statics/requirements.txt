@@ -7,3 +7,5 @@ httpx
 uvicorn
 python-multipart
 pytest-cov
+dotenv
+PyJWT

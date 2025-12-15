@@ -7,10 +7,14 @@ from contextlib import asynccontextmanager
 import os
 from pathlib import Path
 import json
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from routes.file_routes import router as file_router
-from utils.problem_details import create_problem_response
+from services.statics_helpers import create_problem_response
 
+from middlewares.auth_middleware import AuthMiddleware
 
 logging.basicConfig(
     level=logging.INFO,
@@ -56,6 +60,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(AuthMiddleware)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):

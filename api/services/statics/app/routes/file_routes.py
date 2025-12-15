@@ -6,7 +6,10 @@ from pathlib import Path
 
 from services.file_upload_service import FileUploadService
 from services.metadata_updater import MetadataUpdater
-from utils.problem_details import create_problem_response
+from services.statics_helpers import create_problem_response
+from dotenv import load_dotenv
+
+load_dotenv()
 
 DEFAULT_SUBDIRECTORY = os.getenv("DEFAULT_SUBDIRECTORY", "./general")
 router = APIRouter()

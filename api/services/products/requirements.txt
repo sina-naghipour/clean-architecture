@@ -13,3 +13,4 @@ motor==3.3.2
 mongomock_motor
 asyncio
 python-multipart
+PyJWT
