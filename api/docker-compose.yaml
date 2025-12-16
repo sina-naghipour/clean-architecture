@@ -35,23 +35,6 @@ services:
       retries: 5
       start_period: 5s
 
-  payments_db:
-    image: postgres:15
-    environment:
-      POSTGRES_DB: payments_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: toor
-    volumes:
-      - payments_db_data:/var/lib/postgresql/data
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d payments_db"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-      start_period: 5s
-
   mongodb:
     image: mongo:6
     environment:
@@ -89,21 +72,14 @@ services:
         parallelism: 1
         delay: 10s
 
-  orders:
-    build: ./services/orders
+  cart:
+    build: ./services/cart
     environment:
       - ENVIRONMENT=production
-      - DATABASE_URL=postgresql+asyncpg://postgres:toor@orders_db:5432/orders_db
-      - PAYMENTS_SERVICE_URL=http://payments:8001
-    depends_on:
-      orders_db:
-        condition: service_healthy
-      payments:
-        condition: service_started
     networks:
       - app-network
     healthcheck:
-      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8002/health\")' || exit 1"]
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8001/health\")' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -114,28 +90,24 @@ services:
         parallelism: 1
         delay: 10s
 
-  payments:
-    build: ./services/payments
+  orders:
+    build: ./services/orders
     environment:
       - ENVIRONMENT=production
-      - DATABASE_URL=postgresql+asyncpg://postgres:toor@payments_db:5432/payments_db
-      - STRIPE_MODE=test
-      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-sk_test_dummy}
-      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-whsec_dummy}
-      - STRIPE_RETURN_URL=http://localhost:3000/payment/success
+      - DATABASE_URL=postgresql+asyncpg://postgres:toor@orders_db:5432/orders_db
     depends_on:
-      payments_db:
+      orders_db:
         condition: service_healthy
     networks:
       - app-network
     healthcheck:
-      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8001/health\")' || exit 1"]
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8002/health\")' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 5s
     deploy:
-      replicas: 3
+      replicas: 5
       update_config:
         parallelism: 1
         delay: 10s
@@ -219,8 +191,8 @@ services:
       - statics_storage:/usr/share/nginx/html/static
     depends_on:
       - auth
+      - cart
       - orders
-      - payments
       - products
       - profile
       - statics
@@ -230,7 +202,6 @@ services:
 volumes:
   auth_db_data:
   orders_db_data:
-  payments_db_data:
   mongodb_data:
   statics_storage:
 
