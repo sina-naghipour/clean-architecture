@@ -12,6 +12,7 @@ api/services/profile/.venv-profile
 api/services/statics/.venv-statics
 api/services/statics/app/metadata.json
 api/services/statics/metadata.json
+api/services/payments/app/.env
 
 # C extensions
 *.c
