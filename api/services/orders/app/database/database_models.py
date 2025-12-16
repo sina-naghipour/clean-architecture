@@ -22,6 +22,7 @@ class OrderDB(Base):
     billing_address_id = Column(String, nullable=True)
     shipping_address_id = Column(String, nullable=True)
     payment_method_token = Column(String, nullable=True)
+    payment_id = Column(String, nullable=True)
     items = Column(JSON, nullable=False)
     user_id = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -33,6 +34,8 @@ class OrderDB(Base):
             "total": self.total,
             "billing_address_id": self.billing_address_id,
             "shipping_address_id": self.shipping_address_id,
+            "payment_method_token": self.payment_method_token,
+            "payment_id": self.payment_id,
             "items": self.items,
             "created_at": self.created_at
         }
@@ -46,6 +49,7 @@ class OrderDB(Base):
             billing_address_id=data.get("billing_address_id"),
             shipping_address_id=data.get("shipping_address_id"),
             payment_method_token=data.get("payment_method_token"),
+            payment_id=data.get("payment_id"),
             items=data["items"],
             created_at=data.get("created_at", datetime.utcnow())
         )

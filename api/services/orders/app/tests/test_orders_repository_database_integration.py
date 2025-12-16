@@ -50,6 +50,7 @@ class TestOrderRepositoryDatabaseIntegration:
             billing_address_id="addr_123",
             shipping_address_id="addr_456", 
             payment_method_token="pm_789",
+            payment_id="pay_999",
             items=[
                 {
                     "product_id": "prod_1",
@@ -74,6 +75,32 @@ class TestOrderRepositoryDatabaseIntegration:
         assert retrieved_order.id == order_data.id
         assert retrieved_order.status == OrderStatus.CREATED
         assert retrieved_order.total == 150.50
+        assert retrieved_order.payment_id == "pay_999"
+
+    @pytest.mark.asyncio
+    async def test_update_order_payment_id(self, repository):
+        order = OrderDB(
+            id=uuid4(),
+            status=OrderStatus.CREATED,
+            total=99.99,
+            items=[{"product_id": "prod_1", "name": "Test Product", "quantity": 1, "unit_price": 99.99}]
+        )
+        
+        created_order = await repository.create_order(order)
+        assert created_order.payment_id is None
+        
+        updated_order = await repository.update_order_payment_id(order.id, "pay_123")
+        assert updated_order is not None
+        assert updated_order.payment_id == "pay_123"
+        
+        retrieved_order = await repository.get_order_by_id(order.id)
+        assert retrieved_order.payment_id == "pay_123"
+
+    @pytest.mark.asyncio
+    async def test_update_order_payment_id_not_found(self, repository):
+        non_existent_id = uuid4()
+        result = await repository.update_order_payment_id(non_existent_id, "pay_123")
+        assert result is None
 
     @pytest.mark.asyncio
     async def test_get_order_not_found(self, repository):
@@ -88,15 +115,19 @@ class TestOrderRepositoryDatabaseIntegration:
                 id=uuid4(),
                 status=OrderStatus.CREATED,
                 total=100.00 + i,
+                payment_id=f"pay_{i}",
                 items=[{"product_id": f"prod_{i}", "name": f"Product {i}", "quantity": 1, "unit_price": 100.00 + i}]
             )
             await repository.create_order(order)
         
         first_page = await repository.list_orders(skip=0, limit=2)
         assert len(first_page) == 2
+        assert first_page[0].payment_id == "pay_2"
+        assert first_page[1].payment_id == "pay_1"
         
         second_page = await repository.list_orders(skip=2, limit=2)
         assert len(second_page) == 1
+        assert second_page[0].payment_id == "pay_0"
 
     @pytest.mark.asyncio
     async def test_update_order_status(self, repository):
@@ -104,6 +135,7 @@ class TestOrderRepositoryDatabaseIntegration:
             id=uuid4(),
             status=OrderStatus.CREATED,
             total=99.99,
+            payment_id="pay_initial",
             items=[{"product_id": "prod_1", "name": "Test Product", "quantity": 1, "unit_price": 99.99}]
         )
         
@@ -113,6 +145,7 @@ class TestOrderRepositoryDatabaseIntegration:
         updated_order = await repository.update_order_status(order.id, OrderStatus.PAID)
         assert updated_order is not None
         assert updated_order.status == OrderStatus.PAID
+        assert updated_order.payment_id == "pay_initial"
 
     @pytest.mark.asyncio
     async def test_update_order_status_not_found(self, repository):
@@ -129,6 +162,7 @@ class TestOrderRepositoryDatabaseIntegration:
                 id=uuid4(),
                 status=OrderStatus.CREATED,
                 total=50.00,
+                payment_id=f"pay_{i}",
                 items=[{"product_id": f"prod_{i}", "name": f"Product {i}", "quantity": 1, "unit_price": 50.00}]
             )
             await repository.create_order(order)
@@ -142,6 +176,7 @@ class TestOrderRepositoryDatabaseIntegration:
             id=uuid4(),
             status=OrderStatus.CREATED,
             total=75.00,
+            payment_id="pay_time_test",
             items=[{"product_id": "prod_time", "name": "Time Test", "quantity": 1, "unit_price": 75.00}]
         )
         

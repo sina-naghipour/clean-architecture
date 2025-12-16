@@ -35,6 +35,7 @@ class OrderResponse(BaseModel):
     items: List[OrderItemResponse]
     billing_address_id: Optional[str] = None
     shipping_address_id: Optional[str] = None
+    payment_id: Optional[str] = None
     created_at: str
 
     @field_validator('created_at', mode='before')

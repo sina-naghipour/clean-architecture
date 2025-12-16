@@ -41,6 +41,7 @@ class TestOrderService:
             billing_address_id="addr_1",
             shipping_address_id="addr_1",
             payment_method_token="pm_tok_abc",
+            payment_id="pay_123",
             items=[
                 {
                     "product_id": "prod_1",
@@ -83,12 +84,49 @@ class TestOrderService:
         )
         
         order_service.order_repo.create_order.return_value = sample_order_db
+        
+        with patch.object(order_service, '_create_payment', AsyncMock(return_value="pay_123")) as mock_payment:
+            result = await order_service.create_order(mock_request, order_data, user_id)
 
-        result = await order_service.create_order(mock_request, order_data, user_id)
+            assert isinstance(result, JSONResponse)
+            assert result.status_code == 201
+            order_service.order_repo.create_order.assert_called_once()
+            mock_payment.assert_called_once_with(
+                order_id=str(sample_order_db.id),
+                amount=sample_order_db.total,
+                user_id=user_id,
+                payment_method_token=order_data.payment_method_token
+            )
+            order_service.order_repo.update_order_payment_id.assert_called_once_with(sample_order_db.id, "pay_123")
+            order_service.order_repo.update_order_status.assert_called_once_with(sample_order_db.id, OrderStatus.PAID)
 
-        assert isinstance(result, JSONResponse)
-        assert result.status_code == 201
-        order_service.order_repo.create_order.assert_called_once()
+    @pytest.mark.asyncio
+    async def test_create_order_payment_failure(self, order_service, mock_request, sample_order_db):
+        user_id = "test_user_1"
+        order_data = pydantic_models.OrderCreate(
+            items=[
+                pydantic_models.OrderItemCreate(
+                    product_id="prod_1",
+                    name="Laptop",
+                    quantity=1,
+                    unit_price=999.99
+                )
+            ],
+            billing_address_id="addr_1",
+            shipping_address_id="addr_1",
+            payment_method_token="pm_tok_abc"
+        )
+        
+        order_service.order_repo.create_order.return_value = sample_order_db
+        
+        with patch.object(order_service, '_create_payment', AsyncMock(side_effect=Exception("Payment failed"))):
+            result = await order_service.create_order(mock_request, order_data, user_id)
+
+            assert isinstance(result, JSONResponse)
+            assert result.status_code == 201
+            order_service.order_repo.create_order.assert_called_once()
+            order_service.order_repo.update_order_payment_id.assert_not_called()
+            order_service.order_repo.update_order_status.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_create_order_empty_items(self, order_service, mock_request):
@@ -117,6 +155,7 @@ class TestOrderService:
 
         assert isinstance(result, pydantic_models.OrderResponse)
         assert result.id == order_id
+        assert result.payment_id == "pay_123"
         order_service.order_repo.get_order_by_id.assert_called_once()
 
     @pytest.mark.asyncio
@@ -166,6 +205,7 @@ class TestOrderService:
                 billing_address_id="addr_2",
                 shipping_address_id="addr_2",
                 payment_method_token="pm_tok_xyz",
+                payment_id="pay_456",
                 items=[{"product_id": "prod_3", "name": "Keyboard", "quantity": 1, "unit_price": 50.00}]
             )
         ]
@@ -182,6 +222,8 @@ class TestOrderService:
 
         assert isinstance(result, pydantic_models.OrderList)
         assert len(result.items) == 2
+        assert result.items[0].payment_id == "pay_123"
+        assert result.items[1].payment_id == "pay_456"
 
     @pytest.mark.asyncio
     async def test_list_orders_empty(self, order_service, mock_request):

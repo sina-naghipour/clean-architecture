@@ -7,11 +7,35 @@ from uuid import UUID
 from repositories.orders_repository import OrderRepository
 from database.database_models import OrderDB, OrderStatus
 from decorators.order_services_decorators import OrderServiceDecorators
+import httpx
+import os
 
 class OrderService:
     def __init__(self, logger, db_session):
         self.logger = logger
         self.order_repo = OrderRepository(db_session)
+        self.payments_service_url = os.getenv("PAYMENTS_SERVICE_URL", "http://localhost:8004")
+    
+    async def _create_payment(self, order_id: str, amount: float, user_id: str, payment_method_token: str) -> str:
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                payload = {
+                    "order_id": order_id,
+                    "amount": amount,
+                    "user_id": user_id,
+                    "payment_method_token": payment_method_token
+                }
+                response = await client.post(
+                    f"{self.payments_service_url}/payments/",
+                    json=payload,
+                    headers={"Content-Type": "application/json"}
+                )
+                response.raise_for_status()
+                payment_data = response.json()
+                return payment_data["id"]
+        except Exception as e:
+            self.logger.error(f"Payment creation failed: {e}")
+            raise Exception(f"Payment processing failed: {str(e)}")
     
     async def _get_cart_items(self, user_id: str) -> list:
         return [
@@ -72,6 +96,23 @@ class OrderService:
         created_order = await self.order_repo.create_order(order_db)
         self.logger.info(f"Order created successfully: {created_order.id}")
         
+        try:
+            payment_id = await self._create_payment(
+                order_id=str(created_order.id),
+                amount=created_order.total,
+                user_id=user_id,
+                payment_method_token=order_data.payment_method_token
+            )
+            
+            await self.order_repo.update_order_payment_id(created_order.id, payment_id)
+            await self.order_repo.update_order_status(created_order.id, OrderStatus.PAID)
+            
+            created_order.payment_id = payment_id
+            created_order.status = OrderStatus.PAID
+            
+        except Exception as e:
+            self.logger.error(f"Payment processing failed, keeping order as CREATED: {e}")
+        
         order_items = [
             pydantic_models.OrderItemResponse(
                 product_id=item['product_id'],
@@ -90,6 +131,7 @@ class OrderService:
             items=order_items,
             billing_address_id=created_order.billing_address_id,
             shipping_address_id=created_order.shipping_address_id,
+            payment_id=created_order.payment_id,
             created_at=created_at.isoformat()
         )
         
@@ -128,6 +170,7 @@ class OrderService:
             items=order_items,
             billing_address_id=order_db.billing_address_id,
             shipping_address_id=order_db.shipping_address_id,
+            payment_id=order_db.payment_id,
             created_at=created_at.isoformat()
         )
         
@@ -168,6 +211,7 @@ class OrderService:
                 items=order_items,
                 billing_address_id=order_db.billing_address_id,
                 shipping_address_id=order_db.shipping_address_id,
+                payment_id=order_db.payment_id,
                 created_at=created_at.isoformat()
             )
             orders_with_items.append(order_response)

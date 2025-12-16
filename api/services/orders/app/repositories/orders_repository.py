@@ -47,19 +47,24 @@ class OrderRepository:
             self.logger.error(f"Error fetching order {order_id}: {e}")
             raise
 
-    async def list_orders(self, skip: int = 0, limit: int = 20) -> List[OrderDB]:
+    async def update_order_payment_id(self, order_id: UUID, payment_id: str) -> Optional[OrderDB]:
         try:
-            self.logger.info(f"Listing orders - skip: {skip}, limit: {limit}")
+            self.logger.info(f"Updating order payment ID: {order_id} -> {payment_id}")
             
-            stmt = select(OrderDB).order_by(OrderDB.created_at.desc()).offset(skip).limit(limit)
+            stmt = update(OrderDB).where(OrderDB.id == order_id).values(payment_id=payment_id)
             result = await self.session.execute(stmt)
-            orders = result.scalars().all()
+            await self.session.commit()
             
-            self.logger.info(f"Found {len(orders)} orders")
-            return list(orders)
-            
+            if result.rowcount > 0:
+                self.logger.info(f"Order payment ID updated successfully: {order_id}")
+                return await self.get_order_by_id(order_id)
+            else:
+                self.logger.info(f"No order found for payment ID update: {order_id}")
+                return None
+                
         except SQLAlchemyError as e:
-            self.logger.error(f"Error listing orders: {e}")
+            self.logger.error(f"Error updating order payment ID {order_id}: {e}")
+            await self.session.rollback()
             raise
 
     async def update_order_status(self, order_id: UUID, new_status: OrderStatus) -> Optional[OrderDB]:
@@ -80,6 +85,21 @@ class OrderRepository:
         except SQLAlchemyError as e:
             self.logger.error(f"Error updating order status {order_id}: {e}")
             await self.session.rollback()
+            raise
+
+    async def list_orders(self, skip: int = 0, limit: int = 20) -> List[OrderDB]:
+        try:
+            self.logger.info(f"Listing orders - skip: {skip}, limit: {limit}")
+            
+            stmt = select(OrderDB).order_by(OrderDB.created_at.desc()).offset(skip).limit(limit)
+            result = await self.session.execute(stmt)
+            orders = result.scalars().all()
+            
+            self.logger.info(f"Found {len(orders)} orders")
+            return list(orders)
+            
+        except SQLAlchemyError as e:
+            self.logger.error(f"Error listing orders: {e}")
             raise
 
     async def count_orders(self) -> int:
