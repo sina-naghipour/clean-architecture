@@ -99,7 +99,16 @@ db_connection = PostgreSQLConnection()
 async def get_db():
     if not db_connection.async_session_local:
         await db_connection.connect()
-    return await db_connection.get_session()
+    
+    session = await db_connection.get_session()
+    try:
+        yield session
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        raise
+    finally:
+        await session.close()
 
 async def init_db():
     if not db_connection.engine:

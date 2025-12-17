@@ -6,7 +6,10 @@ from database.database_models import PaymentStatus
 class TestStripeService:
     @pytest.fixture
     def stripe_service(self):
-        with patch.dict('os.environ', {'STRIPE_SECRET_KEY': 'sk_test_123'}):
+        with patch.dict('os.environ', {
+            'STRIPE_SECRET_KEY': 'sk_test_mock',
+            'STRIPE_WEBHOOK_SECRET': 'whsec_mock'
+        }):
             service = StripeService()
             return service
     

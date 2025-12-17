@@ -38,6 +38,7 @@ class TestPaymentService:
 
     @pytest_asyncio.fixture
     def sample_payment_db(self):
+        from datetime import datetime  # Add import
         payment = PaymentDB(
             id=uuid4(),
             order_id="order_123",
@@ -47,7 +48,9 @@ class TestPaymentService:
             stripe_payment_intent_id="pi_123",
             payment_method_token="pm_tok_abc",
             currency="usd",
-            payment_metadata={"key": "value"}
+            payment_metadata={"key": "value"},
+            created_at=datetime.now(),
+            updated_at=datetime.now()
         )
         return payment
 
@@ -64,13 +67,13 @@ class TestPaymentService:
         
         payment_service.payment_repo.get_payment_by_order_id.return_value = None
         payment_service.payment_repo.create_payment.return_value = sample_payment_db
+        payment_service.payment_repo.update_payment_stripe_id = AsyncMock()
+        payment_service.payment_repo.update_payment_status = AsyncMock()
         
         async def mock_create_payment_intent(*args, **kwargs):
             return {
                 "id": "pi_123",
-                "status": "succeeded",
-                "amount": 99.99,
-                "currency": "usd"
+                "status": "succeeded"
             }
         
         payment_service.stripe_service.create_payment_intent = AsyncMock(side_effect=mock_create_payment_intent)
@@ -108,6 +111,7 @@ class TestPaymentService:
         
         payment_service.payment_repo.get_payment_by_order_id.return_value = None
         payment_service.payment_repo.create_payment.return_value = sample_payment_db
+        payment_service.payment_repo.update_payment_status = AsyncMock()
         
         async def mock_create_payment_intent_fail(*args, **kwargs):
             raise Exception("Stripe error")
@@ -170,6 +174,30 @@ class TestPaymentService:
         
         payment_service.stripe_service.handle_webhook_event = AsyncMock(side_effect=mock_handle_webhook_event)
         payment_service.payment_repo.get_payment_by_stripe_id.return_value = sample_payment_db
+        payment_service.payment_repo.update_payment_status = AsyncMock()
+        
+        result = await payment_service.process_webhook(mock_request, payload, sig_header)
+
+        assert "status" in result
+        assert result["status"] == "processed"
+
+    @pytest.mark.asyncio
+    async def test_process_webhook_with_mock_data_structure(self, payment_service, mock_request, sample_payment_db):
+        sample_payment_db.stripe_payment_intent_id = "pi_123"
+        
+        payload = b'{"type": "payment_intent.succeeded", "data": {"object": {"id": "pi_123"}}}'
+        sig_header = "stripe-signature"
+        
+        async def mock_handle_webhook_event(*args, **kwargs):
+            return {
+                "type": "payment_intent.succeeded",
+                "id": "evt_123",
+                "data": {"id": "pi_123"}
+            }
+        
+        payment_service.stripe_service.handle_webhook_event = AsyncMock(side_effect=mock_handle_webhook_event)
+        payment_service.payment_repo.get_payment_by_stripe_id.return_value = sample_payment_db
+        payment_service.payment_repo.update_payment_status = AsyncMock()
         
         result = await payment_service.process_webhook(mock_request, payload, sig_header)
 
@@ -196,6 +224,7 @@ class TestPaymentService:
         
         payment_service.stripe_service.handle_webhook_event = AsyncMock(side_effect=mock_handle_webhook_event)
         payment_service.payment_repo.get_payment_by_stripe_id.return_value = sample_payment_db
+        payment_service.payment_repo.update_payment_status = AsyncMock()
         
         result = await payment_service.process_webhook(mock_request, payload, sig_header)
 
@@ -226,6 +255,7 @@ class TestPaymentService:
         refund_data = pydantic_models.RefundRequest(amount=50.0, reason="customer_request")
         
         payment_service.payment_repo.get_payment_by_id.return_value = sample_payment_db
+        payment_service.payment_repo.update_payment_status = AsyncMock()
         
         async def mock_create_refund(*args, **kwargs):
             return {
@@ -294,6 +324,7 @@ class TestPaymentService:
         refund_data = pydantic_models.RefundRequest()
         
         payment_service.payment_repo.get_payment_by_id.return_value = sample_payment_db
+        payment_service.payment_repo.update_payment_status = AsyncMock()
         
         async def mock_create_refund_fail(*args, **kwargs):
             raise Exception("Stripe error")

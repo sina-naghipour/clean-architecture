@@ -22,6 +22,7 @@ class PaymentService:
         self.logger.info(f"Payment creation attempt for order: {payment_data.order_id}")
         
         try:
+            
             existing_payment = await self.payment_repo.get_payment_by_order_id(payment_data.order_id)
             if existing_payment:
                 return create_problem_response(
@@ -41,7 +42,6 @@ class PaymentService:
                 payment_metadata=payment_data.metadata,
                 status=PaymentStatus.CREATED
             )
-            
             created_payment = await self.payment_repo.create_payment(payment_db)
             self.logger.info(f"Payment record created: {created_payment.id}")
             
@@ -57,6 +57,7 @@ class PaymentService:
                     }
                 )
                 
+                
                 await self.payment_repo.update_payment_stripe_id(
                     created_payment.id,
                     stripe_result["id"]
@@ -69,12 +70,12 @@ class PaymentService:
                 created_payment.status = payment_status
                 
                 self.logger.info(f"Stripe payment intent created: {stripe_result['id']}")
-                
+
             except Exception as stripe_error:
                 self.logger.error(f"Stripe processing failed: {stripe_error}")
                 await self.payment_repo.update_payment_status(created_payment.id, PaymentStatus.FAILED)
                 created_payment.status = PaymentStatus.FAILED
-            
+
             payment_response = pydantic_models.PaymentResponse(
                 id=str(created_payment.id),
                 order_id=created_payment.order_id,
@@ -88,7 +89,7 @@ class PaymentService:
                 created_at=created_payment.created_at.isoformat(),
                 updated_at=created_payment.updated_at.isoformat()
             )
-            
+
             return JSONResponse(
                 status_code=201,
                 content=payment_response.model_dump(),
@@ -97,6 +98,7 @@ class PaymentService:
             
         except Exception as e:
             self.logger.error(f"Payment creation failed: {e}")
+            print('hereeeeeeeeeeeeeeeee: ', e)
             return create_problem_response(
                 status_code=500,
                 error_type="internal-error",
@@ -171,19 +173,18 @@ class PaymentService:
             
             self.logger.info(f"Processing webhook event: {event_type}")
             
-            if event_type == "payment_intent.succeeded":
-                payment_intent = event_data["data"]["object"]
-                payment_intent_id = payment_intent["id"]
-                
+            payment_intent = event_data["data"]
+            if isinstance(payment_intent, dict) and "object" in payment_intent:
+                payment_intent = payment_intent["object"]
+            payment_intent_id = payment_intent.get("id")
+            
+            if event_type == "payment_intent.succeeded" and payment_intent_id:
                 payment_db = await self.payment_repo.get_payment_by_stripe_id(payment_intent_id)
                 if payment_db:
                     await self.payment_repo.update_payment_status(payment_db.id, PaymentStatus.SUCCEEDED)
                     self.logger.info(f"Payment marked as succeeded: {payment_db.id}")
             
-            elif event_type == "payment_intent.payment_failed":
-                payment_intent = event_data["data"]["object"]
-                payment_intent_id = payment_intent["id"]
-                
+            elif event_type == "payment_intent.payment_failed" and payment_intent_id:
                 payment_db = await self.payment_repo.get_payment_by_stripe_id(payment_intent_id)
                 if payment_db:
                     await self.payment_repo.update_payment_status(payment_db.id, PaymentStatus.FAILED)

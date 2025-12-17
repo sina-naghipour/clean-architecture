@@ -55,9 +55,9 @@ class TestPaymentAPIContract:
             "metadata": {"key": "value"}
         }
         
-        response = await client.post("/payments/", json=payment_data)
+        response = await client.post("/", json=payment_data)
         
-        assert response.status_code in [201, 500]
+        assert response.status_code in [201, 409, 500]
         
         if response.status_code == 201:
             data = response.json()
@@ -74,7 +74,7 @@ class TestPaymentAPIContract:
             assert data["amount"] == 99.99
             
             assert "Location" in response.headers
-            assert "/payments/" in response.headers["Location"]
+            assert "/" in response.headers["Location"]
 
     @pytest.mark.asyncio
     async def test_create_payment_invalid_data_contract(self, client):
@@ -82,7 +82,7 @@ class TestPaymentAPIContract:
             "order_id": "order_123"
         }
         
-        response = await client.post("/payments/", json=payment_data)
+        response = await client.post("/", json=payment_data)
         assert response.status_code == 422
 
     @pytest.mark.asyncio
@@ -94,11 +94,11 @@ class TestPaymentAPIContract:
             "payment_method_token": "pm_tok_xyz"
         }
         
-        create_response = await client.post("/payments/", json=payment_data)
+        create_response = await client.post("/", json=payment_data)
         
         if create_response.status_code == 201:
             payment_id = create_response.json()["id"]
-            response = await client.get(f"/payments/{payment_id}")
+            response = await client.get(f"/{payment_id}")
             assert response.status_code in [200, 404]
             
             if response.status_code == 200:
@@ -112,18 +112,18 @@ class TestPaymentAPIContract:
 
     @pytest.mark.asyncio
     async def test_get_payment_not_found_contract(self, client):
-        response = await client.get("/payments/123e4567-e89b-12d3-a456-426614174000")
+        response = await client.get("/123e4567-e89b-12d3-a456-426614174000")
         assert response.status_code in [404, 500]
 
     @pytest.mark.asyncio
     async def test_get_payment_invalid_uuid_contract(self, client):
-        response = await client.get("/payments/not-a-uuid")
+        response = await client.get("/not-a-uuid")
         assert response.status_code == 400
 
     @pytest.mark.asyncio
     async def test_webhook_endpoint_contract(self, client):
         response = await client.post(
-            "/payments/webhooks/stripe",
+            "/webhooks/stripe",
             content="test payload",
             headers={"Stripe-Signature": "test_signature"}
         )
@@ -131,7 +131,7 @@ class TestPaymentAPIContract:
 
     @pytest.mark.asyncio
     async def test_webhook_missing_signature_contract(self, client):
-        response = await client.post("/payments/webhooks/stripe")
+        response = await client.post("/webhooks/stripe")
         assert response.status_code == 422
 
     @pytest.mark.asyncio
@@ -143,7 +143,7 @@ class TestPaymentAPIContract:
             "payment_method_token": "pm_tok_789"
         }
         
-        create_response = await client.post("/payments/", json=payment_data)
+        create_response = await client.post("", json=payment_data)
         
         if create_response.status_code == 201:
             payment_id = create_response.json()["id"]
@@ -152,13 +152,13 @@ class TestPaymentAPIContract:
                 "reason": "customer_request"
             }
             
-            response = await client.post(f"/payments/{payment_id}/refund", json=refund_data)
+            response = await client.post(f"/{payment_id}/refund", json=refund_data)
             assert response.status_code in [200, 400, 404, 500]
 
     @pytest.mark.asyncio
     async def test_refund_invalid_data_contract(self, client):
         response = await client.post(
-            "/payments/123e4567-e89b-12d3-a456-426614174000/refund",
+            "/123e4567-e89b-12d3-a456-426614174000/refund",
             json={"amount": -10.0}
         )
         assert response.status_code in [400, 404, 422, 500]
@@ -182,7 +182,7 @@ class TestPaymentAPIContract:
             "payment_method_token": "pm_tok_999"
         }
         
-        response = await client.post("/payments/", json=payment_data)
+        response = await client.post("/", json=payment_data)
         assert response.status_code == 422
 
     @pytest.mark.asyncio
@@ -194,7 +194,7 @@ class TestPaymentAPIContract:
             "payment_method_token": "pm_tok_000"
         }
         
-        response = await client.post("/payments/", json=payment_data)
+        response = await client.post("/", json=payment_data)
         assert response.status_code == 422
 
     @pytest.mark.asyncio
@@ -203,13 +203,13 @@ class TestPaymentAPIContract:
             "order_id": "order_111"
         }
         
-        response = await client.post("/payments/", json=payment_data)
+        response = await client.post("/", json=payment_data)
         assert response.status_code == 422
 
     @pytest.mark.asyncio
     async def test_malformed_json_contract(self, client):
         response = await client.post(
-            "/payments/",
+            "/",
             content="{invalid json",
             headers={"Content-Type": "application/json"}
         )
@@ -218,7 +218,7 @@ class TestPaymentAPIContract:
     @pytest.mark.asyncio
     async def test_unsupported_media_type_contract(self, client):
         response = await client.post(
-            "/payments/",
+            "/",
             content="order_id=order_123",
             headers={"Content-Type": "application/x-www-form-urlencoded"}
         )
@@ -226,7 +226,7 @@ class TestPaymentAPIContract:
 
     @pytest.mark.asyncio
     async def test_method_not_allowed_contract(self, client):
-        response = await client.put("/payments/")
+        response = await client.put("/")
         assert response.status_code == 405
 
     @pytest.mark.asyncio

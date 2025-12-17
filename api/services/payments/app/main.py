@@ -124,7 +124,7 @@ async def root():
         "ready": "/ready"
     }
 
-app.include_router(payment_router, prefix="/payments")
+app.include_router(payment_router)
 
 if __name__ == "__main__":
     uvicorn.run(
