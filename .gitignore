@@ -14,7 +14,7 @@ api/services/payments/.venv-payments
 api/services/statics/app/metadata.json
 api/services/statics/metadata.json
 api/services/payments/app/.env
-
+api/.env
 # C extensions
 *.c
 api/services/products/app/static

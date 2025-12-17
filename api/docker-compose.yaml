@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: auth
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: toor
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-toor}
     volumes:
       - auth_db_data:/var/lib/postgresql/data
     networks:
@@ -23,13 +23,30 @@ services:
     environment:
       POSTGRES_DB: orders_db
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: toor
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-toor}
     volumes:
       - orders_db_data:/var/lib/postgresql/data
     networks:
       - app-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d orders_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  payments_db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: payments_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-toor}
+    volumes:
+      - payments_db_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d payments_db"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -50,11 +67,29 @@ services:
       retries: 5
       start_period: 5s
 
+  stripe-mock:
+    image: stripe/stripe-mock:latest
+    ports:
+      - "12111:12111"
+      - "12112:12112"
+    networks:
+      - app-network
+
+  stripe-cli:
+    image: stripe/stripe-cli:latest
+    command: listen --api-key ${STRIPE_MOCK_API_KEY:-sk_test_mock} --forward-to http://payments:8006/webhooks/stripe
+    depends_on:
+      - stripe-mock
+      - payments
+    networks:
+      - app-network
+    restart: unless-stopped
+
   auth:
     build: ./services/auth
     environment:
       - ENVIRONMENT=production
-      - DATABASE_URL=postgresql+asyncpg://postgres:toor@auth_db:5432/auth
+      - DATABASE_URL=postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-toor}@auth_db:5432/auth
     depends_on:
       auth_db:
         condition: service_healthy
@@ -72,32 +107,17 @@ services:
         parallelism: 1
         delay: 10s
 
-  cart:
-    build: ./services/cart
-    environment:
-      - ENVIRONMENT=production
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8001/health\")' || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 5s
-    deploy:
-      replicas: 5
-      update_config:
-        parallelism: 1
-        delay: 10s
-
   orders:
     build: ./services/orders
     environment:
       - ENVIRONMENT=production
-      - DATABASE_URL=postgresql+asyncpg://postgres:toor@orders_db:5432/orders_db
+      - DATABASE_URL=postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-toor}@orders_db:5432/orders_db
+      - PAYMENTS_SERVICE_URL=http://payments:8006
     depends_on:
       orders_db:
         condition: service_healthy
+      payments:
+        condition: service_started
     networks:
       - app-network
     healthcheck:
@@ -108,6 +128,35 @@ services:
       start_period: 5s
     deploy:
       replicas: 5
+      update_config:
+        parallelism: 1
+        delay: 10s
+
+  payments:
+    build: ./services/payments
+    environment:
+      - ENVIRONMENT=production
+      - DATABASE_URL=postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-toor}@payments_db:5432/payments_db
+      - STRIPE_MODE=test
+      - STRIPE_SECRET_KEY=${STRIPE_MOCK_API_KEY:-sk_test_mock}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_MOCK_WEBHOOK_SECRET:-whsec_mock}
+      - STRIPE_RETURN_URL=${STRIPE_RETURN_URL:-http://localhost:3000/payment/success}
+      - STRIPE_API_BASE=${STRIPE_API_BASE:-http://stripe-mock:12111}
+    depends_on:
+      payments_db:
+        condition: service_healthy
+      stripe-mock:
+        condition: service_started
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8006/health\")' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    deploy:
+      replicas: 3
       update_config:
         parallelism: 1
         delay: 10s
@@ -191,8 +240,8 @@ services:
       - statics_storage:/usr/share/nginx/html/static
     depends_on:
       - auth
-      - cart
       - orders
+      - payments
       - products
       - profile
       - statics
@@ -202,6 +251,7 @@ services:
 volumes:
   auth_db_data:
   orders_db_data:
+  payments_db_data:
   mongodb_data:
   statics_storage:
 
