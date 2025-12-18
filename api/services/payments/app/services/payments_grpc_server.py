@@ -1,5 +1,5 @@
-import grpc
-from concurrent import futures
+import grpc.aio
+import asyncio
 import logging
 
 from protos import payments_pb2, payments_pb2_grpc
@@ -11,7 +11,7 @@ class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
         self.payment_service = payment_service
         self.logger = logger
     
-    def CreatePayment(self, request, context):
+    async def CreatePayment(self, request, context):
         try:
             self.logger.info(f"gRPC CreatePayment for order: {request.order_id}")
             
@@ -24,54 +24,52 @@ class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
                 metadata=dict(request.metadata) if request.metadata else None
             )
             
-            result = self.payment_service.create_payment(payment_data)
+            result = await self.payment_service.create_payment(payment_data)
             
+            # Convert all fields to proper types for protobuf
             return payments_pb2.PaymentResponse(
-                payment_id=result.id,
-                order_id=result.order_id,
-                user_id=result.user_id,
-                amount=result.amount,
-                status=result.status.value,
-                stripe_payment_intent_id=result.stripe_payment_intent_id or "",
-                payment_method_token=result.payment_method_token,
-                currency=result.currency,
+                payment_id=str(result.id),
+                order_id=str(result.order_id),
+                user_id=str(result.user_id),
+                amount=float(result.amount),
+                status=str(result.status.value),
+                stripe_payment_intent_id=str(result.stripe_payment_intent_id or ""),
+                payment_method_token=str(result.payment_method_token or ""),
+                currency=str(result.currency or "usd"),
                 client_secret=""
             )
             
         except Exception as e:
-            self.logger.error(f"gRPC CreatePayment failed: {e}")
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(str(e))
-            return payments_pb2.PaymentResponse()
+            self.logger.error(f"gRPC CreatePayment failed: {e}", exc_info=True)
+            await context.abort(grpc.StatusCode.INTERNAL, str(e))
     
-    def GetPayment(self, request, context):
+    async def GetPayment(self, request, context):
         try:
             self.logger.info(f"gRPC GetPayment: {request.payment_id}")
             
-            result = self.payment_service.get_payment(request.payment_id)
+            result = await self.payment_service.get_payment(request.payment_id)
             
+            # Convert all fields to proper types for protobuf
             return payments_pb2.PaymentResponse(
-                payment_id=result.id,
-                order_id=result.order_id,
-                user_id=result.user_id,
-                amount=result.amount,
-                status=result.status.value,
-                stripe_payment_intent_id=result.stripe_payment_intent_id or "",
-                payment_method_token=result.payment_method_token,
-                currency=result.currency,
+                payment_id=str(result.id),
+                order_id=str(result.order_id),
+                user_id=str(result.user_id),
+                amount=float(result.amount),
+                status=str(result.status.value),
+                stripe_payment_intent_id=str(result.stripe_payment_intent_id or ""),
+                payment_method_token=str(result.payment_method_token or ""),
+                currency=str(result.currency or "usd"),
                 client_secret=""
             )
             
         except Exception as e:
-            self.logger.error(f"gRPC GetPayment failed: {e}")
+            self.logger.error(f"gRPC GetPayment failed: {e}", exc_info=True)
             if "not found" in str(e).lower():
-                context.set_code(grpc.StatusCode.NOT_FOUND)
+                await context.abort(grpc.StatusCode.NOT_FOUND, str(e))
             else:
-                context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(str(e))
-            return payments_pb2.PaymentResponse()
+                await context.abort(grpc.StatusCode.INTERNAL, str(e))
     
-    def ProcessRefund(self, request, context):
+    async def ProcessRefund(self, request, context):
         try:
             self.logger.info(f"gRPC ProcessRefund: {request.payment_id}")
             
@@ -80,27 +78,26 @@ class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
                 reason=request.reason or None
             )
             
-            result = self.payment_service.create_refund(request.payment_id, refund_data)
+            result = await self.payment_service.create_refund(request.payment_id, refund_data)
             
             return payments_pb2.RefundResponse(
-                refund_id=result["id"],
-                status=result["status"],
-                amount=result["amount"],
-                currency=result["currency"],
-                reason=result.get("reason", "")
+                refund_id=str(result["id"]),
+                status=str(result["status"]),
+                amount=float(result["amount"]),
+                currency=str(result["currency"]),
+                reason=str(result.get("reason", ""))
             )
             
         except Exception as e:
-            self.logger.error(f"gRPC ProcessRefund failed: {e}")
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(str(e))
-            return payments_pb2.RefundResponse()
+            self.logger.error(f"gRPC ProcessRefund failed: {e}", exc_info=True)
+            await context.abort(grpc.StatusCode.INTERNAL, str(e))
 
 
-def serve_grpc(payment_service, host: str = "0.0.0.0", port: int = 50051):
+async def serve_grpc(payment_service, host: str = "0.0.0.0", port: int = 50051):
     logger = logging.getLogger(__name__)
     
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    server = grpc.aio.server()
+    
     payments_pb2_grpc.add_PaymentServiceServicer_to_server(
         PaymentGRPCServer(payment_service, logger), server
     )
@@ -108,6 +105,10 @@ def serve_grpc(payment_service, host: str = "0.0.0.0", port: int = 50051):
     server_address = f"{host}:{port}"
     server.add_insecure_port(server_address)
     
-    logger.info(f"gRPC server started on {server_address}")
-    server.start()
-    server.wait_for_termination()
+    logger.info(f"Async gRPC server started on {server_address}")
+    await server.start()
+    
+    try:
+        await server.wait_for_termination()
+    except KeyboardInterrupt:
+        await server.stop(5)

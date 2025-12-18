@@ -7,6 +7,7 @@ class OrderStatus(str, Enum):
     CREATED = "created"
     PAID = "paid"
     SHIPPED = "shipped"
+    PENDING = "pending"
     CANCELED = "canceled"
 
 class OrderItemCreate(BaseModel):
@@ -36,6 +37,7 @@ class OrderResponse(BaseModel):
     billing_address_id: Optional[str] = None
     shipping_address_id: Optional[str] = None
     payment_id: Optional[str] = None
+    client_secret: Optional[str] = None
     created_at: str
 
     @field_validator('created_at', mode='before')

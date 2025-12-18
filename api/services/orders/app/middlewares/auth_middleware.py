@@ -34,6 +34,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
             if payload.get('type') != 'access':
                 return {"valid": False, "error": "Invalid token type"}
             
+            # if payload.get('active') != 'True':
+            #     return {"valid": False, "error": "Account not active"}            
+            
             return {
                 "valid": True,
                 "user_data": {
@@ -88,6 +91,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 instance=request.url.path
             )
         
+
+                
         request.state.user = validation_result["user_data"]
         
         response = await call_next(request)

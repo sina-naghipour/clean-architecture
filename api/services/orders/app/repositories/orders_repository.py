@@ -68,22 +68,25 @@ class OrderRepository:
             raise
 
     async def update_order_status(self, order_id: UUID, new_status: OrderStatus) -> Optional[OrderDB]:
-        try:
-            self.logger.info(f"Updating order status: {order_id} -> {new_status}")
-            
+        self.logger.info('calleddddddddddddddddddd')
+        try:            
             stmt = update(OrderDB).where(OrderDB.id == order_id).values(status=new_status)
+            
             result = await self.session.execute(stmt)
+            
             await self.session.commit()
             
             if result.rowcount > 0:
                 self.logger.info(f"Order status updated successfully: {order_id}")
-                return await self.get_order_by_id(order_id)
+                updated_order = await self.get_order_by_id(order_id)
+                self.logger.info(f"Fetched updated order, status: {updated_order.status if updated_order else 'None'}")
+                return updated_order
             else:
                 self.logger.info(f"No order found for status update: {order_id}")
                 return None
                 
-        except SQLAlchemyError as e:
-            self.logger.error(f"Error updating order status {order_id}: {e}")
+        except Exception as e:  # Catch ALL exceptions, not just SQLAlchemyError
+            self.logger.error(f"Error updating order status {order_id}: {e}", exc_info=True)
             await self.session.rollback()
             raise
 

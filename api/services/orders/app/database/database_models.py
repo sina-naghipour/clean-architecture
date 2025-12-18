@@ -12,7 +12,7 @@ class OrderStatus(str, Enum):
     PAID = "paid"
     SHIPPED = "shipped"
     CANCELED = "canceled"
-
+    PENDING = "pending"
 class OrderDB(Base):
     __tablename__ = "orders"
 

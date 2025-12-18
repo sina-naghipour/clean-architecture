@@ -11,11 +11,10 @@ class OrderErrorDecorators:
         async def wrapper(
             request: Request,
             order_data: Any,
-            user_id: str,
             order_service: OrderService = Depends(),
         ) -> Any:
             try:
-                return await func(request, order_data, user_id, order_service)
+                return await func(request, order_data, order_service)
             except Exception as e:
                 return OrderErrorDecorators._handle_create_exception(e, request)
         return wrapper
@@ -26,11 +25,10 @@ class OrderErrorDecorators:
         async def wrapper(
             request: Request,
             order_id: str,
-            user_id: str,
             order_service: OrderService = Depends(),
         ) -> Any:
             try:
-                return await func(request, order_id, user_id, order_service)
+                return await func(request, order_id, order_service)
             except Exception as e:
                 return OrderErrorDecorators._handle_get_exception(e, request)
         return wrapper
@@ -40,13 +38,12 @@ class OrderErrorDecorators:
         @wraps(func)
         async def wrapper(
             request: Request,
-            user_id: str,
             page: int = 1,
             page_size: int = 20,
             order_service: OrderService = Depends(),
         ) -> Any:
             try:
-                return await func(request, user_id, page, page_size, order_service)
+                return await func(request, page, page_size, order_service)
             except Exception as e:
                 return OrderErrorDecorators._handle_list_exception(e, request)
         return wrapper
@@ -76,6 +73,7 @@ class OrderErrorDecorators:
                 detail="Order already exists"
             )
         else:
+            print(error_str)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Order creation failed"

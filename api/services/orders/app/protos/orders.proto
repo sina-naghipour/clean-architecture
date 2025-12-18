@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package orders;
+
+service OrderService {
+  // Payments Service calls this when payment status changes (webhook)
+  rpc UpdateOrderPaymentStatus(UpdateOrderPaymentRequest) returns (UpdateOrderPaymentResponse);
+}
+
+message UpdateOrderPaymentRequest {
+  string order_id = 1;           // UUID string (OrderDB.id)
+  string payment_id = 2;         // UUID string (PaymentDB.id)
+  string status = 3;             // "succeeded", "failed", "refunded"
+  string stripe_payment_intent_id = 4; // From Stripe
+}
+
+message UpdateOrderPaymentResponse {
+  bool success = 1;
+  string order_id = 2;
+  string updated_status = 3;     // e.g., "paid" for succeeded
+}

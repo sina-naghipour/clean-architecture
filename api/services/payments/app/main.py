@@ -1,8 +1,9 @@
+import asyncio
+import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import logging
-import uvicorn
 from contextlib import asynccontextmanager
 import os
 from dotenv import load_dotenv
@@ -10,9 +11,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from routes.payments_routes import router as payment_router
+from services.payments_service import PaymentService
+from database.connection import get_db
+from services.payments_grpc_server import serve_grpc
 
 HOST = os.getenv('HOST', '0.0.0.0')
 PORT = int(os.getenv('PORT', '8001'))
+GRPC_PORT = int(os.getenv('GRPC_PORT', '50051'))
 RELOAD = os.getenv('RELOAD', 'True').lower() == 'true'
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'info')
 ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
@@ -34,14 +39,38 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Async lifespan context manager for FastAPI"""
     logger.info("Starting Payments Service...")
     logger.info(f"Environment: {ENVIRONMENT}")
-    logger.info(f"Host: {HOST}, Port: {PORT}")
+    logger.info(f"HTTP Host: {HOST}, HTTP Port: {PORT}")
+    logger.info(f"gRPC Port: {GRPC_PORT}")
     logger.info(f"Stripe Mode: {os.getenv('STRIPE_MODE', 'test')}")
+    
+    # Initialize payment service
+    async for session in get_db():
+        payment_service = PaymentService(logger, session)
+        
+        # Start gRPC server in background task
+        grpc_task = asyncio.create_task(
+            serve_grpc(payment_service, port=GRPC_PORT)
+        )
+        
+        # Store for shutdown
+        app.state.payment_service = payment_service
+        app.state.grpc_task = grpc_task
+        break
     
     yield
     
     logger.info("Shutting down Payments Service...")
+    
+    # Cancel gRPC task
+    if hasattr(app.state, 'grpc_task'):
+        app.state.grpc_task.cancel()
+        try:
+            await app.state.grpc_task
+        except asyncio.CancelledError:
+            pass
 
 app = FastAPI(
     title="Ecommerce API - Payments Service",
@@ -101,15 +130,18 @@ async def health_check():
         "service": "payments",
         "timestamp": "2024-01-01T00:00:00Z",
         "environment": ENVIRONMENT,
-        "stripe_mode": os.getenv('STRIPE_MODE', 'test')
+        "stripe_mode": os.getenv('STRIPE_MODE', 'test'),
+        "grpc_port": GRPC_PORT
     }
 
 @app.get("/ready", tags=["Health"])
 async def readiness_check():
+    # Optional: Add gRPC health check here
     return {
         "status": "ready",
         "service": "payments",
-        "timestamp": "2024-01-01T00:00:00Z"
+        "timestamp": "2024-01-01T00:00:00Z",
+        "grpc_ready": True
     }
 
 @app.get("/info", tags=["Root"])
@@ -119,6 +151,10 @@ async def root():
         "version": "1.0.0",
         "environment": ENVIRONMENT,
         "stripe_mode": os.getenv('STRIPE_MODE', 'test'),
+        "ports": {
+            "http": PORT,
+            "grpc": GRPC_PORT
+        },
         "docs": "/docs",
         "health": "/health",
         "ready": "/ready"

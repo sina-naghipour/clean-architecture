@@ -11,3 +11,5 @@ asyncpg
 alembic
 psycopg2-binary
 PyJWT
+grpcio
+grpcio-tools
