@@ -11,3 +11,5 @@ asyncpg
 alembic
 psycopg2-binary
 stripe==7.7.0
+grpcio 
+grpcio-tools

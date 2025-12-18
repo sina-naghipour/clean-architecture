@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package payments;
+
+service PaymentService {
+  // Order Service calls this to create payment
+  rpc CreatePayment(CreatePaymentRequest) returns (PaymentResponse);
+  
+  // Order Service calls this to check payment status
+  rpc GetPayment(GetPaymentRequest) returns (PaymentResponse);
+  
+  // Order Service calls this for refunds
+  rpc ProcessRefund(RefundRequest) returns (RefundResponse);
+}
+
+// Maps to PaymentCreate in payments service
+message CreatePaymentRequest {
+  string order_id = 1;           // From OrderDB.id (UUID string)
+  string user_id = 2;            // From OrderDB.user_id
+  double amount = 3;             // From OrderDB.total
+  string currency = 4;           // Default: "usd"
+  string payment_method_token = 5; // From OrderCreate.payment_method_token
+  map<string, string> metadata = 6; // Additional info (optional)
+}
+
+message GetPaymentRequest {
+  string payment_id = 1;         // UUID string
+}
+
+message RefundRequest {
+  string payment_id = 1;         // UUID string
+  double amount = 2;             // Optional (full refund if not specified)
+  string reason = 3;             // Optional
+}
+
+// Maps to PaymentResponse in payments service
+message PaymentResponse {
+  string payment_id = 1;         // UUID string (PaymentDB.id)
+  string order_id = 2;           // Same as request
+  string user_id = 3;            // Same as request
+  double amount = 4;             // Same as request
+  string status = 5;             // "created", "processing", "succeeded", "failed", "refunded", "canceled"
+  string stripe_payment_intent_id = 6; // From Stripe
+  string payment_method_token = 7; // Same as request
+  string currency = 8;           // Same as request
+  string client_secret = 9;      // For frontend Stripe Elements (CRITICAL!)
+}
+
+message RefundResponse {
+  string refund_id = 1;          // Stripe refund ID
+  string status = 2;             // "succeeded", "pending", "failed"
+  double amount = 3;             // Refunded amount
+  string currency = 4;           // e.g., "usd"
+  string reason = 5;             // e.g., "customer_request"
+}

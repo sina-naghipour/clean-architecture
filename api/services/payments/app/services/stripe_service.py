@@ -49,7 +49,8 @@ class StripeService:
             return {
                 "id": payment_intent.id,
                 "status": payment_intent.status,
-                "amount": payment_intent.amount / 100
+                "amount": payment_intent.amount / 100,
+                "client_secret": payment_intent.client_secret
             }
             
         except stripe.error.StripeError as e:
@@ -70,6 +71,7 @@ class StripeService:
                 "status": payment_intent.status,
                 "amount": payment_intent.amount / 100,
                 "currency": payment_intent.currency,
+                "client_secret": payment_intent.client_secret,
                 "metadata": payment_intent.metadata
             }
             

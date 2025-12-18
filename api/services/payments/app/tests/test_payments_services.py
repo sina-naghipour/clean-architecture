@@ -2,8 +2,6 @@ import pytest
 import pytest_asyncio
 from unittest.mock import Mock, AsyncMock, patch
 from uuid import uuid4
-from fastapi import Request
-from fastapi.responses import JSONResponse
 from services.payments_service import PaymentService
 from database import pydantic_models
 from database.database_models import PaymentDB, PaymentStatus
@@ -31,14 +29,8 @@ class TestPaymentService:
                 yield service
 
     @pytest_asyncio.fixture
-    async def mock_request(self):
-        request = Mock(spec=Request)
-        request.url = "http://testserver/api/payments"
-        return request
-
-    @pytest_asyncio.fixture
     def sample_payment_db(self):
-        from datetime import datetime  # Add import
+        from datetime import datetime
         payment = PaymentDB(
             id=uuid4(),
             order_id="order_123",
@@ -55,7 +47,7 @@ class TestPaymentService:
         return payment
 
     @pytest.mark.asyncio
-    async def test_create_payment_success(self, payment_service, mock_request, sample_payment_db):
+    async def test_create_payment_success(self, payment_service, sample_payment_db):
         payment_data = pydantic_models.PaymentCreate(
             order_id="order_123",
             amount=99.99,
@@ -79,13 +71,14 @@ class TestPaymentService:
         payment_service.stripe_service.create_payment_intent = AsyncMock(side_effect=mock_create_payment_intent)
         payment_service.stripe_service.map_stripe_status_to_payment_status.return_value = PaymentStatus.SUCCEEDED
         
-        result = await payment_service.create_payment(mock_request, payment_data)
+        result = await payment_service.create_payment(payment_data)
 
-        assert isinstance(result, JSONResponse)
-        assert result.status_code == 201
+        assert isinstance(result, pydantic_models.PaymentResponse)
+        assert result.id == str(sample_payment_db.id)
+        assert result.status == PaymentStatus.SUCCEEDED
 
     @pytest.mark.asyncio
-    async def test_create_payment_already_exists(self, payment_service, mock_request, sample_payment_db):
+    async def test_create_payment_already_exists(self, payment_service, sample_payment_db):
         payment_data = pydantic_models.PaymentCreate(
             order_id="order_123",
             amount=99.99,
@@ -95,13 +88,13 @@ class TestPaymentService:
         
         payment_service.payment_repo.get_payment_by_order_id.return_value = sample_payment_db
         
-        result = await payment_service.create_payment(mock_request, payment_data)
-
-        assert isinstance(result, JSONResponse)
-        assert result.status_code == 409
+        with pytest.raises(Exception) as exc_info:
+            await payment_service.create_payment(payment_data)
+        
+        assert "Payment already exists" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_create_payment_stripe_failure(self, payment_service, mock_request, sample_payment_db):
+    async def test_create_payment_stripe_failure(self, payment_service, sample_payment_db):
         payment_data = pydantic_models.PaymentCreate(
             order_id="order_123",
             amount=99.99,
@@ -118,44 +111,44 @@ class TestPaymentService:
         
         payment_service.stripe_service.create_payment_intent = AsyncMock(side_effect=mock_create_payment_intent_fail)
         
-        result = await payment_service.create_payment(mock_request, payment_data)
+        result = await payment_service.create_payment(payment_data)
 
-        assert isinstance(result, JSONResponse)
-        assert result.status_code == 201
+        assert isinstance(result, pydantic_models.PaymentResponse)
+        assert result.status == PaymentStatus.FAILED
 
     @pytest.mark.asyncio
-    async def test_get_payment_success(self, payment_service, mock_request, sample_payment_db):
+    async def test_get_payment_success(self, payment_service, sample_payment_db):
         payment_id = str(sample_payment_db.id)
         
         payment_service.payment_repo.get_payment_by_id.return_value = sample_payment_db
 
-        result = await payment_service.get_payment(mock_request, payment_id)
+        result = await payment_service.get_payment(payment_id)
 
         assert isinstance(result, pydantic_models.PaymentResponse)
         assert result.id == payment_id
 
     @pytest.mark.asyncio
-    async def test_get_payment_not_found(self, payment_service, mock_request):
+    async def test_get_payment_not_found(self, payment_service):
         payment_id = str(uuid4())
         
         payment_service.payment_repo.get_payment_by_id.return_value = None
-
-        result = await payment_service.get_payment(mock_request, payment_id)
-
-        assert isinstance(result, JSONResponse)
-        assert result.status_code == 404
+        
+        with pytest.raises(Exception) as exc_info:
+            await payment_service.get_payment(payment_id)
+        
+        assert "Payment not found" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_get_payment_invalid_uuid(self, payment_service, mock_request):
+    async def test_get_payment_invalid_uuid(self, payment_service):
         invalid_payment_id = "not-a-uuid"
-
-        result = await payment_service.get_payment(mock_request, invalid_payment_id)
-
-        assert isinstance(result, JSONResponse)
-        assert result.status_code == 400
+        
+        with pytest.raises(Exception) as exc_info:
+            await payment_service.get_payment(invalid_payment_id)
+        
+        assert "Payment not found" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_process_webhook_success(self, payment_service, mock_request, sample_payment_db):
+    async def test_process_webhook_success(self, payment_service, sample_payment_db):
         sample_payment_db.stripe_payment_intent_id = "pi_123"
         
         payload = b'{"test": "data"}'
@@ -176,13 +169,13 @@ class TestPaymentService:
         payment_service.payment_repo.get_payment_by_stripe_id.return_value = sample_payment_db
         payment_service.payment_repo.update_payment_status = AsyncMock()
         
-        result = await payment_service.process_webhook(mock_request, payload, sig_header)
+        result = await payment_service.process_webhook(payload, sig_header)
 
         assert "status" in result
         assert result["status"] == "processed"
 
     @pytest.mark.asyncio
-    async def test_process_webhook_with_mock_data_structure(self, payment_service, mock_request, sample_payment_db):
+    async def test_process_webhook_with_mock_data_structure(self, payment_service, sample_payment_db):
         sample_payment_db.stripe_payment_intent_id = "pi_123"
         
         payload = b'{"type": "payment_intent.succeeded", "data": {"object": {"id": "pi_123"}}}'
@@ -199,13 +192,13 @@ class TestPaymentService:
         payment_service.payment_repo.get_payment_by_stripe_id.return_value = sample_payment_db
         payment_service.payment_repo.update_payment_status = AsyncMock()
         
-        result = await payment_service.process_webhook(mock_request, payload, sig_header)
+        result = await payment_service.process_webhook(payload, sig_header)
 
         assert "status" in result
         assert result["status"] == "processed"
 
     @pytest.mark.asyncio
-    async def test_process_webhook_payment_failed(self, payment_service, mock_request, sample_payment_db):
+    async def test_process_webhook_payment_failed(self, payment_service, sample_payment_db):
         sample_payment_db.stripe_payment_intent_id = "pi_123"
         
         payload = b'{"test": "data"}'
@@ -226,13 +219,13 @@ class TestPaymentService:
         payment_service.payment_repo.get_payment_by_stripe_id.return_value = sample_payment_db
         payment_service.payment_repo.update_payment_status = AsyncMock()
         
-        result = await payment_service.process_webhook(mock_request, payload, sig_header)
+        result = await payment_service.process_webhook(payload, sig_header)
 
         assert "status" in result
         assert result["status"] == "processed"
 
     @pytest.mark.asyncio
-    async def test_process_webhook_error(self, payment_service, mock_request):
+    async def test_process_webhook_error(self, payment_service):
         payload = b'{"test": "data"}'
         sig_header = "stripe-signature"
         
@@ -241,13 +234,13 @@ class TestPaymentService:
         
         payment_service.stripe_service.handle_webhook_event = AsyncMock(side_effect=mock_handle_webhook_event_fail)
         
-        result = await payment_service.process_webhook(mock_request, payload, sig_header)
-
-        assert isinstance(result, JSONResponse)
-        assert result.status_code == 400
+        with pytest.raises(Exception) as exc_info:
+            await payment_service.process_webhook(payload, sig_header)
+        
+        assert "Webhook processing failed" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_create_refund_success(self, payment_service, mock_request, sample_payment_db):
+    async def test_create_refund_success(self, payment_service, sample_payment_db):
         sample_payment_db.status = PaymentStatus.SUCCEEDED
         sample_payment_db.stripe_payment_intent_id = "pi_123"
         
@@ -268,25 +261,25 @@ class TestPaymentService:
         
         payment_service.stripe_service.create_refund = AsyncMock(side_effect=mock_create_refund)
         
-        result = await payment_service.create_refund(mock_request, payment_id, refund_data)
+        result = await payment_service.create_refund(payment_id, refund_data)
 
         assert "id" in result
         assert result["id"] == "re_123"
 
     @pytest.mark.asyncio
-    async def test_create_refund_not_found(self, payment_service, mock_request):
+    async def test_create_refund_not_found(self, payment_service):
         payment_id = str(uuid4())
         refund_data = pydantic_models.RefundRequest()
         
         payment_service.payment_repo.get_payment_by_id.return_value = None
         
-        result = await payment_service.create_refund(mock_request, payment_id, refund_data)
-
-        assert isinstance(result, JSONResponse)
-        assert result.status_code == 404
+        with pytest.raises(Exception) as exc_info:
+            await payment_service.create_refund(payment_id, refund_data)
+        
+        assert "Payment not found" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_create_refund_no_stripe_id(self, payment_service, mock_request, sample_payment_db):
+    async def test_create_refund_no_stripe_id(self, payment_service, sample_payment_db):
         sample_payment_db.status = PaymentStatus.SUCCEEDED
         sample_payment_db.stripe_payment_intent_id = None
         
@@ -295,13 +288,13 @@ class TestPaymentService:
         
         payment_service.payment_repo.get_payment_by_id.return_value = sample_payment_db
         
-        result = await payment_service.create_refund(mock_request, payment_id, refund_data)
-
-        assert isinstance(result, JSONResponse)
-        assert result.status_code == 400
+        with pytest.raises(Exception) as exc_info:
+            await payment_service.create_refund(payment_id, refund_data)
+        
+        assert "Payment has no Stripe payment intent" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_create_refund_not_succeeded(self, payment_service, mock_request, sample_payment_db):
+    async def test_create_refund_not_succeeded(self, payment_service, sample_payment_db):
         sample_payment_db.status = PaymentStatus.FAILED
         sample_payment_db.stripe_payment_intent_id = "pi_123"
         
@@ -310,13 +303,13 @@ class TestPaymentService:
         
         payment_service.payment_repo.get_payment_by_id.return_value = sample_payment_db
         
-        result = await payment_service.create_refund(mock_request, payment_id, refund_data)
-
-        assert isinstance(result, JSONResponse)
-        assert result.status_code == 400
+        with pytest.raises(Exception) as exc_info:
+            await payment_service.create_refund(payment_id, refund_data)
+        
+        assert "Only succeeded payments can be refunded" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_create_refund_stripe_error(self, payment_service, mock_request, sample_payment_db):
+    async def test_create_refund_stripe_error(self, payment_service, sample_payment_db):
         sample_payment_db.status = PaymentStatus.SUCCEEDED
         sample_payment_db.stripe_payment_intent_id = "pi_123"
         
@@ -331,7 +324,7 @@ class TestPaymentService:
         
         payment_service.stripe_service.create_refund = AsyncMock(side_effect=mock_create_refund_fail)
         
-        result = await payment_service.create_refund(mock_request, payment_id, refund_data)
-
-        assert isinstance(result, JSONResponse)
-        assert result.status_code == 500
+        with pytest.raises(Exception) as exc_info:
+            await payment_service.create_refund(payment_id, refund_data)
+        
+        assert "Stripe error" in str(exc_info.value)
