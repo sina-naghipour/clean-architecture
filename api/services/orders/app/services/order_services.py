@@ -16,6 +16,7 @@ class OrderService:
         self.logger = logger
         self.order_repo = OrderRepository(db_session)
         self.payment_client = PaymentGRPCClient()
+        self._processed_keys = set()
 
     async def _create_payment(self, order_id, amount, user_id, payment_method_token):
         try:
@@ -85,6 +86,16 @@ class OrderService:
         
         self.logger.warning(f"Could not get valid client_secret after {max_attempts} attempts, using empty string")
         return ""
+    
+    async def _is_duplicate_request(self, idempotency_key: str) -> bool:
+        if not hasattr(self, '_processed_keys'):
+            self._processed_keys = set()
+        return idempotency_key in self._processed_keys
+
+    async def _store_idempotency_key(self, idempotency_key: str):
+        if not hasattr(self, '_processed_keys'):
+            self._processed_keys = set()
+        self._processed_keys.add(idempotency_key)
     
 
     @OrderServiceDecorators.handle_create_order_errors
@@ -190,6 +201,12 @@ class OrderService:
     
     @OrderServiceDecorators.handle_payment_webhook_errors
     async def handle_payment_webhook(self, request, payment_data: dict):
+        idempotency_key = request.headers.get("X-Idempotency-Key")
+        
+        if idempotency_key and await self._is_duplicate_request(idempotency_key):
+            self.logger.info(f"Ignoring duplicate request: {idempotency_key}")
+            return {"status": "ignored", "reason": "duplicate"}
+        
         order_id = payment_data.get("order_id")
         status = payment_data.get("status")
         
@@ -212,12 +229,20 @@ class OrderService:
         order_status = status_mapping.get(status)
         if not order_status:
             raise Exception(f"Unknown status: {status}")
+        
+        if order.status == order_status:
+            return {"status": "ignored", "reason": "already_in_state"}
+        
         receipt_url = payment_data.get("receipt_url")
         await self.order_repo.update_order_status(order.id, order_status)
         await self.order_repo.update_order_receipt_url(order.id, receipt_url)
+        
+        if idempotency_key:
+            await self._store_idempotency_key(idempotency_key)
+        
         self.logger.info(f"Updated order {order_id} to {order_status.value}")
         
         return {"status": "success", "order_id": order_id, "updated_status": order_status.value}
-    
+        
     async def shutdown(self):
         await self.payment_client.close()

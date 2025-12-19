@@ -7,7 +7,8 @@ import logging
 from fastapi import Request
 import httpx
 import os
-
+import asyncio
+import time
 
 class PaymentService:
     def __init__(self, logger: logging.Logger, db_session):
@@ -17,38 +18,76 @@ class PaymentService:
         self.orders_webhook_url = os.getenv("ORDERS_WEBHOOK_URL", "http://orders:8002/webhooks/payment-updates")
         self.internal_api_key = os.getenv("INTERNAL_API_KEY", "default_internal_key")
     
-    async def _notify_orders_service(self, payment_id: UUID, status: str, receipt_url: str =None):
+    async def _notify_orders_service(self, payment_id: UUID, status: str, receipt_url: str = None):
         try:
             payment = await self.payment_repo.get_payment_by_id(payment_id)
             if not payment or not payment.order_id:
-                return
+                return False
 
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    self.orders_webhook_url,
-                    json={
-                        "order_id": payment.order_id,
-                        "payment_id": str(payment.id),
-                        "status": status,
-                        "stripe_payment_intent_id": payment.stripe_payment_intent_id,
-                        "receipt_url" : receipt_url
-                    },
-                    headers={"X-API-Key": self.internal_api_key},
-                    timeout=5.0
-                )
-                
-                if response.status_code == 200:
-                    self.logger.info(f"Notified Orders service for payment {payment_id}")
-                else:
-                    self.logger.error(f"Failed to notify Orders: {response.status_code}")
+            max_retries = 3
+            base_delay = 1.0
+            
+            for attempt in range(max_retries):
+                try:
+                    idempotency_key = f"payment_{payment_id}_{status}_{int(time.time())}"
                     
+                    async with httpx.AsyncClient() as client:
+                        response = await client.post(
+                            self.orders_webhook_url,
+                            json={
+                                "order_id": payment.order_id,
+                                "payment_id": str(payment.id),
+                                "status": status,
+                                "stripe_payment_intent_id": payment.stripe_payment_intent_id,
+                                "receipt_url": receipt_url
+                            },
+                            headers={
+                                "X-API-Key": self.internal_api_key,
+                                "X-Idempotency-Key": idempotency_key
+                            },
+                            timeout=5.0
+                        )
+                        
+                        if response.status_code == 200:
+                            self.logger.info(f"Notified Orders service for payment {payment_id}")
+                            return True
+                        else:
+                            self.logger.error(f"Failed to notify Orders: {response.status_code}")
+                            
+                    # Exponential backoff before retry
+                    if attempt < max_retries - 1:
+                        delay = base_delay * (2 ** attempt)  # 1s, 2s, 4s
+                        self.logger.info(f"Retrying in {delay}s...")
+                        await asyncio.sleep(delay)
+                        continue
+                        
+                except Exception as e:
+                    self.logger.warning(f"Attempt {attempt + 1} failed: {e}")
+                    if attempt < max_retries - 1:
+                        delay = base_delay * (2 ** attempt)
+                        await asyncio.sleep(delay)
+                        continue
+                        
         except Exception as e:
             self.logger.warning(f"Could not notify Orders service: {e}")
-    
+        
+        return False
     async def create_payment(self, payment_data: pydantic_models.PaymentCreate):
         existing_payment = await self.payment_repo.get_payment_by_order_id(payment_data.order_id)
         if existing_payment:
-            raise Exception(f"Payment already exists for order: {payment_data.order_id}")
+            return pydantic_models.PaymentResponse(
+                id=str(existing_payment.id),
+                order_id=existing_payment.order_id,
+                user_id=existing_payment.user_id,
+                amount=existing_payment.amount,
+                status=existing_payment.status,
+                stripe_payment_intent_id=existing_payment.stripe_payment_intent_id,
+                payment_method_token=existing_payment.payment_method_token,
+                currency=existing_payment.currency,
+                created_at=existing_payment.created_at.isoformat(),
+                updated_at=existing_payment.updated_at.isoformat(),
+                client_secret=existing_payment.client_secret
+            )
         
         payment = PaymentDB(
             order_id=payment_data.order_id,

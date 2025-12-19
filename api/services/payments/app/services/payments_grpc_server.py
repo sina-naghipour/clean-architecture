@@ -15,6 +15,27 @@ class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
         try:
             self.logger.info(f"gRPC CreatePayment for order: {request.order_id}")
             
+            metadata = dict(context.invocation_metadata())
+            idempotency_key = metadata.get('idempotency-key')
+            
+            if idempotency_key:
+                self.logger.info(f"CreatePayment with idempotency key: {idempotency_key}")
+
+            existing_payment = await self.payment_service.payment_repo.get_payment_by_order_id(request.order_id)
+            if existing_payment:
+                result = await self.payment_service.get_payment(str(existing_payment.id))
+                return payments_pb2.PaymentResponse(
+                    payment_id=str(result.id),
+                    order_id=str(result.order_id),
+                    user_id=str(result.user_id),
+                    amount=float(result.amount),
+                    status=str(result.status.value),
+                    stripe_payment_intent_id=str(result.stripe_payment_intent_id or ""),
+                    payment_method_token=str(result.payment_method_token or ""),
+                    currency=str(result.currency or "usd"),
+                    client_secret=result.client_secret
+                )
+
             payment_data = pydantic_models.PaymentCreate(
                 order_id=request.order_id,
                 amount=request.amount,
@@ -22,6 +43,7 @@ class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
                 payment_method_token=request.payment_method_token,
                 currency=request.currency or "usd",
             )
+            print(request.metadata)
             result = await self.payment_service.create_payment(payment_data)
             # Convert all fields to proper types for protobuf
             return payments_pb2.PaymentResponse(
