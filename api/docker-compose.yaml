@@ -67,19 +67,10 @@ services:
       retries: 5
       start_period: 5s
 
-  stripe-mock:
-    image: stripe/stripe-mock:latest
-    ports:
-      - "12111:12111"
-      - "12112:12112"
-    networks:
-      - app-network
-
   stripe-cli:
     image: stripe/stripe-cli:latest
-    command: listen --api-key ${STRIPE_MOCK_API_KEY:-sk_test_mock} --forward-to http://payments:8001/webhooks/stripe
+    command: listen --api-key ${STRIPE_API_KEY:-sk_test_mock} --forward-to http://payments:8001/webhooks/stripe
     depends_on:
-      - stripe-mock
       - payments
     networks:
       - app-network
@@ -138,14 +129,11 @@ services:
       - ENVIRONMENT=production
       - DATABASE_URL=postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-toor}@payments_db:5432/payments_db
       - STRIPE_MODE=test
-      - STRIPE_SECRET_KEY=${STRIPE_MOCK_API_KEY:-sk_test_mock}
-      - STRIPE_WEBHOOK_SECRET=${STRIPE_MOCK_WEBHOOK_SECRET:-whsec_mock}
+      - STRIPE_SECRET_KEY=${STRIPE_API_KEY:-sk_test_mock}
       - STRIPE_RETURN_URL=${STRIPE_RETURN_URL:-http://localhost:3000/payment/success}
     depends_on:
       payments_db:
         condition: service_healthy
-      stripe-mock:
-        condition: service_started
     networks:
       - app-network
     healthcheck:
