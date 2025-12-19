@@ -87,6 +87,9 @@ class PaymentRepository:
             raise
 
     async def update_payment_status(self, payment_id: UUID, new_status: PaymentStatus) -> Optional[PaymentDB]:
+        if new_status == PaymentStatus.CREATED:
+            self.logger.info('Did not change to created, payment already exists.')
+            return
         try:
             self.logger.info(f"Updating payment status: {payment_id} -> {new_status}")
             

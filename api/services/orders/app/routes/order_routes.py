@@ -1,6 +1,6 @@
 import logging
 import os
-from fastapi import APIRouter, Request, Depends, Query, Header
+from fastapi import APIRouter, Request, Depends, Query, Header, Body, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from services.order_services import OrderService
 from database import pydantic_models
@@ -61,3 +61,21 @@ async def get_order(
     order_service: OrderService = Depends(get_order_service),
 ) -> pydantic_models.OrderResponse:
     return await order_service.get_order(request, order_id, request.state.user['id'])
+
+@OrderErrorDecorators.handle_payment_webhook_errors
+@router.post('/webhooks/payment-updates')
+async def payment_webhook(
+    request: Request,
+    payment_data: dict = Body(...),
+    api_key: str = Header(None, alias="X-API-Key"),
+    order_service: OrderService = Depends(get_order_service)
+):
+    internal_key = os.getenv("INTERNAL_API_KEY", "default_internal_key")
+    
+    if not api_key or api_key != internal_key:
+        raise HTTPException(
+            status_code=403, 
+            detail="Forbidden: Invalid or missing API key"
+        )
+    
+    return await order_service.handle_payment_webhook(request, payment_data)

@@ -38,6 +38,7 @@ class OrderResponse(BaseModel):
     shipping_address_id: Optional[str] = None
     payment_id: Optional[str] = None
     client_secret: Optional[str] = None
+    receipt_url: Optional[str] = None
     created_at: str
 
     @field_validator('created_at', mode='before')

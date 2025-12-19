@@ -105,3 +105,46 @@ class OrderServiceDecorators:
             
             return await func(self, request, order_uuid, user_id, order_db, *args, **kwargs)
         return wrapper
+
+    @staticmethod
+    def handle_payment_webhook_errors(func: Callable) -> Callable:
+        @wraps(func)
+        async def wrapper(self, request: Request, payment_data: dict, *args, **kwargs) -> Any:
+            try:
+                return await func(self, request, payment_data, *args, **kwargs)
+            except Exception as e:
+                self.logger.error(f"Payment webhook error: {e}")
+                
+                if "missing order_id" in str(e).lower() or "missing status" in str(e).lower():
+                    return create_problem_response(
+                        status_code=400,
+                        error_type="bad-request",
+                        title="Bad Request",
+                        detail=str(e),
+                        instance=str(request.url)
+                    )
+                elif "order not found" in str(e).lower():
+                    return create_problem_response(
+                        status_code=404,
+                        error_type="not-found",
+                        title="Not Found",
+                        detail=str(e),
+                        instance=str(request.url)
+                    )
+                elif "unknown status" in str(e).lower():
+                    return create_problem_response(
+                        status_code=400,
+                        error_type="bad-request",
+                        title="Bad Request",
+                        detail=str(e),
+                        instance=str(request.url)
+                    )
+                else:
+                    return create_problem_response(
+                        status_code=500,
+                        error_type="internal-error",
+                        title="Internal Server Error",
+                        detail="Payment webhook processing failed",
+                        instance=str(request.url)
+                    )
+        return wrapper

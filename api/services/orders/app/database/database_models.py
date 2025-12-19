@@ -25,6 +25,7 @@ class OrderDB(Base):
     payment_id = Column(String, nullable=True)
     items = Column(JSON, nullable=False)
     user_id = Column(String, nullable=True)
+    receipt_url = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     def to_dict(self) -> Dict[str, Any]:

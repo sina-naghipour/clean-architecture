@@ -36,7 +36,7 @@ class StripeService:
                 "amount": int(amount * 100),
                 "currency": currency,
                 "payment_method": payment_method_token,
-                "confirm": True,
+                "confirm": False,
                 "metadata": metadata or {},
                 "payment_method_types": ["card"] # only accepting cards
             }

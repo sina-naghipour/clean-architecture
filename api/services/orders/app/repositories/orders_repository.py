@@ -85,7 +85,29 @@ class OrderRepository:
                 self.logger.info(f"No order found for status update: {order_id}")
                 return None
                 
-        except Exception as e:  # Catch ALL exceptions, not just SQLAlchemyError
+        except Exception as e:
+            self.logger.error(f"Error updating order status {order_id}: {e}", exc_info=True)
+            await self.session.rollback()
+            raise
+
+    async def update_order_receipt_url(self, order_id: UUID, receipt_url: str) -> Optional[OrderDB]:
+        try:            
+            stmt = update(OrderDB).where(OrderDB.id == order_id).values(receipt_url=receipt_url)
+            
+            result = await self.session.execute(stmt)
+            
+            await self.session.commit()
+            
+            if result.rowcount > 0:
+                self.logger.info(f"Order status updated successfully: {order_id}")
+                updated_order = await self.get_order_by_id(order_id)
+                self.logger.info(f"Fetched updated order, status: {updated_order.status if updated_order else 'None'}")
+                return updated_order
+            else:
+                self.logger.info(f"No order found for status update: {order_id}")
+                return None
+                
+        except Exception as e:
             self.logger.error(f"Error updating order status {order_id}: {e}", exc_info=True)
             await self.session.rollback()
             raise

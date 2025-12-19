@@ -21,9 +21,7 @@ class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
                 user_id=request.user_id,
                 payment_method_token=request.payment_method_token,
                 currency=request.currency or "usd",
-                metadata=dict(request.metadata) if request.metadata else None
             )
-            
             result = await self.payment_service.create_payment(payment_data)
             # Convert all fields to proper types for protobuf
             return payments_pb2.PaymentResponse(

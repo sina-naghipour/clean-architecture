@@ -10,6 +10,7 @@ from decorators.order_services_decorators import OrderServiceDecorators
 from .orders_grpc_client import PaymentGRPCClient
 import grpc
 import asyncio
+
 class OrderService:
     def __init__(self, logger, db_session):
         self.logger = logger
@@ -186,6 +187,37 @@ class OrderService:
 
         self.logger.info(f"Orders listed successfully for user: {user_id}")
         return order_list 
-
+    
+    @OrderServiceDecorators.handle_payment_webhook_errors
+    async def handle_payment_webhook(self, request, payment_data: dict):
+        order_id = payment_data.get("order_id")
+        status = payment_data.get("status")
+        
+        if not order_id or not status:
+            raise Exception("Missing order_id or status")
+        
+        order_uuid = UUID(order_id)
+        order = await self.order_repo.get_order_by_id(order_uuid)
+        
+        if not order:
+            raise Exception(f"Order not found: {order_id}")
+        
+        status_mapping = {
+            "succeeded": OrderStatus.PAID,
+            "failed": OrderStatus.PENDING,
+            "refunded": OrderStatus.CANCELED,
+            "canceled": OrderStatus.CANCELED
+        }
+        
+        order_status = status_mapping.get(status)
+        if not order_status:
+            raise Exception(f"Unknown status: {status}")
+        receipt_url = payment_data.get("receipt_url")
+        await self.order_repo.update_order_status(order.id, order_status)
+        await self.order_repo.update_order_receipt_url(order.id, receipt_url)
+        self.logger.info(f"Updated order {order_id} to {order_status.value}")
+        
+        return {"status": "success", "order_id": order_id, "updated_status": order_status.value}
+    
     async def shutdown(self):
         await self.payment_client.close()
