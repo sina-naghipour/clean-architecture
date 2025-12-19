@@ -25,7 +25,6 @@ class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
             )
             
             result = await self.payment_service.create_payment(payment_data)
-            
             # Convert all fields to proper types for protobuf
             return payments_pb2.PaymentResponse(
                 payment_id=str(result.id),
@@ -36,7 +35,7 @@ class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
                 stripe_payment_intent_id=str(result.stripe_payment_intent_id or ""),
                 payment_method_token=str(result.payment_method_token or ""),
                 currency=str(result.currency or "usd"),
-                client_secret=""
+                client_secret=result.client_secret
             )
             
         except Exception as e:
@@ -59,7 +58,7 @@ class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
                 stripe_payment_intent_id=str(result.stripe_payment_intent_id or ""),
                 payment_method_token=str(result.payment_method_token or ""),
                 currency=str(result.currency or "usd"),
-                client_secret=""
+                client_secret=result.client_secret
             )
             
         except Exception as e:

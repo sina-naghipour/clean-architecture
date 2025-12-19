@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from services.payments_service import PaymentService
 from database import pydantic_models
 from database.connection import get_db
+import socket
 
 logger = logging.getLogger(__name__)
 
@@ -24,3 +25,6 @@ async def stripe_webhook(
 ):
     payload = await request.body()
     return await payment_service.process_webhook(request, payload, stripe_signature)
+
+
+    

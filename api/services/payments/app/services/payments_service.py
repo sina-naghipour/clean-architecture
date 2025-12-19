@@ -4,6 +4,8 @@ from uuid import UUID
 from repositories.payments_repository import PaymentRepository
 from database.database_models import PaymentDB, PaymentStatus
 import logging
+from fastapi import Request
+
 
 class PaymentService:
     def __init__(self, logger: logging.Logger, db_session):
@@ -39,11 +41,12 @@ class PaymentService:
                     "payment_id": str(created_payment.id)
                 }
             )
-            
             await self.payment_repo.update_payment_stripe_id(created_payment.id, stripe_result["id"])
             
             payment_status = self.stripe_service.map_stripe_status_to_payment_status(stripe_result["status"])
             await self.payment_repo.update_payment_status(created_payment.id, payment_status)
+            await self.payment_repo.update_payment_client_secret(created_payment.id, stripe_result.get("client_secret"))
+            created_payment.client_secret = stripe_result.get("client_secret")
             
             created_payment.stripe_payment_intent_id = stripe_result["id"]
             created_payment.status = payment_status
@@ -51,7 +54,7 @@ class PaymentService:
         except Exception:
             await self.payment_repo.update_payment_status(created_payment.id, PaymentStatus.FAILED)
             created_payment.status = PaymentStatus.FAILED
-        
+
         return pydantic_models.PaymentResponse(
             id=str(created_payment.id),
             order_id=created_payment.order_id,
@@ -63,7 +66,8 @@ class PaymentService:
             currency=created_payment.currency,
             metadata=created_payment.payment_metadata,
             created_at=created_payment.created_at.isoformat(),
-            updated_at=created_payment.updated_at.isoformat()
+            updated_at=created_payment.updated_at.isoformat(),
+            client_secret=created_payment.client_secret
         )
     
     async def get_payment(self, payment_id: str):
@@ -84,27 +88,61 @@ class PaymentService:
             currency=payment.currency,
             metadata=payment.payment_metadata,
             created_at=payment.created_at.isoformat(),
-            updated_at=payment.updated_at.isoformat()
+            updated_at=payment.updated_at.isoformat(),            
         )
     
-    async def process_webhook(self, payload: bytes, sig_header: str):
+    async def process_webhook(self, request: Request, payload: bytes, sig_header: str):
         event = await self.stripe_service.handle_webhook_event(payload, sig_header)
         event_type = event["type"]
         
-        payment_intent = event["data"]
-        if isinstance(payment_intent, dict) and "object" in payment_intent:
-            payment_intent = payment_intent["object"]
-        payment_intent_id = payment_intent.get("id")
+        event_data = event["data"]
+        if isinstance(event_data, dict) and "object" in event_data:
+            event_data = event_data["object"]
         
-        if event_type == "payment_intent.succeeded" and payment_intent_id:
-            payment = await self.payment_repo.get_payment_by_stripe_id(payment_intent_id)
-            if payment:
-                await self.payment_repo.update_payment_status(payment.id, PaymentStatus.SUCCEEDED)
+        self.logger.info(f"Processing webhook {event_type} from IP: {request.client.host}")
         
-        elif event_type == "payment_intent.payment_failed" and payment_intent_id:
-            payment = await self.payment_repo.get_payment_by_stripe_id(payment_intent_id)
-            if payment:
-                await self.payment_repo.update_payment_status(payment.id, PaymentStatus.FAILED)
+        payment_intent_id = None
+        
+        if event_type.startswith("payment_intent."):
+            payment_intent_id = event_data.get("id")
+            stripe_status = event_data.get("status")
+            
+            if payment_intent_id:
+                payment = await self.payment_repo.get_payment_by_stripe_id(payment_intent_id)
+                
+                if payment:
+                    if event_type == "payment_intent.succeeded":
+                        await self.payment_repo.update_payment_status(payment.id, PaymentStatus.SUCCEEDED)
+                    elif event_type == "payment_intent.payment_failed":
+                        await self.payment_repo.update_payment_status(payment.id, PaymentStatus.FAILED)
+                    elif event_type == "payment_intent.created":
+                        mapped_status = self.stripe_service.map_stripe_status_to_payment_status(stripe_status)
+                        await self.payment_repo.update_payment_status(payment.id, mapped_status)
+                        if event_data.get("client_secret"):
+                            await self.payment_repo.update_payment_client_secret(payment.id, event_data.get("client_secret"))
+                    elif event_type == "payment_intent.canceled":
+                        await self.payment_repo.update_payment_status(payment.id, PaymentStatus.CANCELED)
+        
+        elif event_type.startswith("charge."):
+            # FIX: For charge events, get payment_intent from the charge object
+            payment_intent_id = event_data.get("payment_intent")  # CHANGED FROM .get("id")
+            charge_status = event_data.get("status")
+            
+            if payment_intent_id:
+                payment = await self.payment_repo.get_payment_by_stripe_id(payment_intent_id)
+                
+                if payment:
+                    if charge_status == "succeeded":
+                        await self.payment_repo.update_payment_status(payment.id, PaymentStatus.SUCCEEDED)
+                    elif charge_status == "failed":
+                        await self.payment_repo.update_payment_status(payment.id, PaymentStatus.FAILED)
+                    elif event_type == "charge.refunded":
+                        await self.payment_repo.update_payment_status(payment.id, PaymentStatus.REFUNDED)
+        
+        if payment_intent_id:
+            self.logger.info(f"Processed {event_type} for payment intent: {payment_intent_id}")
+        else:
+            self.logger.warning(f"No payment intent ID found for event type: {event_type}")
         
         return {"status": "processed", "event": event_type}
     

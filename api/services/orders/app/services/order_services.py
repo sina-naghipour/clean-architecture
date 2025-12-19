@@ -9,7 +9,7 @@ from database.database_models import OrderDB, OrderStatus
 from decorators.order_services_decorators import OrderServiceDecorators
 from .orders_grpc_client import PaymentGRPCClient
 import grpc
-
+import asyncio
 class OrderService:
     def __init__(self, logger, db_session):
         self.logger = logger
@@ -18,13 +18,13 @@ class OrderService:
 
     async def _create_payment(self, order_id, amount, user_id, payment_method_token):
         try:
-            payment_id = await self.payment_client.create_payment(
+            payment = await self.payment_client.create_payment(
                 order_id=order_id,
                 amount=amount,
                 user_id=user_id,
                 payment_method_token=payment_method_token
             )
-            return payment_id
+            return payment
         except grpc.RpcError as e:
             self.logger.error(f"Payment creation failed: {e.code().name} - {e.details()}")
             raise Exception(f"Payment processing failed: {e.details()}")
@@ -54,6 +54,37 @@ class OrderService:
             payment_id=order_db.payment_id,
             created_at=created_at.isoformat()
         )
+
+
+    async def _get_client_secret_with_retry(self, payment_id: str, max_attempts: int = 5) -> str:
+        
+        for attempt in range(1, max_attempts + 1):
+            try:
+                payment_info = await self.payment_client.get_payment(payment_id)
+                client_secret = payment_info.get("client_secret", "")
+                
+                if client_secret != "PENDING" and client_secret:
+                    self.logger.info(f"Got valid client_secret on attempt {attempt}")
+                    return client_secret
+                
+                if client_secret == "PENDING":
+                    self.logger.warning(f"Client secret is 'PENDING' on attempt {attempt}/{max_attempts}")
+                    
+                    if attempt < max_attempts:
+                        wait_time = 0.5 * (2 ** (attempt - 1))
+                        self.logger.info(f"Waiting {wait_time:.1f}s before retry...")
+                        await asyncio.sleep(wait_time)
+                        continue
+                
+            except Exception as e:
+                self.logger.warning(f"Failed to get payment info on attempt {attempt}: {str(e)}")
+                if attempt < max_attempts:
+                    await asyncio.sleep(1)
+                    continue
+        
+        self.logger.warning(f"Could not get valid client_secret after {max_attempts} attempts, using empty string")
+        return ""
+    
 
     @OrderServiceDecorators.handle_create_order_errors
     async def create_order(self, request, order_data, user_id):
@@ -92,30 +123,26 @@ class OrderService:
         created_order = await self.order_repo.create_order(order_db)
         self.logger.info(f"Order created successfully: {created_order.id}")
 
-        payment_id = await self._create_payment(
+        payment = await self._create_payment(
             order_id=str(created_order.id),
             amount=created_order.total,
             user_id=user_id,
             payment_method_token=order_data.payment_method_token
         )
-                
+        payment_id = payment.payment_id
+             
         await self.order_repo.update_order_payment_id(created_order.id, payment_id)
         await self.order_repo.update_order_status(created_order.id, OrderStatus.PENDING)
 
         created_order.payment_id = payment_id
         created_order.status = OrderStatus.PENDING
 
-        payment_info = await self.payment_client.get_payment(payment_id)
+        client_secret = payment.client_secret
         
-        client_secret = payment_info.get("client_secret", "")
-        if client_secret == "PENDING":
-            self.logger.warning("Client secret is 'PENDING', using empty string")
-            client_secret = ""
-
         order_response = self._build_order_response(created_order, items_dict)
         order_response.client_secret = client_secret
 
-        return order_response  
+        return order_response
 
     @OrderServiceDecorators.handle_get_order_errors
     @OrderServiceDecorators.validate_order_ownership

@@ -37,7 +37,8 @@ class PaymentGRPCClient:
         )
         
         response = await stub.CreatePayment(request)
-        return response.payment_id
+        print("the payment response from grpc server is : ", response)
+        return response
     
     async def get_payment(self, payment_id):
         await self.connect()

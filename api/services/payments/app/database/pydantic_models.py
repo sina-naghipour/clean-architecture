@@ -31,7 +31,7 @@ class PaymentResponse(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
     created_at: str
     updated_at: str
-
+    client_secret: Optional[str] = Field(None)
     @field_validator('created_at', 'updated_at', mode='before')
     @classmethod
     def convert_datetime(cls, v):

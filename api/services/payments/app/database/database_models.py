@@ -26,6 +26,7 @@ class PaymentDB(Base):
     stripe_payment_intent_id = Column(String, nullable=True)
     payment_method_token = Column(String, nullable=False)
     currency = Column(String, nullable=False, default="usd")
+    client_secret = Column(String, nullable=True, default="PENDING") 
     payment_metadata = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

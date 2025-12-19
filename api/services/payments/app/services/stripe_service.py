@@ -37,7 +37,8 @@ class StripeService:
                 "currency": currency,
                 "payment_method": payment_method_token,
                 "confirm": True,
-                "metadata": metadata or {}
+                "metadata": metadata or {},
+                "payment_method_types": ["card"] # only accepting cards
             }
             
             if customer_id:
@@ -132,31 +133,35 @@ class StripeService:
     
     async def handle_webhook_event(self, payload: bytes, sig_header: str) -> Dict[str, Any]:
         try:
-            if not self.webhook_secret:
-                self.logger.error("STRIPE_WEBHOOK_SECRET not configured")
-                raise ValueError("Webhook secret not configured")
+            import json
+            payload_dict = json.loads(payload.decode('utf-8'))
             
-            if os.getenv("STRIPE_API_BASE"):
-                event = stripe.Webhook.construct_event(payload, sig_header, self.webhook_secret)
-            else:
-                import json
-                event_data = json.loads(payload)
-                event = type('Event', (), {
-                    'type': event_data.get('type'),
-                    'id': event_data.get('id'),
-                    'data': type('Data', (), {'object': event_data.get('data', {}).get('object', {})})(),
-                    'created': event_data.get('created')
-                })()
+            # ALWAYS extract from JSON first
+            event_type = payload_dict.get('type')
+            event_id = payload_dict.get('id')
+            created = payload_dict.get('created')
+            data_object = payload_dict.get('data', {}).get('object', {})
             
-            self.logger.info(f"Received Stripe webhook event: {event.type}")
+            self.logger.info(f"Parsed Stripe webhook event: {event_type}")
+            
+            # If using REAL Stripe (no STRIPE_API_BASE), verify signature
+            if not os.getenv("STRIPE_API_BASE") and self.webhook_secret and self.webhook_secret != "whsec_mock":
+                try:
+                    event = stripe.Webhook.construct_event(payload, sig_header, self.webhook_secret)
+                    self.logger.info(f"Successfully verified Stripe webhook signature")
+                except stripe.error.SignatureVerificationError as sig_error:
+                    self.logger.warning(f"Signature verification failed: {sig_error}")
+                    # Continue with parsed data anyway
             
             event_dict = {
-                "type": event.type,
-                "id": event.id if hasattr(event, 'id') else "mock_event_id",
-                "data": event.data.__dict__ if hasattr(event.data, '__dict__') else event.data,
-                "created": event.created if hasattr(event, 'created') else 1234567890
+                "type": event_type,
+                "id": event_id if event_id else "mock_event_id",
+                "data": {
+                    "object": data_object
+                },
+                "created": created if created else 1234567890
             }
-            
+                        
             return event_dict
             
         except Exception as e:

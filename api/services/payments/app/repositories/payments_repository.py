@@ -20,7 +20,7 @@ class PaymentRepository:
             self.session.add(payment_data)
             await self.session.commit()
             await self.session.refresh(payment_data)
-            
+
             self.logger.info(f"Payment created successfully: {payment_data.id}")
             return payment_data
             
@@ -158,6 +158,33 @@ class PaymentRepository:
                 
         except SQLAlchemyError as e:
             self.logger.error(f"Error updating payment metadata {payment_id}: {e}")
+            await self.session.rollback()
+            raise
+
+    async def update_payment_client_secret(self, payment_id: UUID, client_secret: str) -> Optional[PaymentDB]:
+        try:
+            self.logger.info(f"Updating payment client secret: {payment_id}")
+            
+            stmt = (
+                update(PaymentDB)
+                .where(PaymentDB.id == payment_id)
+                .values(
+                    client_secret=client_secret,
+                    updated_at=datetime.now()
+                )
+            )
+            result = await self.session.execute(stmt)
+            await self.session.commit()
+            
+            if result.rowcount > 0:
+                self.logger.info(f"Payment client secret updated successfully: {payment_id}")
+                return await self.get_payment_by_id(payment_id)
+            else:
+                self.logger.info(f"No payment found for client secret update: {payment_id}")
+                return None
+                
+        except SQLAlchemyError as e:
+            self.logger.error(f"Error updating payment client secret {payment_id}: {e}")
             await self.session.rollback()
             raise
 
