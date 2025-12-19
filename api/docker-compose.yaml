@@ -77,7 +77,7 @@ services:
 
   stripe-cli:
     image: stripe/stripe-cli:latest
-    command: listen --api-key ${STRIPE_MOCK_API_KEY:-sk_test_mock} --forward-to http://payments:8006/webhooks/stripe
+    command: listen --api-key ${STRIPE_MOCK_API_KEY:-sk_test_mock} --forward-to http://payments:8001/webhooks/stripe
     depends_on:
       - stripe-mock
       - payments
@@ -141,7 +141,6 @@ services:
       - STRIPE_SECRET_KEY=${STRIPE_MOCK_API_KEY:-sk_test_mock}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_MOCK_WEBHOOK_SECRET:-whsec_mock}
       - STRIPE_RETURN_URL=${STRIPE_RETURN_URL:-http://localhost:3000/payment/success}
-      - STRIPE_API_BASE=${STRIPE_API_BASE:-http://stripe-mock:12111}
     depends_on:
       payments_db:
         condition: service_healthy
