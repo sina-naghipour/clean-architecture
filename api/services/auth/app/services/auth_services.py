@@ -1,3 +1,4 @@
+from optl.trace_decorator import trace_service_operation
 from .auth_helpers import create_problem_response
 from decorators.auth_services_decorators import handle_database_errors, handle_validation_errors
 from fastapi import Request
@@ -14,6 +15,7 @@ class AuthService:
 
     @handle_database_errors
     @handle_validation_errors
+    @trace_service_operation("register_user")
     async def register_user(
         self,
         request: Request,
@@ -59,6 +61,7 @@ class AuthService:
         return response
 
     @handle_database_errors
+    @trace_service_operation("login_user")
     async def login_user(
         self,
         request: Request,
@@ -111,6 +114,7 @@ class AuthService:
         }
 
     @handle_validation_errors
+    @trace_service_operation("refresh_token")
     async def refresh_token(
         self,
         request: Request,
@@ -125,6 +129,7 @@ class AuthService:
         return {"accessToken": new_access_token}
 
     @handle_validation_errors
+    @trace_service_operation("logout")
     async def logout(
         self,
         request: Request,
@@ -145,6 +150,7 @@ class AuthService:
 
     @handle_database_errors
     @handle_validation_errors
+    @trace_service_operation("get_current_user")
     async def get_current_user(
         self,
         request: Request,
