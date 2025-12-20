@@ -6,6 +6,7 @@ from datetime import datetime
 
 from database.database_models import ProductDB
 from database.connection import get_products_collection
+from optl.trace_decorator import trace_repository_operation
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,7 @@ class ProductRepository:
             self.collection = await get_products_collection()
         return self.collection
 
+    @trace_repository_operation("create_product")
     async def create_product(self, product_data: ProductDB) -> Optional[ProductDB]:
         try:
             collection = await self._get_collection()
@@ -47,6 +49,7 @@ class ProductRepository:
             self.logger.error(f"Error creating product: {e}")
             raise
 
+    @trace_repository_operation("get_product_by_id")
     async def get_product_by_id(self, product_id: str) -> Optional[ProductDB]:
         try:
             collection = await self._get_collection()
@@ -65,6 +68,7 @@ class ProductRepository:
             self.logger.error(f"Error fetching product {product_id}: {e}")
             raise
 
+    @trace_repository_operation("get_product_by_name")
     async def get_product_by_name(self, name: str) -> Optional[ProductDB]:
         try:
             collection = await self._get_collection()
@@ -85,6 +89,7 @@ class ProductRepository:
             self.logger.error(f"Error fetching product by name {name}: {e}")
             raise
 
+    @trace_repository_operation("list_products")
     async def list_products(
         self, 
         skip: int = 0, 
@@ -129,6 +134,8 @@ class ProductRepository:
         except Exception as e:
             self.logger.error(f"Error listing products: {e}")
             raise
+
+    @trace_repository_operation("count_products")
     async def count_products(
         self, 
         search_query: Optional[str] = None, 
@@ -168,6 +175,7 @@ class ProductRepository:
             self.logger.error(f"Error counting products: {e}")
             raise
         
+    @trace_repository_operation("update_product")
     async def update_product(self, product_id: str, update_data: Dict[str, Any]) -> Optional[ProductDB]:
         try:
             collection = await self._get_collection()
@@ -201,6 +209,7 @@ class ProductRepository:
             self.logger.error(f"Error updating product {product_id}: {e}")
             raise
         
+    @trace_repository_operation("update_product_images")
     async def update_product_images(self, product_id: str, images: List[str]) -> bool:
         try:
             collection = await self._get_collection()
@@ -220,7 +229,6 @@ class ProductRepository:
                 self.logger.info(f"Images updated successfully for product: {product_id}")
                 return True
             else:
-                # Check if product exists
                 product_exists = await collection.find_one({"_id": product_id})
                 if product_exists:
                     self.logger.info(f"No images changes made for product: {product_id}")
@@ -232,6 +240,7 @@ class ProductRepository:
             self.logger.error(f"Error updating images for product {product_id}: {e}")
             raise
         
+    @trace_repository_operation("delete_product")
     async def delete_product(self, product_id: str) -> bool:
         try:
             collection = await self._get_collection()
@@ -250,6 +259,7 @@ class ProductRepository:
             self.logger.error(f"Error deleting product {product_id}: {e}")
             raise
 
+    @trace_repository_operation("update_inventory")
     async def update_inventory(self, product_id: str, new_stock: int) -> Optional[ProductDB]:
         try:
             collection = await self._get_collection()
@@ -276,6 +286,7 @@ class ProductRepository:
             self.logger.error(f"Error updating inventory for product {product_id}: {e}")
             raise
 
+    @trace_repository_operation("get_products_by_tags")
     async def get_products_by_tags(self, tags: List[str], skip: int = 0, limit: int = 20) -> List[ProductDB]:
         try:
             collection = await self._get_collection()
@@ -295,6 +306,7 @@ class ProductRepository:
             self.logger.error(f"Error fetching products by tags: {e}")
             raise
 
+    @trace_repository_operation("get_popular_tags")
     async def get_popular_tags(self, limit: int = 10) -> List[Dict[str, Any]]:
         try:
             collection = await self._get_collection()

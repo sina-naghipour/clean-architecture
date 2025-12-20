@@ -6,12 +6,14 @@ from sqlalchemy.exc import SQLAlchemyError
 import logging
 
 from database.database_models import OrderDB, OrderStatus
+from optl.trace_decorator import trace_repository_operation
 
 class OrderRepository:
     def __init__(self, session: AsyncSession, logger: logging.Logger = None):
         self.session = session
         self.logger = logger or logging.getLogger(__name__).getChild("OrderRepository")
 
+    @trace_repository_operation("create_order")
     async def create_order(self, order_data: OrderDB) -> Optional[OrderDB]:
         try:
             self.logger.info(f"Creating order with ID: {order_data.id}")
@@ -28,6 +30,7 @@ class OrderRepository:
             await self.session.rollback()
             raise
 
+    @trace_repository_operation("get_order_by_id")
     async def get_order_by_id(self, order_id: UUID) -> Optional[OrderDB]:
         try:
             self.logger.info(f"Fetching order by ID: {order_id}")
@@ -47,6 +50,7 @@ class OrderRepository:
             self.logger.error(f"Error fetching order {order_id}: {e}")
             raise
 
+    @trace_repository_operation("update_order_payment_id")
     async def update_order_payment_id(self, order_id: UUID, payment_id: str) -> Optional[OrderDB]:
         try:
             self.logger.info(f"Updating order payment ID: {order_id} -> {payment_id}")
@@ -67,6 +71,7 @@ class OrderRepository:
             await self.session.rollback()
             raise
 
+    @trace_repository_operation("update_order_status")
     async def update_order_status(self, order_id: UUID, new_status: OrderStatus) -> Optional[OrderDB]:
         self.logger.info('calleddddddddddddddddddd')
         try:            
@@ -90,6 +95,7 @@ class OrderRepository:
             await self.session.rollback()
             raise
 
+    @trace_repository_operation("update_order_receipt_url")
     async def update_order_receipt_url(self, order_id: UUID, receipt_url: str) -> Optional[OrderDB]:
         try:            
             stmt = update(OrderDB).where(OrderDB.id == order_id).values(receipt_url=receipt_url)
@@ -112,6 +118,7 @@ class OrderRepository:
             await self.session.rollback()
             raise
 
+    @trace_repository_operation("list_orders")
     async def list_orders(self, skip: int = 0, limit: int = 20) -> List[OrderDB]:
         try:
             self.logger.info(f"Listing orders - skip: {skip}, limit: {limit}")
@@ -127,6 +134,7 @@ class OrderRepository:
             self.logger.error(f"Error listing orders: {e}")
             raise
 
+    @trace_repository_operation("count_orders")
     async def count_orders(self) -> int:
         try:
             self.logger.debug("Counting total orders")

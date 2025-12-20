@@ -14,3 +14,8 @@ mongomock_motor
 asyncio
 python-multipart
 PyJWT
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-requests
+opentelemetry-exporter-otlp

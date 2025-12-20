@@ -7,6 +7,12 @@ from contextlib import asynccontextmanager
 import os
 from dotenv import load_dotenv
 
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+
 from middlewares.auth_middleware import AuthMiddleware
 
 # Load environment variables
@@ -16,7 +22,7 @@ from routes.product_routes import router as product_router
 
 # Environment variables with defaults
 HOST = os.getenv('HOST', '0.0.0.0')
-PORT = int(os.getenv('PORT', '8001'))
+PORT = int(os.getenv('PORT', '8003'))
 RELOAD = os.getenv('RELOAD', 'True').lower() == 'true'
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'info')
 ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
@@ -55,6 +61,18 @@ app = FastAPI(
     openapi_url="/openapi.json",
     lifespan=lifespan
 )
+
+# Initialize OpenTelemetry tracing
+tracer_provider = TracerProvider()
+tracer_provider.add_span_processor(
+    BatchSpanProcessor(
+        OTLPSpanExporter(endpoint="http://otel-collector:4318/v1/traces")
+    )
+)
+trace.set_tracer_provider(tracer_provider)
+
+# Instrument the FastAPI app
+FastAPIInstrumentor.instrument_app(app)
 
 app.add_middleware(
     CORSMiddleware,

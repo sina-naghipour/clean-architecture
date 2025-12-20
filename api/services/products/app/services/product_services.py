@@ -1,17 +1,18 @@
+# services/product_service.py
+from functools import wraps
+from opentelemetry import trace
 import os
 import logging
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
-from .product_image_client import ProductImageClient
+from typing import AsyncGenerator, List, Optional
+from fastapi import Request, UploadFile
 
 from .product_helpers import create_problem_response
-from fastapi import Request, UploadFile
-from fastapi.responses import JSONResponse
 from database import pydantic_models
 from repositories.product_repository import ProductRepository
 from database.database_models import ProductDB
-from datetime import datetime
-from typing import List, Optional
+from .product_image_client import ProductImageClient
+from optl.trace_decorator import trace_service_operation
 
 
 def get_image_client() -> ProductImageClient:
@@ -43,6 +44,7 @@ class ProductService:
         self.product_repository = ProductRepository()
         self.image_client = get_image_client()
 
+    @trace_service_operation("create_product")
     async def create_product(
         self,
         request: Request,
@@ -82,7 +84,6 @@ class ProductService:
             updated_at=created_product.updated_at
         )
         
-        # Convert to dict and ensure datetime is serialized to ISO format
         response_content = product_response.model_dump()
         response_content["created_at"] = response_content["created_at"].isoformat()
         response_content["updated_at"] = response_content["updated_at"].isoformat()
@@ -91,6 +92,7 @@ class ProductService:
         
         return product_response
 
+    @trace_service_operation("create_product_with_images")
     async def create_product_with_images(
         self,
         request: Request,
@@ -119,6 +121,7 @@ class ProductService:
         
         return await self.create_product(request, product_data)
 
+    @trace_service_operation("get_product")
     async def get_product(
         self,
         request: Request,
@@ -163,6 +166,7 @@ class ProductService:
         self.logger.info(f"Product retrieved successfully: {product_id}")
         return product_response
 
+    @trace_service_operation("list_products")
     async def list_products(
         self,
         request: Request,
@@ -214,6 +218,7 @@ class ProductService:
         self.logger.info(f"Products listed successfully - Found: {total}")
         return product_list
 
+    @trace_service_operation("update_product")
     async def update_product(
         self,
         request: Request,
@@ -257,6 +262,7 @@ class ProductService:
         self.logger.info(f"Product updated successfully: {product_id}")
         return updated_product
 
+    @trace_service_operation("patch_product")
     async def patch_product(
         self,
         request: Request,
@@ -293,6 +299,7 @@ class ProductService:
         self.logger.info(f"Product patched successfully: {product_id}")
         return patched_product
 
+    @trace_service_operation("delete_product")
     async def delete_product(
         self,
         request: Request,
@@ -333,6 +340,7 @@ class ProductService:
         self.logger.info(f"Product deleted successfully: {product_id}")
         return None
 
+    @trace_service_operation("update_inventory")
     async def update_inventory(
         self,
         request: Request,
@@ -363,6 +371,7 @@ class ProductService:
         self.logger.info(f"Inventory updated successfully: {product_id} -> Stock: {inventory_data.stock}")
         return response_data
     
+    @trace_service_operation("add_product_images")
     async def add_product_images(
         self,
         request: Request,
@@ -413,6 +422,7 @@ class ProductService:
         self.logger.info(f"Added {len(new_image_urls)} images to product {product_id}")
         return response_data
 
+    @trace_service_operation("remove_product_image")
     async def remove_product_image(
         self,
         request: Request,
@@ -457,6 +467,7 @@ class ProductService:
         self.logger.info(f"Removed image from product {product_id}")
         return response_data
 
+    @trace_service_operation("update_product_tags")
     async def update_product_tags(
         self,
         request: Request,
@@ -485,6 +496,7 @@ class ProductService:
         self.logger.info(f"Updated tags for product {product_id}")
         return response_data
 
+    @trace_service_operation("cleanup_product_images")
     async def cleanup_product_images(
         self,
         request: Request,

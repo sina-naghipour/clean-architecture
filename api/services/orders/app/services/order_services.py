@@ -13,6 +13,7 @@ import asyncio
 import hashlib
 import time
 from opentelemetry import trace
+from optl.trace_decorator import trace_service_operation
 
 class OrderService:
     def __init__(self, logger, db_session):
@@ -24,6 +25,7 @@ class OrderService:
         self._payment_failure_count = 0
         self._circuit_open = False
 
+    @trace_service_operation("create_payment")
     async def _create_payment(self, order_id, amount, user_id, payment_method_token):
         if self._circuit_open:
             self.logger.error("Payment creation failed: Circuit breaker open - payments service unavailable")
@@ -99,9 +101,10 @@ class OrderService:
             billing_address_id=order_db.billing_address_id,
             shipping_address_id=order_db.shipping_address_id,
             payment_id=order_db.payment_id,
-            created_at=created_at.isoformat()
+            created_at=created_at.isoformat(),
         )
 
+    @trace_service_operation("get_client_secret_with_retry")
     async def _get_client_secret_with_retry(self, payment_id: str, max_attempts: int = 5) -> str:
         for attempt in range(1, max_attempts + 1):
             try:
@@ -141,6 +144,7 @@ class OrderService:
         self._processed_keys.add(idempotency_key)
     
     @OrderServiceDecorators.handle_create_order_errors
+    @trace_service_operation("create_order")
     async def create_order(self, request, order_data, user_id):
         with self.tracer.start_as_current_span("create-order-transaction") as span:
             span.set_attributes({
@@ -223,38 +227,23 @@ class OrderService:
                     )
                     self.logger.info(f"Order {created_order.id} successfully marked as FAILED")
                 except Exception as rollback_error:
-                    # The error might be that FAILED is a string, not an OrderStatus enum
-                    try:
-                        # Try with the string value if enum fails
-                        await self.order_repo.update_order_status(
-                            created_order.id, 
-                            "FAILED"
-                        )
-                        self.logger.info(f"Order {created_order.id} marked as 'FAILED' (string)")
-                    except Exception as string_error:
-                        self.logger.error(f"Failed to rollback order {created_order.id} with string too: {str(string_error)}")
+                    self.logger.error(f"Failed to rollback order {created_order.id}: {str(rollback_error)}")
                 
                 raise Exception(f"Order creation failed: Payment processing error. Order {created_order.id} marked as failed.")
     
     @OrderServiceDecorators.handle_get_order_errors
     @OrderServiceDecorators.validate_order_ownership
+    @trace_service_operation("get_order")
     async def get_order(self, request, order_uuid, user_id, order_db):
         self.logger.info(f"Order retrieved successfully: {order_uuid}")
 
-        client_secret = ""
-        if order_db.payment_id:
-            try:
-                payment_info = await self.payment_client.get_payment(order_db.payment_id)
-                client_secret = payment_info.get("client_secret", "")
-            except:
-                pass
-
         order_response = self._build_order_response(order_db, order_db.items)
-        order_response.client_secret = client_secret
+        order_response
 
         return order_response 
 
     @OrderServiceDecorators.handle_list_orders_errors
+    @trace_service_operation("list_orders")
     async def list_orders(self, request, user_id, query_params):
         self.logger.info(f"Orders listing attempt for user: {user_id}")
 
@@ -280,6 +269,7 @@ class OrderService:
         return order_list 
     
     @OrderServiceDecorators.handle_payment_webhook_errors
+    @trace_service_operation("handle_payment_webhook")
     async def handle_payment_webhook(self, request, payment_data: dict):
         idempotency_key = request.headers.get("X-Idempotency-Key")
         

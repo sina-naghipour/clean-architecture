@@ -1,6 +1,6 @@
 import pytest
 import grpc
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import Mock, AsyncMock, patch, MagicMock
 from protos import payments_pb2
 from protos import payments_pb2_grpc
 
@@ -22,7 +22,6 @@ class TestPaymentGRPC:
             payment_method_token="pm_test_123",
             currency="usd"
         )
-        request.metadata["test_key"] = "test_value"
         return request
     
     @pytest.fixture
@@ -62,16 +61,24 @@ class TestPaymentGRPC:
         assert response.client_secret == "cs_test_123"
     
     def test_create_payment_failure(self, mock_stub, create_payment_request):
-        mock_stub.CreatePayment = Mock(side_effect=grpc.RpcError(
-            code=grpc.StatusCode.INTERNAL,
-            details="Payment creation failed"
-        ))
+        class MockRpcError(Exception):
+            def __init__(self):
+                super().__init__("Mock RPC Error")
+            
+            def code(self):
+                return grpc.StatusCode.INTERNAL
+            
+            def details(self):
+                return "Payment creation failed"
         
-        with pytest.raises(grpc.RpcError) as exc_info:
+        mock_stub.CreatePayment = Mock(side_effect=MockRpcError())
+        
+        with pytest.raises(Exception) as exc_info:
             mock_stub.CreatePayment(create_payment_request, timeout=5)
         
+        assert isinstance(exc_info.value, MockRpcError)
         assert exc_info.value.code() == grpc.StatusCode.INTERNAL
-        assert "Payment creation failed" in str(exc_info.value.details())
+        assert "Payment creation failed" in exc_info.value.details()
     
     def test_get_payment_success(self, mock_stub, get_payment_request):
         mock_response = payments_pb2.PaymentResponse(
@@ -94,16 +101,24 @@ class TestPaymentGRPC:
         assert response.status == "succeeded"
     
     def test_get_payment_not_found(self, mock_stub, get_payment_request):
-        mock_stub.GetPayment = Mock(side_effect=grpc.RpcError(
-            code=grpc.StatusCode.NOT_FOUND,
-            details="Payment not found"
-        ))
+        class MockRpcError(Exception):
+            def __init__(self):
+                super().__init__("Mock RPC Error")
+            
+            def code(self):
+                return grpc.StatusCode.NOT_FOUND
+            
+            def details(self):
+                return "Payment not found"
         
-        with pytest.raises(grpc.RpcError) as exc_info:
+        mock_stub.GetPayment = Mock(side_effect=MockRpcError())
+        
+        with pytest.raises(Exception) as exc_info:
             mock_stub.GetPayment(get_payment_request, timeout=5)
         
+        assert isinstance(exc_info.value, MockRpcError)
         assert exc_info.value.code() == grpc.StatusCode.NOT_FOUND
-        assert "Payment not found" in str(exc_info.value.details())
+        assert "Payment not found" in exc_info.value.details()
     
     def test_process_refund_success(self, mock_stub, refund_request):
         mock_response = payments_pb2.RefundResponse(
@@ -124,16 +139,24 @@ class TestPaymentGRPC:
         assert response.reason == "customer_request"
     
     def test_process_refund_failure(self, mock_stub, refund_request):
-        mock_stub.ProcessRefund = Mock(side_effect=grpc.RpcError(
-            code=grpc.StatusCode.INTERNAL,
-            details="Refund creation failed"
-        ))
+        class MockRpcError(Exception):
+            def __init__(self):
+                super().__init__("Mock RPC Error")
+            
+            def code(self):
+                return grpc.StatusCode.INTERNAL
+            
+            def details(self):
+                return "Refund creation failed"
         
-        with pytest.raises(grpc.RpcError) as exc_info:
+        mock_stub.ProcessRefund = Mock(side_effect=MockRpcError())
+        
+        with pytest.raises(Exception) as exc_info:
             mock_stub.ProcessRefund(refund_request, timeout=5)
         
+        assert isinstance(exc_info.value, MockRpcError)
         assert exc_info.value.code() == grpc.StatusCode.INTERNAL
-        assert "Refund creation failed" in str(exc_info.value.details())
+        assert "Refund creation failed" in exc_info.value.details()
     
     def test_create_payment_with_metadata(self, mock_stub):
         request = payments_pb2.CreatePaymentRequest(
@@ -143,8 +166,6 @@ class TestPaymentGRPC:
             payment_method_token="pm_123",
             currency="usd"
         )
-        request.metadata["order_type"] = "subscription"
-        request.metadata["product_id"] = "prod_123"
         
         mock_response = payments_pb2.PaymentResponse(
             payment_id="payment_123",
@@ -168,14 +189,22 @@ class TestPaymentGRPC:
             currency="usd"
         )
         
-        mock_stub.CreatePayment = Mock(side_effect=grpc.RpcError(
-            code=grpc.StatusCode.INVALID_ARGUMENT,
-            details="Amount must be greater than 0"
-        ))
+        class MockRpcError(Exception):
+            def __init__(self):
+                super().__init__("Mock RPC Error")
+            
+            def code(self):
+                return grpc.StatusCode.INVALID_ARGUMENT
+            
+            def details(self):
+                return "Amount must be greater than 0"
         
-        with pytest.raises(grpc.RpcError) as exc_info:
+        mock_stub.CreatePayment = Mock(side_effect=MockRpcError())
+        
+        with pytest.raises(Exception) as exc_info:
             mock_stub.CreatePayment(request, timeout=5)
         
+        assert isinstance(exc_info.value, MockRpcError)
         assert exc_info.value.code() == grpc.StatusCode.INVALID_ARGUMENT
     
     def test_get_payment_invalid_uuid(self, mock_stub):
@@ -183,14 +212,22 @@ class TestPaymentGRPC:
             payment_id="invalid-uuid-format"
         )
         
-        mock_stub.GetPayment = Mock(side_effect=grpc.RpcError(
-            code=grpc.StatusCode.INVALID_ARGUMENT,
-            details="Invalid payment ID format"
-        ))
+        class MockRpcError(Exception):
+            def __init__(self):
+                super().__init__("Mock RPC Error")
+            
+            def code(self):
+                return grpc.StatusCode.INVALID_ARGUMENT
+            
+            def details(self):
+                return "Invalid payment ID format"
         
-        with pytest.raises(grpc.RpcError) as exc_info:
+        mock_stub.GetPayment = Mock(side_effect=MockRpcError())
+        
+        with pytest.raises(Exception) as exc_info:
             mock_stub.GetPayment(request, timeout=5)
         
+        assert isinstance(exc_info.value, MockRpcError)
         assert exc_info.value.code() == grpc.StatusCode.INVALID_ARGUMENT
     
     def test_refund_without_amount(self, mock_stub):

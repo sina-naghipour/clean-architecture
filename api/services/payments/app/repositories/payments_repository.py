@@ -7,12 +7,15 @@ import logging
 from datetime import datetime
 
 from database.database_models import PaymentDB, PaymentStatus
+from optl.trace_decorator import trace_repository_operation
 
 class PaymentRepository:
     def __init__(self, session: AsyncSession, logger: logging.Logger = None):
         self.session = session
+        self.model = PaymentDB  # Add this for decorator
         self.logger = logger or logging.getLogger(__name__).getChild("PaymentRepository")
 
+    @trace_repository_operation("create_payment")
     async def create_payment(self, payment_data: PaymentDB) -> Optional[PaymentDB]:
         try:
             self.logger.info(f"Creating payment for order: {payment_data.order_id}")
@@ -29,6 +32,7 @@ class PaymentRepository:
             await self.session.rollback()
             raise
 
+    @trace_repository_operation("get_payment_by_id")
     async def get_payment_by_id(self, payment_id: UUID) -> Optional[PaymentDB]:
         try:
             self.logger.info(f"Fetching payment by ID: {payment_id}")
@@ -48,6 +52,7 @@ class PaymentRepository:
             self.logger.error(f"Error fetching payment {payment_id}: {e}")
             raise
 
+    @trace_repository_operation("get_payment_by_order_id")
     async def get_payment_by_order_id(self, order_id: str) -> Optional[PaymentDB]:
         try:
             self.logger.info(f"Fetching payment by order ID: {order_id}")
@@ -67,6 +72,7 @@ class PaymentRepository:
             self.logger.error(f"Error fetching payment for order {order_id}: {e}")
             raise
 
+    @trace_repository_operation("get_payment_by_stripe_id")
     async def get_payment_by_stripe_id(self, stripe_payment_intent_id: str) -> Optional[PaymentDB]:
         try:
             self.logger.info(f"Fetching payment by Stripe ID: {stripe_payment_intent_id}")
@@ -86,6 +92,7 @@ class PaymentRepository:
             self.logger.error(f"Error fetching payment for Stripe ID {stripe_payment_intent_id}: {e}")
             raise
 
+    @trace_repository_operation("update_payment_status")
     async def update_payment_status(self, payment_id: UUID, new_status: PaymentStatus) -> Optional[PaymentDB]:
         if new_status == PaymentStatus.CREATED:
             self.logger.info('Did not change to created, payment already exists.')
@@ -113,6 +120,7 @@ class PaymentRepository:
             await self.session.rollback()
             raise
 
+    @trace_repository_operation("update_payment_stripe_id")
     async def update_payment_stripe_id(self, payment_id: UUID, stripe_payment_intent_id: str) -> Optional[PaymentDB]:
         try:
             self.logger.info(f"Updating payment Stripe ID: {payment_id} -> {stripe_payment_intent_id}")
@@ -140,30 +148,7 @@ class PaymentRepository:
             await self.session.rollback()
             raise
 
-    async def update_payment_metadata(self, payment_id: UUID, metadata: dict) -> Optional[PaymentDB]:
-        try:
-            self.logger.info(f"Updating payment metadata: {payment_id}")
-            
-            stmt = (
-                update(PaymentDB)
-                .where(PaymentDB.id == payment_id)
-                .values(payment_metadata=metadata, updated_at=datetime.utcnow())
-            )
-            result = await self.session.execute(stmt)
-            await self.session.commit()
-            
-            if result.rowcount > 0:
-                self.logger.info(f"Payment metadata updated successfully: {payment_id}")
-                return await self.get_payment_by_id(payment_id)
-            else:
-                self.logger.info(f"No payment found for metadata update: {payment_id}")
-                return None
-                
-        except SQLAlchemyError as e:
-            self.logger.error(f"Error updating payment metadata {payment_id}: {e}")
-            await self.session.rollback()
-            raise
-
+    @trace_repository_operation("update_payment_client_secret")
     async def update_payment_client_secret(self, payment_id: UUID, client_secret: str) -> Optional[PaymentDB]:
         try:
             self.logger.info(f"Updating payment client secret: {payment_id}")
@@ -191,6 +176,7 @@ class PaymentRepository:
             await self.session.rollback()
             raise
 
+    @trace_repository_operation("list_payments_by_user")
     async def list_payments_by_user(self, user_id: str, skip: int = 0, limit: int = 20) -> List[PaymentDB]:
         try:
             self.logger.info(f"Listing payments for user: {user_id}")
@@ -212,6 +198,7 @@ class PaymentRepository:
             self.logger.error(f"Error listing payments for user {user_id}: {e}")
             raise
 
+    @trace_repository_operation("count_payments")
     async def count_payments(self) -> int:
         try:
             self.logger.debug("Counting total payments")

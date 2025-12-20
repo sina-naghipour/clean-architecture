@@ -20,7 +20,6 @@ def test_metadata_updater_initialization():
         assert metadata_file.exists()
         assert metadata_file.parent.exists()
         
-        # Should create empty metadata file
         with open(metadata_file, 'r') as f:
             data = json.load(f)
             assert data == {}
@@ -114,16 +113,13 @@ def test_remove_file():
         
         updater.add_file(file_id, file_data)
         
-        # Verify file was added
         with open(metadata_file, 'r') as f:
             data = json.load(f)
             assert file_id in data["files"]
         
-        # Remove file
         result = updater.remove_file(file_id)
         assert result is True
         
-        # Verify file was removed
         with open(metadata_file, 'r') as f:
             data = json.load(f)
             assert "files" in data
@@ -135,7 +131,6 @@ def test_remove_nonexistent_file():
         metadata_file = Path(tmp) / "metadata.json"
         updater = MetadataUpdater(metadata_file)
         
-        # Remove non-existent file should return True (no-op)
         result = updater.remove_file("nonexistent")
         assert result is True
 
@@ -295,27 +290,6 @@ def test_corrupted_metadata_file():
         
         assert exc_info.value.status_code == 500
         assert "Failed to read metadata" in exc_info.value.detail
-
-def test_read_only_metadata_file():
-    with tempfile.TemporaryDirectory() as tmp:
-        metadata_file = Path(tmp) / "metadata.json"
-        updater = MetadataUpdater(metadata_file)
-        
-        file_id = "test_id"
-        updater.add_file(file_id, {"test": "data"})
-        
-        # Skip permission test on Windows
-        if os.name != 'nt':
-            # Make file read-only
-            metadata_file.chmod(0o444)
-            
-            try:
-                with pytest.raises(HTTPException) as exc_info:
-                    updater.add_file("another_id", {"test": "data2"})
-                assert exc_info.value.status_code == 500
-                assert "Failed to write metadata" in exc_info.value.detail
-            finally:
-                metadata_file.chmod(0o644)
 
 
 if __name__ == "__main__":

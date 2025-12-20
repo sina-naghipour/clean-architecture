@@ -5,12 +5,26 @@ from fastapi import FastAPI, UploadFile
 from fastapi.testclient import TestClient
 import sys
 import os
+import jwt
+from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from main import app
-from routes.file_routes import get_file_service
 
+# Helper function to create a test token that matches middleware requirements
+def create_test_token():
+    payload = {
+        "user_id": "test_user_id",
+        "email": "test@example.com",
+        "name": "Test User",
+        "role": "admin",  # Must be 'admin' to pass ALLOWED_ROLES check
+        "is_active": True,
+        "type": "access",  # Must be 'access' to pass type check
+        "expiration": (datetime.now() + timedelta(hours=1)).timestamp(),
+        "issued_at": datetime.now().timestamp()
+    }
+    return jwt.encode(payload, os.getenv("JWT_SECRET_KEY", "random_secret_key"), algorithm="HS256")
 
 @pytest.fixture
 def mock_file_service():
@@ -24,9 +38,17 @@ def mock_file_service():
 
 @pytest.fixture
 def client(mock_file_service):
+    # Mock the authentication dependency to bypass it
+    from routes.file_routes import get_file_service
+    
     app.dependency_overrides[get_file_service] = lambda: mock_file_service
     
+    # Create test client with proper auth headers
+    token = create_test_token()
+    
     with TestClient(app) as test_client:
+        # Add auth token to all requests
+        test_client.headers.update({"Authorization": f"Bearer {token}"})
         yield test_client
     
     app.dependency_overrides.clear()
@@ -288,6 +310,58 @@ def test_error_response_follows_rfc7807(client, mock_file_service):
         assert "detail" in data
         assert data["status"] == status_code
         assert error_type in data["type"]
+
+
+def test_unauthorized_access():
+    """Test accessing endpoints without authentication"""
+    from routes.file_routes import get_file_service
+    from unittest.mock import Mock
+    
+    mock_service = Mock()
+    mock_service.get_file_path = Mock()
+    
+    app.dependency_overrides[get_file_service] = lambda: mock_service
+    
+    # Create a client without auth headers
+    with TestClient(app) as unauth_client:
+        response = unauth_client.get("/files/file_123")
+        assert response.status_code == 401
+        
+        response = unauth_client.post("/files", files={"file": ("test.jpg", b"data", "image/jpeg")})
+        assert response.status_code == 401
+    
+    app.dependency_overrides.clear()
+
+
+def test_forbidden_access_non_admin():
+    """Test accessing endpoints with non-admin token"""
+    from routes.file_routes import get_file_service
+    from unittest.mock import Mock
+    
+    mock_service = Mock()
+    mock_service.get_file_path = Mock()
+    
+    app.dependency_overrides[get_file_service] = lambda: mock_service
+    
+    # Create a token with non-admin role
+    payload = {
+        "user_id": "test_user_id",
+        "email": "test@example.com",
+        "name": "Test User",
+        "role": "user",  # Non-admin role
+        "is_active": True,
+        "type": "access",
+        "expiration": (datetime.now() + timedelta(hours=1)).timestamp(),
+        "issued_at": datetime.now().timestamp()
+    }
+    token = jwt.encode(payload, os.getenv("JWT_SECRET_KEY", "random_secret_key"), algorithm="HS256")
+    
+    with TestClient(app) as test_client:
+        test_client.headers.update({"Authorization": f"Bearer {token}"})
+        response = test_client.get("/files/file_123")
+        assert response.status_code == 403  # Should be Forbidden for non-admin
+    
+    app.dependency_overrides.clear()
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from jwt import decode, ExpiredSignatureError, InvalidTokenError
 import os
 from services.order_helpers import create_problem_response
+from optl.trace_decorator import trace_middleware_operation
 
 load_dotenv()
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "random_secret_key")
@@ -34,9 +35,6 @@ class AuthMiddleware(BaseHTTPMiddleware):
             if payload.get('type') != 'access':
                 return {"valid": False, "error": "Invalid token type"}
             
-            # if payload.get('active') != 'True':
-            #     return {"valid": False, "error": "Account not active"}            
-            
             return {
                 "valid": True,
                 "user_data": {
@@ -55,6 +53,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         except Exception as e:
             return {"valid": False, "error": str(e)}
 
+    @trace_middleware_operation("auth_middleware")
     async def dispatch(self, request: Request, call_next: Callable):
         public_paths = ["/health", "/docs", "/openapi.json", "/redoc", "/ready", "/info", "/webhooks/payment-updates"]
         if request.url.path in public_paths:
@@ -91,8 +90,6 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 instance=request.url.path
             )
         
-
-                
         request.state.user = validation_result["user_data"]
         
         response = await call_next(request)

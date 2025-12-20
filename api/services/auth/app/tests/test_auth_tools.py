@@ -50,6 +50,8 @@ class TestTokenTools:
     def setup_method(self):
         self.token_tools = TokenTools()
         self.sample_payload = {"user_id": 123, "username": "testuser"}
+        # Get the same secret key that TokenTools uses
+        self.jwt_secret_key = os.getenv('JWT_SECRET_KEY', 'random-secret-key')
 
     def test_create_access_token_valid(self):
         token = self.token_tools.create_access_token(self.sample_payload)
@@ -114,8 +116,7 @@ class TestTokenTools:
             'issued_at': issued_time.timestamp(),
             'type': 'access'
         }
-        JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'random-secret-key')
-        expired_token = jwt.encode(expired_payload, JWT_SECRET_KEY, 'HS256')
+        expired_token = jwt.encode(expired_payload, self.jwt_secret_key, 'HS256')
         
         with pytest.raises(ValueError, match="Token has expired"):
             self.token_tools.get_token_payload(expired_token)
@@ -143,7 +144,8 @@ class TestTokenTools:
 
     def test_token_payload_structure(self):
         token = self.token_tools.create_access_token(self.sample_payload)
-        decoded = jwt.decode(token, 'random-secret-key', 'HS256')
+        # Use the same secret key that TokenTools uses
+        decoded = jwt.decode(token, self.jwt_secret_key, 'HS256')
         
         assert 'expiration' in decoded
         assert 'issued_at' in decoded

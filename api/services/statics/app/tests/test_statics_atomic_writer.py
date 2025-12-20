@@ -144,23 +144,28 @@ def test_delete_atomic_nonexistent():
 def test_delete_atomic_permission_error():
     with tempfile.TemporaryDirectory() as tmp:
         file_path = Path(tmp) / "test.txt"
+        test_content = b"test"
         
-        with open(file_path, 'w') as f:
-            f.write("test")
+        with open(file_path, 'wb') as f:
+            f.write(test_content)
         
         # Skip on Windows
         if os.name == 'nt':
             pytest.skip("Permission tests behave differently on Windows")
         
-        # Make file read-only
-        os.chmod(file_path, 0o444)
         try:
+            import stat
+            # Make parent directory read-only to prevent deletion
+            file_path.parent.chmod(stat.S_IRUSR | stat.S_IXUSR)
+            
             with pytest.raises(HTTPException) as exc_info:
                 AtomicWriter.delete_atomic(file_path)
             assert exc_info.value.status_code == 500
             assert "Failed to delete file" in exc_info.value.detail
         finally:
-            os.chmod(file_path, 0o755)
+            file_path.parent.chmod(stat.S_IRWXU)
+            if file_path.exists():
+                file_path.unlink()
 
 def test_context_manager_yields_temp_path():
     with tempfile.TemporaryDirectory() as tmp:

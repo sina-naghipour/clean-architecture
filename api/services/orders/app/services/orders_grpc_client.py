@@ -1,10 +1,11 @@
 from protos import payments_pb2, payments_pb2_grpc
-
 import grpc.aio
 import os
 import asyncio
 import time
 from typing import Optional
+from optl.trace_decorator import trace_service_operation
+from opentelemetry import trace
 
 class PaymentGRPCClient:
     def __init__(self):
@@ -15,6 +16,7 @@ class PaymentGRPCClient:
         self.circuit_open = False
         self.circuit_open_until = 0
         self.max_retries = 3
+        self.tracer = trace.get_tracer(__name__)
     
     async def connect(self):
         if not self.channel:
@@ -41,8 +43,8 @@ class PaymentGRPCClient:
         self.failure_count = 0
         self.circuit_open = False
     
+    @trace_service_operation("create_payment_grpc")
     async def create_payment(self, order_id, amount, user_id, payment_method_token):
-        # Idempotency key for gRPC metadata
         idempotency_key = f"create_{order_id}_{int(time.time())}"
         
         for attempt in range(self.max_retries):
@@ -50,31 +52,41 @@ class PaymentGRPCClient:
                 raise Exception("Circuit breaker open - payments service unavailable")
             
             try:
-                await self.connect()
-                stub = payments_pb2_grpc.PaymentServiceStub(self.channel)
-                request = payments_pb2.CreatePaymentRequest(
-                    order_id=order_id,
-                    user_id=user_id,
-                    amount=amount,
-                    payment_method_token=payment_method_token,
-                    currency="usd"
-                )
-                
-                # Add idempotency key to metadata
-                metadata = (('idempotency-key', idempotency_key),)
-                response = await stub.CreatePayment(request, metadata=metadata, timeout=10)
-                
-                self._record_success()
-                return response
-                
+                with self.tracer.start_as_current_span(f"grpc-payment-attempt-{attempt+1}") as span:
+                    span.set_attributes({
+                        "grpc.service": "PaymentService",
+                        "grpc.method": "CreatePayment",
+                        "grpc.attempt": attempt + 1,
+                        "order.id": str(order_id),
+                        "user.id": str(user_id),
+                        "amount": float(amount),
+                        "idempotency_key": idempotency_key
+                    })
+                    
+                    await self.connect()
+                    stub = payments_pb2_grpc.PaymentServiceStub(self.channel)
+                    request = payments_pb2.CreatePaymentRequest(
+                        order_id=order_id,
+                        user_id=user_id,
+                        amount=amount,
+                        payment_method_token=payment_method_token,
+                        currency="usd"
+                    )
+                    
+                    metadata = (('idempotency-key', idempotency_key),)
+                    response = await stub.CreatePayment(request, metadata=metadata, timeout=10)
+                    
+                    self._record_success()
+                    span.set_attribute("grpc.success", True)
+                    span.set_attribute("payment.id", response.payment_id)
+                    return response
+                    
             except grpc.RpcError as e:
                 self._record_failure()
                 if e.code() == grpc.StatusCode.ALREADY_EXISTS:
-                    # Idempotent - payment already created with this key
                     raise Exception(f"Payment already exists for order: {order_id}")
                 
                 if attempt < self.max_retries - 1:
-                    # Exponential backoff: 1s, 2s, 4s
                     delay = 1.0 * (2 ** attempt)
                     await asyncio.sleep(delay)
                     continue
@@ -87,26 +99,40 @@ class PaymentGRPCClient:
                     continue
                 raise
     
+    @trace_service_operation("get_payment_grpc")
     async def get_payment(self, payment_id):
         if not self._should_try_request():
             raise Exception("Circuit breaker open - payments service unavailable")
         
         try:
-            await self.connect()
-            stub = payments_pb2_grpc.PaymentServiceStub(self.channel)
-            request = payments_pb2.GetPaymentRequest(payment_id=payment_id)
-            
-            response = await stub.GetPayment(request, timeout=5)
-            self._record_success()
-            
-            return {
-                "id": response.payment_id,
-                "status": response.status,
-                "client_secret": response.client_secret
-            }
-            
+            with self.tracer.start_as_current_span("grpc-get-payment") as span:
+                span.set_attributes({
+                    "grpc.service": "PaymentService",
+                    "grpc.method": "GetPayment",
+                    "payment.id": str(payment_id)
+                })
+                
+                await self.connect()
+                stub = payments_pb2_grpc.PaymentServiceStub(self.channel)
+                request = payments_pb2.GetPaymentRequest(payment_id=payment_id)
+                
+                response = await stub.GetPayment(request, timeout=5)
+                self._record_success()
+                
+                span.set_attribute("grpc.success", True)
+                span.set_attribute("payment.status", response.status)
+                
+                return {
+                    "id": response.payment_id,
+                    "status": response.status,
+                    "client_secret": response.client_secret
+                }
+                
         except grpc.RpcError as e:
             self._record_failure()
+            span = trace.get_current_span()
+            span.set_attribute("grpc.error_code", e.code().name)
+            span.set_attribute("grpc.error_details", e.details()[:100])
             raise
     
     async def close(self):

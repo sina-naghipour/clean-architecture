@@ -1,11 +1,10 @@
-# clients/product_image_client.py
 import httpx
 import asyncio
 from typing import List, Optional, Dict, Any
 from fastapi import UploadFile
 from dataclasses import dataclass
 import logging
-
+from optl.trace_decorator import trace_client_operation
 
 @dataclass
 class UploadResult:
@@ -32,6 +31,7 @@ class ProductImageClient:
     async def close(self):
         await self.client.aclose()
     
+    @trace_client_operation("upload_image")
     async def upload_image(
         self,
         file: UploadFile,
@@ -39,7 +39,6 @@ class ProductImageClient:
         metadata: Optional[Dict[str, Any]] = None
     ) -> UploadResult:
         try:
-            # Prepare files and params
             files = {'file': (file.filename, await file.read(), file.content_type)}
             params = {'subdirectory': subdirectory}
             
@@ -47,7 +46,6 @@ class ProductImageClient:
                 import json
                 params['custom_metadata'] = json.dumps(metadata)
             
-            # Make request
             response = await self.client.post(
                 f"{self.base_url}/files",
                 files=files,
@@ -69,6 +67,7 @@ class ProductImageClient:
             self.logger.error(f"Upload exception: {str(e)}")
             return UploadResult(success=False, error=str(e))
     
+    @trace_client_operation("upload_images")
     async def upload_images(
         self,
         files: List[UploadFile],
@@ -85,6 +84,7 @@ class ProductImageClient:
         tasks = [upload_with_limit(file, i) for i, file in enumerate(files)]
         return await asyncio.gather(*tasks)
     
+    @trace_client_operation("delete_image")
     async def delete_image(self, file_id: str) -> bool:
         try:
             response = await self.client.delete(f"{self.base_url}/files/{file_id}")
@@ -98,10 +98,12 @@ class ProductImageClient:
             self.logger.error(f"Delete failed: {str(e)}")
             return False
     
+    @trace_client_operation("delete_images")
     async def delete_images(self, file_ids: List[str]) -> List[bool]:
         tasks = [self.delete_image(file_id) for file_id in file_ids]
         return await asyncio.gather(*tasks)
     
+    @trace_client_operation("validate_image")
     async def validate_image(self, image_url: str) -> bool:
         try:
             if '/static/img/' in image_url:
@@ -120,6 +122,7 @@ class ProductImageClient:
         except Exception:
             return False
 
+    @trace_client_operation("extract_file_id")
     def extract_file_id(self, image_url: str) -> Optional[str]:
         try:
             if '/static/img/' in image_url:
@@ -128,6 +131,7 @@ class ProductImageClient:
         except Exception:
             return None
     
+    @trace_client_operation("cleanup_unused_images")
     async def cleanup_unused_images(
         self,
         used_image_urls: List[str],

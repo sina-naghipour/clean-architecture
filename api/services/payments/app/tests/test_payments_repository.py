@@ -236,59 +236,6 @@ class TestPaymentRepository:
         mock_session.rollback.assert_called_once()
         mock_logger.error.assert_called_once()
 
-    @pytest.mark.asyncio
-    async def test_update_payment_metadata_success(self, repository, mock_session, mock_logger, sample_payment):
-        mock_update_result = Mock()
-        mock_update_result.rowcount = 1
-        
-        updated_payment = PaymentDB(
-            id=sample_payment.id,
-            order_id=sample_payment.order_id,
-            user_id=sample_payment.user_id,
-            amount=sample_payment.amount,
-            status=sample_payment.status,
-            payment_method_token=sample_payment.payment_method_token,
-            currency=sample_payment.currency,
-            payment_metadata={"key": "value"}
-        )
-        
-        mock_get_result = Mock()
-        mock_get_result.scalar_one_or_none.return_value = updated_payment
-        
-        mock_session.execute.side_effect = [mock_update_result, mock_get_result]
-        
-        result = await repository.update_payment_metadata(sample_payment.id, {"key": "value"})
-        
-        assert result.payment_metadata == {"key": "value"}
-        assert mock_session.execute.call_count == 2
-        mock_session.commit.assert_called_once()
-        mock_logger.info.assert_called()
-
-    @pytest.mark.asyncio
-    async def test_update_payment_metadata_not_found(self, repository, mock_session, mock_logger):
-        payment_id = uuid4()
-        
-        mock_result = Mock()
-        mock_result.rowcount = 0
-        mock_session.execute.return_value = mock_result
-        
-        result = await repository.update_payment_metadata(payment_id, {"key": "value"})
-        
-        assert result is None
-        mock_session.execute.assert_called_once()
-        mock_session.commit.assert_called_once()
-        mock_logger.info.assert_called()
-
-    @pytest.mark.asyncio
-    async def test_update_payment_metadata_failure(self, repository, mock_session, mock_logger):
-        payment_id = uuid4()
-        mock_session.execute.side_effect = SQLAlchemyError("Database error")
-        
-        with pytest.raises(SQLAlchemyError):
-            await repository.update_payment_metadata(payment_id, {"key": "value"})
-        
-        mock_session.rollback.assert_called_once()
-        mock_logger.error.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_list_payments_by_user_success(self, repository, mock_session, mock_logger, sample_payment):

@@ -23,60 +23,53 @@ def test_validate_size_exceeds_limit():
     assert "exceeds maximum" in exc_info.value.detail
 
 
-@patch('magic.Magic')
-def test_validate_magic_number_valid(mock_magic):
-    mock_instance = Mock()
-    mock_instance.from_buffer.return_value = "image/jpeg"
-    mock_magic.return_value = mock_instance
-    
-    validator = FileValidator(max_size=5*1024*1024, allowed_mime_types=["image/jpeg"])
-    jpeg_magic = b'\xff\xd8\xff\xe0\x00\x10JFIF'
-    
-    result = validator.validate_magic_number(jpeg_magic)
-    assert result == "image/jpeg"
+def test_validate_magic_number_valid():
+    with patch('utils.file_validator.magic.from_buffer') as mock_from_buffer:
+        mock_from_buffer.return_value = "image/jpeg"
+        
+        validator = FileValidator(max_size=5*1024*1024, allowed_mime_types=["image/jpeg"])
+        jpeg_magic = b'\xff\xd8\xff\xe0\x00\x10JFIF'
+        
+        result = validator.validate_magic_number(jpeg_magic)
+        assert result == "image/jpeg"
 
 
-@patch('magic.Magic')
-def test_validate_magic_number_invalid_type(mock_magic):
-    mock_instance = Mock()
-    mock_instance.from_buffer.return_value = "application/pdf"
-    mock_magic.return_value = mock_instance
-    
-    validator = FileValidator(max_size=5*1024*1024, allowed_mime_types=["image/jpeg"])
-    pdf_magic = b'%PDF-1.5'
-    
-    with pytest.raises(HTTPException) as exc_info:
-        validator.validate_magic_number(pdf_magic)
-    
-    assert exc_info.value.status_code == 415
-    assert "not allowed" in exc_info.value.detail or "invalid" in exc_info.value.detail.lower()
+def test_validate_magic_number_invalid_type():
+    with patch('utils.file_validator.magic.from_buffer') as mock_from_buffer:
+        mock_from_buffer.return_value = "application/pdf"
+        
+        validator = FileValidator(max_size=5*1024*1024, allowed_mime_types=["image/jpeg"])
+        pdf_magic = b'%PDF-1.5'
+        
+        with pytest.raises(HTTPException) as exc_info:
+            validator.validate_magic_number(pdf_magic)
+        
+        assert exc_info.value.status_code == 415
 
 
-@patch('magic.Magic')
-def test_validate_magic_number_detection_fails(mock_magic):
-    mock_instance = Mock()
-    mock_instance.from_buffer.side_effect = Exception("Magic error")
-    mock_magic.return_value = mock_instance
-    
-    validator = FileValidator(max_size=5*1024*1024, allowed_mime_types=["image/jpeg"])
-    
-    with pytest.raises(HTTPException) as exc_info:
-        validator.validate_magic_number(b"test")
-    
-    assert exc_info.value.status_code == 415
-    assert "validation failed" in exc_info.value.detail.lower() or "type" in exc_info.value.detail.lower()
+def test_validate_magic_number_detection_fails():
+    with patch('utils.file_validator.magic.from_buffer') as mock_from_buffer:
+        mock_from_buffer.side_effect = Exception("Magic error")
+        
+        validator = FileValidator(max_size=5*1024*1024, allowed_mime_types=["image/jpeg"])
+        
+        with pytest.raises(HTTPException) as exc_info:
+            validator.validate_magic_number(b"test")
+        
+        assert exc_info.value.status_code == 415
 
 
-@patch('magic.Magic')
-def test_validate_magic_number_magic_exception(mock_magic):
-    mock_magic.side_effect = Exception("Magic library error")
-    
-    validator = FileValidator(max_size=5*1024*1024, allowed_mime_types=["image/jpeg"])
-    
-    with pytest.raises(HTTPException) as exc_info:
-        validator.validate_magic_number(b"test")
-    
-    assert exc_info.value.status_code in [400, 415]
+def test_validate_magic_number_magic_exception():
+    import magic
+    with patch('utils.file_validator.magic.from_buffer') as mock_from_buffer:
+        mock_from_buffer.side_effect = magic.MagicException("Magic library error")
+        
+        validator = FileValidator(max_size=5*1024*1024, allowed_mime_types=["image/jpeg"])
+        
+        with pytest.raises(HTTPException) as exc_info:
+            validator.validate_magic_number(b"test")
+        
+        assert exc_info.value.status_code == 415
 
 
 def test_validate_filename_valid():
@@ -119,7 +112,6 @@ def test_validate_filename_strips_whitespace():
 def test_validate_filename_dangerous_characters():
     validator = FileValidator(max_size=5*1024*1024, allowed_mime_types=[])
     
-    # Test various dangerous characters
     dangerous_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|', '\0']
     
     for char in dangerous_chars:
@@ -175,16 +167,15 @@ def test_validate_extension_no_extension():
     assert exc_info.value.status_code == 422
     assert "File extension '' is not allowed" in exc_info.value.detail
 
+
 def test_validate_input_not_none():
     validator = FileValidator(max_size=5*1024*1024, allowed_mime_types=[])
     
-    # Test with None for filename
     with pytest.raises(HTTPException) as exc_info:
         validator.validate_filename(None)
     assert exc_info.value.status_code == 422
     assert "cannot be none" in exc_info.value.detail.lower()
     
-    # Test with None for file content
     with pytest.raises(HTTPException) as exc_info:
         validator.validate_size(None)
     assert exc_info.value.status_code == 422

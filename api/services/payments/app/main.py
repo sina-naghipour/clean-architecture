@@ -8,6 +8,12 @@ from contextlib import asynccontextmanager
 import os
 from dotenv import load_dotenv
 
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+
 load_dotenv()
 
 from routes.payments_routes import router as payment_router
@@ -46,6 +52,15 @@ async def lifespan(app: FastAPI):
     logger.info(f"gRPC Port: {GRPC_PORT}")
     logger.info(f"Stripe Mode: {os.getenv('STRIPE_MODE', 'test')}")
     
+    # Initialize OpenTelemetry tracing
+    tracer_provider = TracerProvider()
+    tracer_provider.add_span_processor(
+        BatchSpanProcessor(
+            OTLPSpanExporter(endpoint="http://otel-collector:4318/v1/traces")
+        )
+    )
+    trace.set_tracer_provider(tracer_provider)
+    
     # Initialize payment service
     async for session in get_db():
         payment_service = PaymentService(logger, session)
@@ -81,6 +96,9 @@ app = FastAPI(
     openapi_url="/openapi.json",
     lifespan=lifespan
 )
+
+# Instrument the FastAPI app
+FastAPIInstrumentor.instrument_app(app)
 
 app.add_middleware(
     CORSMiddleware,
@@ -170,3 +188,4 @@ if __name__ == "__main__":
         reload=RELOAD,
         log_level=LOG_LEVEL
     )
+
