@@ -1,0 +1,444 @@
+openapi: 3.1.0
+info:
+  title: Order Service API
+  version: 1.0.0
+  description: Order management microservice
+
+servers:
+  - url: http://localhost:8003/
+    description: Order service
+
+tags:
+  - name: Orders
+    description: Order lifecycle
+  - name: Health
+    description: Service health
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      responses:
+        "200":
+          description: Service health status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  service:
+                    type: string
+                  timestamp:
+                    type: string
+                  environment:
+                    type: string
+
+  /ready:
+    get:
+      tags: [Health]
+      summary: Readiness check
+      responses:
+        "200":
+          description: Service readiness status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  service:
+                    type: string
+                  timestamp:
+                    type: string
+
+  /info:
+    get:
+      tags: [Health]
+      summary: Service information
+      responses:
+        "200":
+          description: Service info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  version:
+                    type: string
+                  environment:
+                    type: string
+                  docs:
+                    type: string
+                  health:
+                    type: string
+                  ready:
+                    type: string
+
+  /orders:
+    post:
+      tags: [Orders]
+      summary: Create order (with items and payment)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderCreate"
+            examples:
+              example:
+                value:
+                  items:
+                    - product_id: "prod_42"
+                      name: "Wireless Mouse"
+                      quantity: 2
+                      unit_price: 29.99
+                  billing_address_id: "addr_1"
+                  shipping_address_id: "addr_1"
+                  payment_method_token: "pm_tok_abc"
+      responses:
+        "201":
+          description: Order created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+              examples:
+                success:
+                  value:
+                    id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    status: "pending"
+                    total: 59.98
+                    billing_address_id: "addr_1"
+                    shipping_address_id: "addr_1"
+                    payment_id: "payment_123"
+                    client_secret: "pi_secret_123"
+                    items:
+                      - product_id: "prod_42"
+                        name: "Wireless Mouse"
+                        quantity: 2
+                        unit_price: 29.99
+                    created_at: "2023-10-01T12:00:00Z"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+    get:
+      tags: [Orders]
+      summary: List user's orders (paginated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Orders list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /orders/{orderId}:
+    get:
+      tags: [Orders]
+      summary: Get order details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /webhooks/payment-updates:
+    post:
+      tags: [Orders]
+      summary: Payment webhook (internal use only)
+      parameters:
+        - name: X-API-Key
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: X-Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                order_id:
+                  type: string
+                  format: uuid
+                status:
+                  type: string
+                  enum: [succeeded, failed, refunded, canceled]
+                receipt_url:
+                  type: string
+                payment_id:
+                  type: string
+              required:
+                - order_id
+                - status
+      responses:
+        "200":
+          description: Webhook processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  order_id:
+                    type: string
+                  updated_status:
+                    type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Duplicate request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  reason:
+                    type: string
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    OrderItemCreate:
+      type: object
+      properties:
+        product_id:
+          type: string
+        name:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+        unit_price:
+          type: number
+          minimum: 0
+      required:
+        - product_id
+        - name
+        - quantity
+        - unit_price
+
+    OrderCreate:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItemCreate"
+          minItems: 1
+        billing_address_id:
+          type: string
+        shipping_address_id:
+          type: string
+        payment_method_token:
+          type: string
+      required:
+        - items
+        - billing_address_id
+        - shipping_address_id
+        - payment_method_token
+
+    OrderItem:
+      type: object
+      properties:
+        product_id:
+          type: string
+        name:
+          type: string
+        quantity:
+          type: integer
+        unit_price:
+          type: number
+
+    OrderResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [created, pending, paid, shipped, canceled, failed]
+        total:
+          type: number
+        billing_address_id:
+          type: string
+          nullable: true
+        shipping_address_id:
+          type: string
+          nullable: true
+        payment_id:
+          type: string
+          nullable: true
+        client_secret:
+          type: string
+          nullable: true
+        receipt_url:
+          type: string
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+        created_at:
+          type: string
+          format: date-time
+
+    OrderList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderResponse"
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+      required:
+        - type
+        - title
+        - status
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+
+    Forbidden:
+      description: Forbidden
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+
+    NotFound:
+      description: Not Found
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+
+    UnprocessableEntity:
+      description: Validation error
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+
+    InternalError:
+      description: Internal Server Error
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+
+    ServiceUnavailable:
+      description: Payment service unavailable
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"

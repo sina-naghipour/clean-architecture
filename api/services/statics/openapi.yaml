@@ -1,0 +1,593 @@
+openapi: 3.1.0
+info:
+  title: Static Files Service API
+  version: 1.0.0
+  description: Secure file storage service with magic-number validation and atomic operations
+
+servers:
+  - url: http://localhost:8005/
+    description: Static files service
+
+tags:
+  - name: Files
+    description: File upload, download, and management operations
+  - name: Health
+    description: Service health endpoints
+  - name: Root
+    description: Root information
+
+paths:
+  /:
+    get:
+      tags: [Root]
+      summary: Service information
+      responses:
+        "200":
+          description: Service info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  service:
+                    type: string
+                    example: "static-file-service"
+                  version:
+                    type: string
+                    example: "1.0.0"
+                  endpoints:
+                    type: object
+                    properties:
+                      upload:
+                        type: string
+                        example: "POST /files"
+                      batch_upload:
+                        type: string
+                        example: "POST /files/batch"
+                      download:
+                        type: string
+                        example: "GET /files/{file_id}"
+                      delete:
+                        type: string
+                        example: "DELETE /files/{file_id}"
+                      metadata:
+                        type: string
+                        example: "GET /metadata"
+                      health:
+                        type: string
+                        example: "GET /health"
+                      docs:
+                        type: string
+                        example: "/docs"
+
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      responses:
+        "200":
+          description: Service health status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  upload_dir_exists:
+                    type: boolean
+                    example: true
+                  upload_dir_writable:
+                    type: boolean
+                    example: true
+                  metadata_file_exists:
+                    type: boolean
+                    example: true
+                  service:
+                    type: string
+                    example: "static"
+                  status:
+                    type: string
+                    example: "healthy"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /files:
+    post:
+      tags: [Files]
+      summary: Upload a single file
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: File to upload
+                subdirectory:
+                  type: string
+                  default: "general"
+                  description: Subdirectory within upload directory
+                custom_metadata:
+                  type: string
+                  description: JSON string with custom metadata (optional)
+            examples:
+              basic:
+                summary: Basic file upload
+                value:
+                  file: "test.jpg"
+                  subdirectory: "products"
+              with_metadata:
+                summary: Upload with metadata
+                value:
+                  file: "product_image.jpg"
+                  subdirectory: "products/123"
+                  custom_metadata: '{"description": "Product main image", "product_id": "123"}'
+      responses:
+        "201":
+          description: File uploaded successfully
+          headers:
+            Location:
+              schema:
+                type: string
+              description: URL to access the uploaded file
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileUploadSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "413":
+          $ref: "#/components/responses/FileTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /files/batch:
+    post:
+      tags: [Files]
+      summary: Upload multiple files (batch operation)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: Multiple files to upload
+                subdirectory:
+                  type: string
+                  default: "general"
+                  description: Subdirectory within upload directory
+      responses:
+        "207":
+          description: Multi-status response for batch upload
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/MultiStatusResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "413":
+          $ref: "#/components/responses/FileTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /files/{file_id}:
+    get:
+      tags: [Files]
+      summary: Download a file by ID
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: file_id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^[a-f0-9]{32}$"
+          description: File ID (32-character hex string)
+      responses:
+        "200":
+          description: File content
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      tags: [Files]
+      summary: Delete a file by ID
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: file_id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^[a-f0-9]{32}$"
+          description: File ID (32-character hex string)
+      responses:
+        "204":
+          description: File deleted successfully
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /metadata:
+    get:
+      tags: [Files]
+      summary: Get metadata for all stored files
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: subdirectory
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by subdirectory
+      responses:
+        "200":
+          description: File metadata list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetadataList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  schemas:
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri
+          example: "https://example.com/errors/not-found"
+        title:
+          type: string
+          example: "Not Found"
+        status:
+          type: integer
+          example: 404
+        detail:
+          type: string
+          example: "The requested file does not exist"
+        instance:
+          type: string
+          format: uri
+          example: "/files/abc123def456"
+      required:
+        - type
+        - title
+        - status
+
+    MultiStatusResponse:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri
+          example: "https://example.com/errors/multi-status"
+        title:
+          type: string
+          example: "Multi-Status"
+        status:
+          type: integer
+          example: 207
+        detail:
+          type: string
+          example: "Batch operation completed with partial success"
+        instance:
+          type: string
+          format: uri
+        successful_count:
+          type: integer
+          example: 2
+        failed_count:
+          type: integer
+          example: 1
+        successful:
+          type: array
+          items:
+            $ref: "#/components/schemas/FileUploadSuccess"
+        failed:
+          type: array
+          items:
+            $ref: "#/components/schemas/FailedUpload"
+      required:
+        - type
+        - title
+        - status
+        - detail
+
+    FileUploadSuccess:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: "^[a-f0-9]{32}$"
+          example: "a95bef4699a64806981eaafe7d4bd054"
+        filename:
+          type: string
+          example: "a95bef4699a64806981eaafe7d4bd054.jpg"
+        original_filename:
+          type: string
+          example: "test.jpg"
+        path:
+          type: string
+          example: "products/a95bef4699a64806981eaafe7d4bd054.jpg"
+        size:
+          type: integer
+          example: 1024000
+        mime_type:
+          type: string
+          enum: ["image/jpeg", "image/png", "image/webp"]
+          example: "image/jpeg"
+        url:
+          type: string
+          example: "/static/img/products/a95bef4699a64806981eaafe7d4bd054.jpg"
+      required:
+        - id
+        - filename
+        - original_filename
+        - path
+        - size
+        - mime_type
+        - url
+
+    FailedUpload:
+      type: object
+      properties:
+        filename:
+          type: string
+          example: "test.jpg"
+        error:
+          type: string
+          example: "File too large"
+        status_code:
+          type: integer
+          example: 413
+        error_type:
+          type: string
+          example: "file-too-large"
+        title:
+          type: string
+          example: "File Too Large"
+      required:
+        - filename
+        - error
+        - status_code
+
+    MetadataList:
+      type: object
+      properties:
+        files_count:
+          type: integer
+          example: 45
+        files:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/FileMetadata"
+      required:
+        - files_count
+        - files
+
+    FileMetadata:
+      type: object
+      properties:
+        original_filename:
+          type: string
+          example: "photo_2024-11-13_06-26-14.jpg"
+        safe_filename:
+          type: string
+          example: "a95bef4699a64806981eaafe7d4bd054.jpg"
+        path:
+          type: string
+          example: "a95bef4699a64806981eaafe7d4bd054.jpg"
+        full_path:
+          type: string
+          example: "static/img/a95bef4699a64806981eaafe7d4bd054.jpg"
+        size_bytes:
+          type: integer
+          example: 84942
+        mime_type:
+          type: string
+          enum: ["image/jpeg", "image/png", "image/webp"]
+          example: "image/jpeg"
+        uploaded_at:
+          type: string
+          format: date-time
+          example: "2025-12-03T19:09:02.519418"
+        custom_metadata:
+          type: object
+          additionalProperties: true
+          example: {}
+        id:
+          type: string
+          example: "a95bef4699a64806981eaafe7d4bd054"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2025-12-03T19:09:02.531430+00:00"
+      required:
+        - id
+        - original_filename
+        - safe_filename
+        - path
+        - size_bytes
+        - mime_type
+        - uploaded_at
+
+  responses:
+    BadRequest:
+      description: Bad request (e.g., path traversal attempt, invalid parameters)
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+            example:
+              type: "https://example.com/errors/bad-request"
+              title: "Bad Request"
+              status: 400
+              detail: "Path traversal detected (..)"
+              instance: "/files"
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+            example:
+              type: "https://example.com/errors/unauthorized"
+              title: "Unauthorized"
+              status: 401
+              detail: "Authorization header missing"
+              instance: "/files"
+
+    Forbidden:
+      description: Access denied
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+            example:
+              type: "https://example.com/errors/forbidden"
+              title: "Forbidden"
+              status: 403
+              detail: "Access denied. Required role: admin"
+              instance: "/files"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+            example:
+              type: "https://example.com/errors/not-found"
+              title: "Not Found"
+              status: 404
+              detail: "The requested file does not exist"
+              instance: "/files/nonexistent"
+
+    FileTooLarge:
+      description: File exceeds maximum allowed size
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+            example:
+              type: "https://example.com/errors/file-too-large"
+              title: "File Too Large"
+              status: 413
+              detail: "File size (6291456 bytes) exceeds maximum allowed size (5242880 bytes)"
+              instance: "/files"
+
+    UnsupportedMediaType:
+      description: File type not allowed
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+            example:
+              type: "https://example.com/errors/unsupported-media-type"
+              title: "Unsupported Media Type"
+              status: 415
+              detail: "File type 'application/pdf' is not allowed. Allowed types: image/jpeg, image/png, image/webp"
+              instance: "/files"
+
+    UnprocessableEntity:
+      description: Validation error (e.g., invalid filename, extension)
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+            example:
+              type: "https://example.com/errors/validation"
+              title: "Validation Failed"
+              status: 422
+              detail: "Filename contains invalid character: '/'"
+              instance: "/files"
+
+    InternalError:
+      description: Internal Server Error
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+            example:
+              type: "https://example.com/errors/internal"
+              title: "Internal Server Error"
+              status: 500
+              detail: "An unexpected error occurred: Failed to write file"
+              instance: "/files"
+
+    ServiceUnavailable:
+      description: Service unavailable or unhealthy
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+            example:
+              type: "https://example.com/errors/service-unavailable"
+              title: "Service Unavailable"
+              status: 503
+              detail: "Upload directory is not writable"
+              instance: "/health"
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        JWT token with user role. Required role: `admin` for all operations except health and root.
+        Example: `Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`

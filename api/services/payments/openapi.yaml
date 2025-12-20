@@ -1,0 +1,224 @@
+openapi: 3.1.0
+info:
+  title: Payments Service API
+  version: 1.0.0
+  description: Payment processing microservice with Stripe integration
+
+servers:
+  - url: http://localhost:8001/
+    description: Payments service
+
+tags:
+  - name: Payments
+    description: Payment processing and webhooks
+  - name: Health
+    description: Service health endpoints
+  - name: Root
+    description: Root information
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      responses:
+        "200":
+          description: Service health status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  service:
+                    type: string
+                  timestamp:
+                    type: string
+                  environment:
+                    type: string
+                  stripe_mode:
+                    type: string
+                  grpc_port:
+                    type: integer
+
+  /ready:
+    get:
+      tags: [Health]
+      summary: Readiness check
+      responses:
+        "200":
+          description: Service readiness status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  service:
+                    type: string
+                  timestamp:
+                    type: string
+                  grpc_ready:
+                    type: boolean
+
+  /info:
+    get:
+      tags: [Root]
+      summary: Service information
+      responses:
+        "200":
+          description: Service info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  version:
+                    type: string
+                  environment:
+                    type: string
+                  stripe_mode:
+                    type: string
+                  ports:
+                    type: object
+                    properties:
+                      http:
+                        type: integer
+                      grpc:
+                        type: integer
+                  docs:
+                    type: string
+                  health:
+                    type: string
+                  ready:
+                    type: string
+
+  /webhooks/stripe:
+    post:
+      tags: [Payments]
+      summary: Stripe webhook endpoint
+      parameters:
+        - name: Stripe-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            examples:
+              example:
+                value:
+                  type: "payment_intent.succeeded"
+                  data:
+                    object:
+                      id: "pi_123"
+                      status: "succeeded"
+                      metadata:
+                        payment_id: "123e4567-e89b-12d3-a456-426614174000"
+        description: Raw Stripe webhook payload
+      responses:
+        "200":
+          description: Webhook processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  event:
+                    type: string
+                  reason:
+                    type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /routes:
+    get:
+      tags: [Root]
+      summary: List all API routes (debug)
+      responses:
+        "200":
+          description: Routes list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  service:
+                    type: string
+                  total_routes:
+                    type: integer
+                  routes:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        path:
+                          type: string
+                        methods:
+                          type: array
+                          items:
+                            type: string
+                        name:
+                          type: string
+                          nullable: true
+                        endpoint:
+                          type: string
+                          nullable: true
+
+components:
+  schemas:
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+      required:
+        - type
+        - title
+        - status
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+
+    UnprocessableEntity:
+      description: Validation error
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+
+    InternalError:
+      description: Internal Server Error
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
