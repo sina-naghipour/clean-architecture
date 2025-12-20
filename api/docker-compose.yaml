@@ -1,6 +1,37 @@
 version: '3.8'
 
 services:
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "8889:8889"
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "16686:16686"
+    networks:
+      - app-network
+    restart: unless-stopped
+
   auth_db:
     image: postgres:15
     environment:
@@ -81,13 +112,17 @@ services:
     environment:
       - ENVIRONMENT=production
       - DATABASE_URL=postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-toor}@auth_db:5432/auth
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+      - OTEL_SERVICE_NAME=auth-service
     depends_on:
       auth_db:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     networks:
       - app-network
     healthcheck:
-      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health\")' || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -103,16 +138,20 @@ services:
     environment:
       - ENVIRONMENT=production
       - DATABASE_URL=postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-toor}@orders_db:5432/orders_db
-      - PAYMENTS_SERVICE_URL=http://payments:8006
+      - PAYMENTS_SERVICE_URL=http://payments:8001
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+      - OTEL_SERVICE_NAME=orders-service
     depends_on:
       orders_db:
         condition: service_healthy
       payments:
         condition: service_started
+      otel-collector:
+        condition: service_started
     networks:
       - app-network
     healthcheck:
-      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8002/health\")' || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8002/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -131,13 +170,17 @@ services:
       - STRIPE_MODE=test
       - STRIPE_SECRET_KEY=${STRIPE_API_KEY:-sk_test_mock}
       - STRIPE_RETURN_URL=${STRIPE_RETURN_URL:-http://localhost:3000/payment/success}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+      - OTEL_SERVICE_NAME=payments-service
     depends_on:
       payments_db:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     networks:
       - app-network
     healthcheck:
-      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8006/health\")' || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8001/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -155,15 +198,19 @@ services:
       - MONGODB_URI=mongodb://mongodb:27017/
       - MONGODB_DB_NAME=product_db
       - STATIC_SERVICE_URL=http://statics:8005
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+      - OTEL_SERVICE_NAME=products-service
     depends_on:
       mongodb:
         condition: service_healthy
       statics:
         condition: service_started
+      otel-collector:
+        condition: service_started
     networks:
       - app-network
     healthcheck:
-      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8003/health\")' || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8003/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -178,10 +225,17 @@ services:
     build: ./services/profile
     environment:
       - ENVIRONMENT=production
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+      - OTEL_SERVICE_NAME=profile-service
+    ports:
+      - "8004:8004"
+    depends_on:
+      otel-collector:
+        condition: service_started
     networks:
       - app-network
     healthcheck:
-      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8004/health\")' || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8004/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -202,12 +256,17 @@ services:
       - ALLOWED_MIME_TYPES=image/jpeg,image/png,image/webp
       - UPLOAD_DIR=/app/static/img
       - METADATA_FILE=/app/metadata.json
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+      - OTEL_SERVICE_NAME=statics-service
     volumes:
       - statics_storage:/app/static
+    depends_on:
+      otel-collector:
+        condition: service_started
     networks:
       - app-network
     healthcheck:
-      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8005/health\")' || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8005/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
