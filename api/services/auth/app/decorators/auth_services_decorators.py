@@ -20,7 +20,6 @@ def handle_database_errors(func):
                 instance=str(request.url) if request else ""
             )
         except SQLAlchemyError as e:
-            print('here e : ', e)
             self = args[0]
             request = next((arg for arg in args if hasattr(arg, 'url')), None)
             

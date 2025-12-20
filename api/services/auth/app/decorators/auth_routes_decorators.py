@@ -1,8 +1,7 @@
 from functools import wraps
 from fastapi import Request, Depends, HTTPException, status
 from typing import Callable, Any
-from authentication.tools import PasswordTools, TokenTools
-from services.auth_services import AuthService
+from services.auth_service import AuthService
 
 class AuthErrorDecorators:
     
@@ -12,12 +11,11 @@ class AuthErrorDecorators:
         async def wrapper(
             request: Request,
             register_data: Any,
-            password_tools: PasswordTools = Depends(lambda: PasswordTools()),
-            auth_service: AuthService = Depends(lambda: AuthService()),
+            auth_service: AuthService,
             *args, **kwargs
         ) -> Any:
             try:
-                return await func(request, register_data, password_tools, auth_service, *args, **kwargs)
+                return await func(request, register_data, auth_service, *args, **kwargs)
             except Exception as e:
                 AuthErrorDecorators._handle_register_exception(e, request)
         return wrapper
@@ -28,13 +26,11 @@ class AuthErrorDecorators:
         async def wrapper(
             request: Request,
             login_data: Any,
-            password_tools: PasswordTools = Depends(lambda: PasswordTools()),
-            token_tools: TokenTools = Depends(lambda: TokenTools()),
-            auth_service: AuthService = Depends(lambda: AuthService()),
+            auth_service: AuthService,
             *args, **kwargs
         ) -> Any:
             try:
-                return await func(request, login_data, password_tools, token_tools, auth_service, *args, **kwargs)
+                return await func(request, login_data, auth_service, *args, **kwargs)
             except Exception as e:
                 AuthErrorDecorators._handle_login_exception(e, request)
         return wrapper
@@ -43,14 +39,13 @@ class AuthErrorDecorators:
     def handle_token_errors(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(
+            auth_service: AuthService,
             request: Request,
             data: Any = None,
-            token_tools: TokenTools = Depends(lambda: TokenTools()),
-            auth_service: AuthService = Depends(lambda: AuthService()),
             *args, **kwargs
         ) -> Any:
             try:
-                return await func(request, data, token_tools, auth_service, *args, **kwargs)
+                return await func(request, data, auth_service, *args, **kwargs)
             except Exception as e:
                 AuthErrorDecorators._handle_token_exception(e, request)
         return wrapper
@@ -61,12 +56,11 @@ class AuthErrorDecorators:
         async def wrapper(
             request: Request,
             token: str,
-            token_tools: TokenTools = Depends(lambda: TokenTools()),
-            auth_service: AuthService = Depends(lambda: AuthService()),
+            auth_service: AuthService,
             *args, **kwargs
         ) -> Any:
             try:
-                return await func(request, token, token_tools, auth_service, *args, **kwargs)
+                return await func(request, token, auth_service, *args, **kwargs)
             except Exception as e:
                 AuthErrorDecorators._handle_profile_exception(e, request)
         return wrapper
@@ -77,12 +71,11 @@ class AuthErrorDecorators:
         async def wrapper(
             request: Request,
             token: str,
-            token_tools: TokenTools = Depends(lambda: TokenTools()),
-            auth_service: AuthService = Depends(lambda: AuthService()),
+            auth_service: AuthService,
             *args, **kwargs
         ) -> Any:
             try:
-                return await func(request, token, token_tools, auth_service, *args, **kwargs)
+                return await func(request, token, auth_service, *args, **kwargs)
             except Exception as e:
                 AuthErrorDecorators._handle_logout_exception(e, request)
         return wrapper
@@ -90,7 +83,6 @@ class AuthErrorDecorators:
     @staticmethod
     def _handle_register_exception(error: Exception, request: Request) -> None:
         error_str = str(error).lower()
-        print('here_register : ',error_str)
         if "duplicate" in error_str or "already exists" in error_str:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,

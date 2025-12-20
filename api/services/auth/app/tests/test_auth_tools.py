@@ -1,12 +1,13 @@
 import pytest
-from authentication.tools import PasswordTools, TokenTools
+from services.token_service import TokenService
+from services.password_service import PasswordService
 from datetime import datetime, timedelta
 import jwt
 import os
 
-class TestPasswordTools:
+class TestPasswordService:
     def setup_method(self):
-        self.password_tools = PasswordTools()
+        self.password_tools = PasswordService()
 
     def test_encode_password_valid(self):
         password = "securepassword123"
@@ -46,11 +47,11 @@ class TestPasswordTools:
             self.password_tools.verify_password("password", "invalid_hash_format")
 
 
-class TestTokenTools:
+class TestTokenService:
     def setup_method(self):
-        self.token_tools = TokenTools()
+        self.token_tools = TokenService()
         self.sample_payload = {"user_id": 123, "username": "testuser"}
-        # Get the same secret key that TokenTools uses
+        # Get the same secret key that TokenService uses
         self.jwt_secret_key = os.getenv('JWT_SECRET_KEY', 'random-secret-key')
 
     def test_create_access_token_valid(self):
@@ -144,7 +145,7 @@ class TestTokenTools:
 
     def test_token_payload_structure(self):
         token = self.token_tools.create_access_token(self.sample_payload)
-        # Use the same secret key that TokenTools uses
+        # Use the same secret key that TokenService uses
         decoded = jwt.decode(token, self.jwt_secret_key, 'HS256')
         
         assert 'expiration' in decoded

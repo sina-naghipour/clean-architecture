@@ -1,12 +1,18 @@
 import pytest
 import pytest_asyncio
+
 from unittest.mock import Mock, AsyncMock
+
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
+
 from main import app
-from services.auth_services import AuthService
-from authentication.tools import PasswordTools, TokenTools
+
+from services.auth_service import AuthService
+from services.token_service import TokenService
+from services.password_service import PasswordService
+
 from database import pydantic_models
 from repository.user_repository import UserRepository
 
@@ -37,29 +43,34 @@ class TestAuthService:
         return request
 
     @pytest_asyncio.fixture
-    async def mock_password_tools(self):
-        tools = Mock(spec=PasswordTools)
-        tools.encode_password = Mock(return_value="hashed_password_123")
-        tools.verify_password = Mock(return_value=True)
-        return tools
+    async def mock_password_service(self):
+        service = Mock(spec=PasswordService)
+        service.encode_password = Mock(return_value="hashed_password_123")
+        service.verify_password = Mock(return_value=True)
+        return service
 
     @pytest_asyncio.fixture
-    async def mock_token_tools(self):
-        tools = Mock(spec=TokenTools)
-        tools.create_access_token = Mock(return_value="mock_access_token")
-        tools.create_refresh_token = Mock(return_value="mock_refresh_token")
-        tools.refresh_access_token = Mock(return_value="new_access_token")
-        tools.validate_token = Mock(return_value=True)
-        tools.get_token_payload = Mock(return_value={
+    async def mock_token_service(self):
+        service = Mock(spec=TokenService)
+        service.create_access_token = Mock(return_value="mock_access_token")
+        service.create_refresh_token = Mock(return_value="mock_refresh_token")
+        service.refresh_access_token = Mock(return_value="new_access_token")
+        service.validate_token = Mock(return_value=True)
+        service.get_token_payload = Mock(return_value={
             "user_id": "user_123",
             "email": "test@example.com",
             "name": "Test User"
         })
-        return tools
+        return service
 
     @pytest_asyncio.fixture
-    async def auth_service(self, mock_logger, mock_user_repository):
-        return AuthService(logger=mock_logger, user_repository=mock_user_repository)
+    async def auth_service(self, mock_logger, mock_user_repository, mock_password_service, mock_token_service):
+        return AuthService(
+            logger=mock_logger, 
+            user_repository=mock_user_repository,
+            password_service=mock_password_service,
+            token_service=mock_token_service
+        )
 
     def test_client_initialization(self, client):
         response = client.get("/health")
@@ -67,7 +78,7 @@ class TestAuthService:
 
     @pytest.mark.asyncio
     async def test_register_user_success(
-        self, auth_service, mock_request, mock_password_tools, mock_user_repository
+        self, auth_service, mock_request, mock_user_repository
     ):
         register_data = pydantic_models.User(
             email="test@example.com",
@@ -83,7 +94,7 @@ class TestAuthService:
         mock_user_repository.create_user.return_value = mock_user
 
         result = await auth_service.register_user(
-            mock_request, register_data, mock_password_tools
+            mock_request, register_data
         )
 
         assert isinstance(result, JSONResponse)
@@ -93,14 +104,14 @@ class TestAuthService:
         
         mock_user_repository.email_exists.assert_called_once_with("test@example.com")
         mock_user_repository.create_user.assert_called_once()
-        mock_password_tools.encode_password.assert_called_once_with("SecurePass123!")
+        auth_service.password_service.encode_password.assert_called_once_with("SecurePass123!")
         
         auth_service.logger.info.assert_any_call("Registration attempt for email: test@example.com")
         auth_service.logger.info.assert_any_call("User registered successfully: test@example.com")
 
     @pytest.mark.asyncio
     async def test_register_user_duplicate_email(
-        self, auth_service, mock_request, mock_password_tools, mock_user_repository
+        self, auth_service, mock_request, mock_user_repository
     ):
         register_data = pydantic_models.User(
             email="existing@example.com",
@@ -111,7 +122,7 @@ class TestAuthService:
         mock_user_repository.email_exists.return_value = True
 
         result = await auth_service.register_user(
-            mock_request, register_data, mock_password_tools
+            mock_request, register_data
         )
 
         assert isinstance(result, JSONResponse)
@@ -122,7 +133,7 @@ class TestAuthService:
 
     @pytest.mark.asyncio
     async def test_login_user_success(
-        self, auth_service, mock_request, mock_password_tools, mock_token_tools, mock_user_repository
+        self, auth_service, mock_request, mock_user_repository
     ):
         login_data = pydantic_models.LoginRequest(
             email="test@example.com",
@@ -135,10 +146,10 @@ class TestAuthService:
         mock_user.name = "Test User"
         mock_user.password = "hashed_password_123"
         mock_user_repository.get_active_user_by_email.return_value = mock_user
-        mock_password_tools.verify_password.return_value = True
+        auth_service.password_service.verify_password.return_value = True
 
         result = await auth_service.login_user(
-            mock_request, login_data, mock_password_tools, mock_token_tools
+            mock_request, login_data
         )
 
         assert isinstance(result, dict)
@@ -148,7 +159,7 @@ class TestAuthService:
         assert result["refreshToken"] == "mock_refresh_token"
         
         mock_user_repository.get_active_user_by_email.assert_called_once_with("test@example.com")
-        mock_password_tools.verify_password.assert_called_once_with("CorrectPassword123!", "hashed_password_123")
+        auth_service.password_service.verify_password.assert_called_once_with("CorrectPassword123!", "hashed_password_123")
         mock_user_repository.update_last_login.assert_called_once_with("user_123")
         
         auth_service.logger.info.assert_any_call("Login attempt for email: test@example.com")
@@ -156,7 +167,7 @@ class TestAuthService:
 
     @pytest.mark.asyncio
     async def test_login_user_invalid_email(
-        self, auth_service, mock_request, mock_password_tools, mock_token_tools, mock_user_repository
+        self, auth_service, mock_request, mock_user_repository
     ):
         login_data = pydantic_models.LoginRequest(
             email="nonexistent@example.com",
@@ -166,20 +177,20 @@ class TestAuthService:
         mock_user_repository.get_active_user_by_email.return_value = None
 
         result = await auth_service.login_user(
-            mock_request, login_data, mock_password_tools, mock_token_tools
+            mock_request, login_data
         )
 
         assert isinstance(result, JSONResponse)
         assert result.status_code == 401
         
         mock_user_repository.get_active_user_by_email.assert_called_once_with("nonexistent@example.com")
-        mock_password_tools.verify_password.assert_not_called()
+        auth_service.password_service.verify_password.assert_not_called()
         
         auth_service.logger.warning.assert_called_once_with("Invalid login attempt for email: nonexistent@example.com")
 
     @pytest.mark.asyncio
     async def test_login_user_invalid_password(
-        self, auth_service, mock_request, mock_password_tools, mock_token_tools, mock_user_repository
+        self, auth_service, mock_request, mock_user_repository
     ):
         login_data = pydantic_models.LoginRequest(
             email="test@example.com",
@@ -192,74 +203,74 @@ class TestAuthService:
         mock_user.name = "Test User"
         mock_user.password = "hashed_password_123"
         mock_user_repository.get_active_user_by_email.return_value = mock_user
-        mock_password_tools.verify_password.return_value = False
+        auth_service.password_service.verify_password.return_value = False
 
         result = await auth_service.login_user(
-            mock_request, login_data, mock_password_tools, mock_token_tools
+            mock_request, login_data
         )
 
         assert isinstance(result, JSONResponse)
         assert result.status_code == 401
         
         mock_user_repository.get_active_user_by_email.assert_called_once_with("test@example.com")
-        mock_password_tools.verify_password.assert_called_once_with("WrongPassword", "hashed_password_123")
+        auth_service.password_service.verify_password.assert_called_once_with("WrongPassword", "hashed_password_123")
         
         auth_service.logger.warning.assert_called_once_with("Invalid password for email: test@example.com")
 
     @pytest.mark.asyncio
     async def test_refresh_token_success(
-        self, auth_service, mock_request, mock_token_tools
+        self, auth_service, mock_request
     ):
         refresh_data = pydantic_models.RefreshTokenRequest(refreshToken="valid_refresh_token")
 
         result = await auth_service.refresh_token(
-            mock_request, refresh_data, mock_token_tools
+            mock_request, refresh_data
         )
 
         assert isinstance(result, dict)
         assert "accessToken" in result
         assert result["accessToken"] == "new_access_token"
         
-        mock_token_tools.refresh_access_token.assert_called_once_with("valid_refresh_token")
+        auth_service.token_service.refresh_access_token.assert_called_once_with("valid_refresh_token")
         
         auth_service.logger.info.assert_any_call("Refresh token request received")
         auth_service.logger.info.assert_any_call("Access token refreshed successfully")
 
     @pytest.mark.asyncio
     async def test_logout_success(
-        self, auth_service, mock_request, mock_token_tools
+        self, auth_service, mock_request
     ):
         valid_token = "valid_jwt_token"
 
         result = await auth_service.logout(
-            mock_request, valid_token, mock_token_tools
+            mock_request, valid_token
         )
 
         assert result is None
         
-        mock_token_tools.validate_token.assert_called_once_with(valid_token)
+        auth_service.token_service.validate_token.assert_called_once_with(valid_token)
         
         auth_service.logger.info.assert_called_once_with("User logged out successfully")
 
     @pytest.mark.asyncio
     async def test_logout_invalid_token(
-        self, auth_service, mock_request, mock_token_tools
+        self, auth_service, mock_request
     ):
         invalid_token = "invalid_jwt_token"
-        mock_token_tools.validate_token.return_value = False
+        auth_service.token_service.validate_token.return_value = False
 
         result = await auth_service.logout(
-            mock_request, invalid_token, mock_token_tools
+            mock_request, invalid_token
         )
 
         assert isinstance(result, JSONResponse)
         assert result.status_code == 401
         
-        mock_token_tools.validate_token.assert_called_once_with(invalid_token)
+        auth_service.token_service.validate_token.assert_called_once_with(invalid_token)
 
     @pytest.mark.asyncio
     async def test_get_current_user_success(
-        self, auth_service, mock_request, mock_token_tools, mock_user_repository
+        self, auth_service, mock_request, mock_user_repository
     ):
         valid_token = "valid_jwt_token"
 
@@ -271,7 +282,7 @@ class TestAuthService:
         mock_user_repository.get_by_id.return_value = mock_user
 
         result = await auth_service.get_current_user(
-            mock_request, valid_token, mock_token_tools
+            mock_request, valid_token
         )
 
         assert isinstance(result, pydantic_models.UserResponse)
@@ -279,21 +290,21 @@ class TestAuthService:
         assert result.email == "test@example.com"
         assert result.name == "Test User"
         
-        mock_token_tools.validate_token.assert_called_once_with(valid_token)
-        mock_token_tools.get_token_payload.assert_called_once_with(valid_token)
+        auth_service.token_service.validate_token.assert_called_once_with(valid_token)
+        auth_service.token_service.get_token_payload.assert_called_once_with(valid_token)
         mock_user_repository.get_by_id.assert_called_once_with("user_123")
         
         auth_service.logger.info.assert_called_once_with("User profile retrieved: test@example.com")
 
     @pytest.mark.asyncio
     async def test_get_current_user_invalid_token(
-        self, auth_service, mock_request, mock_token_tools
+        self, auth_service, mock_request
     ):
         invalid_token = "invalid_jwt_token"
-        mock_token_tools.validate_token.return_value = False
+        auth_service.token_service.validate_token.return_value = False
 
         result = await auth_service.get_current_user(
-            mock_request, invalid_token, mock_token_tools
+            mock_request, invalid_token
         )
 
         assert isinstance(result, JSONResponse)
@@ -301,13 +312,13 @@ class TestAuthService:
 
     @pytest.mark.asyncio
     async def test_get_current_user_not_found(
-        self, auth_service, mock_request, mock_token_tools, mock_user_repository
+        self, auth_service, mock_request, mock_user_repository
     ):
         valid_token = "valid_jwt_token"
         mock_user_repository.get_by_id.return_value = None
 
         result = await auth_service.get_current_user(
-            mock_request, valid_token, mock_token_tools
+            mock_request, valid_token
         )
 
         assert isinstance(result, JSONResponse)
@@ -315,7 +326,7 @@ class TestAuthService:
 
     @pytest.mark.asyncio
     async def test_get_current_user_inactive(
-        self, auth_service, mock_request, mock_token_tools, mock_user_repository
+        self, auth_service, mock_request, mock_user_repository
     ):
         valid_token = "valid_jwt_token"
 
@@ -327,15 +338,22 @@ class TestAuthService:
         mock_user_repository.get_by_id.return_value = mock_user
 
         result = await auth_service.get_current_user(
-            mock_request, valid_token, mock_token_tools
+            mock_request, valid_token
         )
 
         assert isinstance(result, JSONResponse)
         assert result.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_service_initialization(self, mock_logger, mock_user_repository):
-        service = AuthService(logger=mock_logger, user_repository=mock_user_repository)
+    async def test_service_initialization(self, mock_logger, mock_user_repository, mock_password_service, mock_token_service):
+        service = AuthService(
+            logger=mock_logger, 
+            user_repository=mock_user_repository,
+            password_service=mock_password_service,
+            token_service=mock_token_service
+        )
 
         assert service.logger == mock_logger
         assert service.user_repository == mock_user_repository
+        assert service.password_service == mock_password_service
+        assert service.token_service == mock_token_service

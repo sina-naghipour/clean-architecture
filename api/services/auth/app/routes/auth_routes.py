@@ -1,8 +1,9 @@
 import logging
 from fastapi import APIRouter, Request, Depends, Header
 from typing import Dict
-from authentication.tools import PasswordTools, TokenTools
-from services.auth_services import AuthService
+from services.token_service import TokenService
+from services.password_service import PasswordService
+from services.auth_service import AuthService
 from database import pydantic_models
 from decorators.auth_routes_decorators import AuthErrorDecorators
 from repository.user_repository import UserRepository
@@ -14,17 +15,26 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=['auth'])
 
 # Dependency injection functions
-def get_token_tools() -> TokenTools:
-    return TokenTools()
+def get_token_service() -> TokenService:
+    return TokenService()
 
-def get_password_tools() -> PasswordTools:
-    return PasswordTools()
+def get_password_service() -> PasswordService:
+    return PasswordService()
 
 async def get_user_repository(db_session: AsyncSession = Depends(get_db)) -> UserRepository:
     return UserRepository(db_session)
 
-async def get_auth_service(user_repository: UserRepository = Depends(get_user_repository)) -> AuthService:
-    return AuthService(logger=logger, user_repository=user_repository)
+async def get_auth_service(
+    user_repository: UserRepository = Depends(get_user_repository),
+    password_service: PasswordService = Depends(get_password_service),
+    token_service: TokenService = Depends(get_token_service),
+) -> AuthService:
+    return AuthService(
+        logger=logger, 
+        user_repository=user_repository,
+        password_service=password_service,
+        token_service=token_service
+    )
 
 async def get_token_from_header(authorization: str = Header(None)) -> str:
     if not authorization or not authorization.startswith("Bearer "):
@@ -45,10 +55,9 @@ async def get_token_from_header(authorization: str = Header(None)) -> str:
 async def register_user(
     request: Request,
     register_data: pydantic_models.User,
-    password_tools: PasswordTools = Depends(get_password_tools),
     auth_service: AuthService = Depends(get_auth_service),
 ) -> pydantic_models.UserResponse:
-    return await auth_service.register_user(request, register_data, password_tools)
+    return await auth_service.register_user(request, register_data)
 
 @router.post(
     '/login',
@@ -59,11 +68,9 @@ async def register_user(
 async def login_user(
     request: Request,
     login_data: pydantic_models.LoginRequest,
-    password_tools: PasswordTools = Depends(get_password_tools),
-    token_tools: TokenTools = Depends(get_token_tools),
     auth_service: AuthService = Depends(get_auth_service),
 ) -> Dict[str, str]:
-    return await auth_service.login_user(request, login_data, password_tools, token_tools)
+    return await auth_service.login_user(request, login_data)
 
 @router.post(
     '/refresh-token',
@@ -74,10 +81,9 @@ async def login_user(
 async def refresh_token(
     request: Request,
     data: pydantic_models.RefreshTokenRequest,
-    token_tools: TokenTools = Depends(get_token_tools),
     auth_service: AuthService = Depends(get_auth_service),
 ) -> Dict[str, str]:
-    return await auth_service.refresh_token(request, data, token_tools)
+    return await auth_service.refresh_token(request, data)
 
 @router.post(
     '/logout',
@@ -88,10 +94,9 @@ async def refresh_token(
 async def logout(
     request: Request,
     token: str = Depends(get_token_from_header),
-    token_tools: TokenTools = Depends(get_token_tools),
     auth_service: AuthService = Depends(get_auth_service),
 ) -> None:
-    return await auth_service.logout(request, token, token_tools)
+    return await auth_service.logout(request, token)
 
 @router.get(
     '/me',
@@ -102,7 +107,6 @@ async def logout(
 async def get_current_user(
     request: Request,
     token: str = Depends(get_token_from_header),
-    token_tools: TokenTools = Depends(get_token_tools),
     auth_service: AuthService = Depends(get_auth_service),
 ) -> pydantic_models.UserResponse:
-    return await auth_service.get_current_user(request, token, token_tools)
+    return await auth_service.get_current_user(request, token)

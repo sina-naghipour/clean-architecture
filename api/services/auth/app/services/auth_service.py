@@ -4,14 +4,25 @@ from decorators.auth_services_decorators import handle_database_errors, handle_v
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from typing import Dict
-from authentication.tools import PasswordTools, TokenTools
+
+from services.token_service import TokenService
+from services.password_service import PasswordService
+
 from database import pydantic_models
 from repository.user_repository import UserRepository
 
 class AuthService:
-    def __init__(self, logger, user_repository: UserRepository):
+    def __init__(
+        self, 
+        logger, 
+        user_repository: UserRepository,
+        password_service: PasswordService,
+        token_service: TokenService
+    ):
         self.logger = logger
         self.user_repository = user_repository
+        self.password_service = password_service
+        self.token_service = token_service
 
     @handle_database_errors
     @handle_validation_errors
@@ -19,8 +30,7 @@ class AuthService:
     async def register_user(
         self,
         request: Request,
-        register_data: pydantic_models.User,
-        password_tools: PasswordTools
+        register_data: pydantic_models.User
     ) -> pydantic_models.UserResponse:
         self.logger.info(f"Registration attempt for email: {register_data.email}")
         
@@ -35,7 +45,7 @@ class AuthService:
                 instance=str(request.url)
             )
         
-        hashed_password = password_tools.encode_password(register_data.password)
+        hashed_password = self.password_service.encode_password(register_data.password)
         
         user_dict = {
             "email": register_data.email,
@@ -65,9 +75,7 @@ class AuthService:
     async def login_user(
         self,
         request: Request,
-        login_data: pydantic_models.LoginRequest,
-        password_tools: PasswordTools,
-        token_tools: TokenTools
+        login_data: pydantic_models.LoginRequest
     ) -> Dict[str, str]:
         self.logger.info(f"Login attempt for email: {login_data.email}")
         
@@ -83,7 +91,7 @@ class AuthService:
                 instance=str(request.url)
             )
         
-        is_password_valid = password_tools.verify_password(login_data.password, user.password)
+        is_password_valid = self.password_service.verify_password(login_data.password, user.password)
         
         if not is_password_valid:
             self.logger.warning(f"Invalid password for email: {login_data.email}")
@@ -104,8 +112,8 @@ class AuthService:
             "role": user.role
         }
         
-        access_token = token_tools.create_access_token(token_payload)
-        refresh_token = token_tools.create_refresh_token(token_payload)
+        access_token = self.token_service.create_access_token(token_payload)
+        refresh_token = self.token_service.create_refresh_token(token_payload)
         
         self.logger.info(f"User logged in successfully: {login_data.email}")
         return {
@@ -118,12 +126,11 @@ class AuthService:
     async def refresh_token(
         self,
         request: Request,
-        data: pydantic_models.RefreshTokenRequest,
-        token_tools: TokenTools
+        data: pydantic_models.RefreshTokenRequest
     ) -> Dict[str, str]:
         self.logger.info("Refresh token request received")
         
-        new_access_token = token_tools.refresh_access_token(data.refresh_token)
+        new_access_token = self.token_service.refresh_access_token(data.refresh_token)
         
         self.logger.info("Access token refreshed successfully")
         return {"accessToken": new_access_token}
@@ -133,10 +140,9 @@ class AuthService:
     async def logout(
         self,
         request: Request,
-        token: str,
-        token_tools: TokenTools
+        token: str
     ) -> None:
-        if not token_tools.validate_token(token):
+        if not self.token_service.validate_token(token):
             return create_problem_response(
                 status_code=401,
                 error_type="unauthorized",
@@ -154,10 +160,9 @@ class AuthService:
     async def get_current_user(
         self,
         request: Request,
-        token: str,
-        token_tools: TokenTools
+        token: str
     ) -> pydantic_models.UserResponse:
-        if not token_tools.validate_token(token):
+        if not self.token_service.validate_token(token):
             return create_problem_response(
                 status_code=401,
                 error_type="unauthorized",
@@ -166,7 +171,7 @@ class AuthService:
                 instance=str(request.url)
             )
         
-        payload = token_tools.get_token_payload(token)
+        payload = self.token_service.get_token_payload(token)
         user_id = payload.get("user_id")
         email = payload.get("email")
         name = payload.get("name")
