@@ -221,31 +221,6 @@ services:
         parallelism: 1
         delay: 10s
 
-  profile:
-    build: ./services/profile
-    environment:
-      - ENVIRONMENT=production
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
-      - OTEL_SERVICE_NAME=profile-service
-    ports:
-      - "8004:8004"
-    depends_on:
-      otel-collector:
-        condition: service_started
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8004/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 5s
-    deploy:
-      replicas: 5
-      update_config:
-        parallelism: 1
-        delay: 10s
-
   statics:
     build: ./services/statics
     environment:
@@ -289,7 +264,6 @@ services:
       - orders
       - payments
       - products
-      - profile
       - statics
     networks:
       - app-network
