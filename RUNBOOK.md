@@ -248,3 +248,51 @@ yarn start
 ```
 ### 4. Alternative: Check for newer OpenAPI plugin version:
 Sometimes there might be a newer version that supports Docusaurus 3.9.2:
+
+## Generate Grpc files:
+
+these commands would generate the appropriate grpc files to use.
+
+### In your payments service directory
+```bash
+python -m grpc_tools.protoc -I./protos --python_out=. --grpc_python_out=. ./protos/payments.proto
+```
+
+### In your orders service directory  
+```bash
+python -m grpc_tools.protoc -I./protos --python_out=. --grpc_python_out=. ./protos/orders.proto
+```
+
+## Stripe CLI Container Commands
+
+### Starting the Stripe CLI Container
+
+```bash
+docker run --rm -it stripe/stripe-cli:latest listen \
+  --api-key sk_test_xxx \
+  --forward-to localhost:8001/webhooks/stripe \
+  --events payment_intent.succeeded,payment_intent.created
+```
+
+### Docker Compose Integration
+
+Add to your `docker-compose.yml`:
+
+```yaml
+services:
+  stripe-cli:
+    image: stripe/stripe-cli:latest
+    command: listen --api-key ${STRIPE_SECRET_KEY} --forward-to payments:8001/webhooks/stripe --events payment_intent.succeeded,payment_intent.created
+    environment:
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+```
+
+### Verifying the Connection
+
+```bash
+# Check if webhooks are being forwarded
+docker logs <stripe-cli-container-id>
+
+# Trigger a test event
+stripe trigger payment_intent.succeeded --add payment_intent:metadata.payment_id=id-of-the-payment-that-wants-to-be-triggered
+```
