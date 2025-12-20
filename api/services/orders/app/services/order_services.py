@@ -10,6 +10,9 @@ from decorators.order_services_decorators import OrderServiceDecorators
 from .orders_grpc_client import PaymentGRPCClient
 import grpc
 import asyncio
+import hashlib
+import time
+from opentelemetry import trace
 
 class OrderService:
     def __init__(self, logger, db_session):
@@ -17,22 +20,64 @@ class OrderService:
         self.order_repo = OrderRepository(db_session)
         self.payment_client = PaymentGRPCClient()
         self._processed_keys = set()
+        self.tracer = trace.get_tracer(__name__)
+        self._payment_failure_count = 0
+        self._circuit_open = False
 
     async def _create_payment(self, order_id, amount, user_id, payment_method_token):
-        try:
-            payment = await self.payment_client.create_payment(
-                order_id=order_id,
-                amount=amount,
-                user_id=user_id,
-                payment_method_token=payment_method_token
-            )
-            return payment
-        except grpc.RpcError as e:
-            self.logger.error(f"Payment creation failed: {e.code().name} - {e.details()}")
-            raise Exception(f"Payment processing failed: {e.details()}")
-        except Exception as e:
-            self.logger.error(f"Payment creation failed: {e}")
-            raise Exception(f"Payment processing failed: {str(e)}")
+        if self._circuit_open:
+            self.logger.error("Payment creation failed: Circuit breaker open - payments service unavailable")
+            raise Exception("Circuit breaker open - payments service unavailable")
+        
+        max_retries = 3
+        base_delay = 1
+        
+        for attempt in range(max_retries):
+            try:
+                with self.tracer.start_as_current_span(f"payment-attempt-{attempt+1}"):
+                    payment = await self.payment_client.create_payment(
+                        order_id=order_id,
+                        amount=amount,
+                        user_id=user_id,
+                        payment_method_token=payment_method_token
+                    )
+                    self._payment_failure_count = 0
+                    self._circuit_open = False
+                    return payment
+                    
+            except grpc.RpcError as e:
+                self._payment_failure_count += 1
+                
+                if self._payment_failure_count >= 5:
+                    self._circuit_open = True
+                    self.logger.warning("Payment circuit breaker OPEN - too many failures")
+                
+                self.logger.error(f"Payment creation failed: {e.code().name} - {e.details()}")
+                
+                if attempt == max_retries - 1:
+                    raise Exception(f"Payment failed after {max_retries} attempts: {e.details()}")
+                
+                delay = base_delay * (2 ** attempt)
+                self.logger.warning(f"Payment attempt {attempt+1} failed, retrying in {delay}s")
+                await asyncio.sleep(delay)
+                
+            except Exception as e:
+                self._payment_failure_count += 1
+                
+                if self._payment_failure_count >= 5:
+                    self._circuit_open = True
+                    self.logger.warning("Payment circuit breaker OPEN - too many failures")
+                
+                self.logger.error(f"Payment creation failed: {e}")
+                
+                if attempt == max_retries - 1:
+                    raise Exception(f"Payment failed after {max_retries} attempts: {str(e)}")
+                
+                delay = base_delay * (2 ** attempt)
+                self.logger.warning(f"Payment attempt {attempt+1} failed, retrying in {delay}s")
+                await asyncio.sleep(delay)
+        
+        raise Exception(f"Payment processing failed")
 
     def _build_order_response(self, order_db, items_dict):
         order_items = [
@@ -57,9 +102,7 @@ class OrderService:
             created_at=created_at.isoformat()
         )
 
-
     async def _get_client_secret_with_retry(self, payment_id: str, max_attempts: int = 5) -> str:
-        
         for attempt in range(1, max_attempts + 1):
             try:
                 payment_info = await self.payment_client.get_payment(payment_id)
@@ -97,65 +140,102 @@ class OrderService:
             self._processed_keys = set()
         self._processed_keys.add(idempotency_key)
     
-
     @OrderServiceDecorators.handle_create_order_errors
     async def create_order(self, request, order_data, user_id):
-        self.logger.info(f"Order creation attempt for user: {user_id}")
-        if not order_data.items:
-            return create_problem_response(
-                status_code=400,
-                error_type="bad-request",
-                title="Bad Request",
-                detail="Cannot create order with empty items",
-                instance=str(request.url)
+        with self.tracer.start_as_current_span("create-order-transaction") as span:
+            span.set_attributes({
+                "user_id": str(user_id),
+                "item_count": len(order_data.items)
+            })
+            
+            self.logger.info(f"Order creation attempt for user: {user_id}")
+            if not order_data.items:
+                return create_problem_response(
+                    status_code=400,
+                    error_type="bad-request",
+                    title="Bad Request",
+                    detail="Cannot create order with empty items",
+                    instance=str(request.url)
+                )
+
+            total = sum(item.quantity * item.unit_price for item in order_data.items)
+
+            items_dict = [
+                {
+                    'product_id': item.product_id,
+                    'name': item.name,
+                    'quantity': item.quantity,
+                    'unit_price': item.unit_price
+                }
+                for item in order_data.items
+            ]
+
+            items_hash = hashlib.md5(str(items_dict).encode()).hexdigest()[:8]
+            idempotency_key = f"{user_id}_{items_hash}_{int(time.time())}"
+            span.set_attribute("idempotency_key", idempotency_key)
+
+            if self._circuit_open:
+                raise Exception("Payment service unavailable (circuit breaker open)")
+
+            order_db = OrderDB(
+                user_id=user_id,
+                status=OrderStatus.CREATED,
+                total=total,
+                billing_address_id=order_data.billing_address_id,
+                shipping_address_id=order_data.shipping_address_id,
+                payment_method_token=order_data.payment_method_token,
+                items=items_dict
             )
 
-        total = sum(item.quantity * item.unit_price for item in order_data.items)
+            created_order = await self.order_repo.create_order(order_db)
+            self.logger.info(f"Order created successfully: {created_order.id}")
+            span.set_attribute("order_id", str(created_order.id))
 
-        items_dict = [
-            {
-                'product_id': item.product_id,
-                'name': item.name,
-                'quantity': item.quantity,
-                'unit_price': item.unit_price
-            }
-            for item in order_data.items
-        ]
+            try:
+                payment = await self._create_payment(
+                    order_id=str(created_order.id),
+                    amount=created_order.total,
+                    user_id=user_id,
+                    payment_method_token=order_data.payment_method_token
+                )
+                payment_id = payment.payment_id
+                     
+                await self.order_repo.update_order_payment_id(created_order.id, payment_id)
+                await self.order_repo.update_order_status(created_order.id, OrderStatus.PENDING)
 
-        order_db = OrderDB(
-            user_id=user_id,
-            status=OrderStatus.CREATED,
-            total=total,
-            billing_address_id=order_data.billing_address_id,
-            shipping_address_id=order_data.shipping_address_id,
-            payment_method_token=order_data.payment_method_token,
-            items=items_dict
-        )
+                created_order.payment_id = payment_id
+                created_order.status = OrderStatus.PENDING
 
-        created_order = await self.order_repo.create_order(order_db)
-        self.logger.info(f"Order created successfully: {created_order.id}")
+                client_secret = payment.client_secret
+                
+                order_response = self._build_order_response(created_order, items_dict)
+                order_response.client_secret = client_secret
 
-        payment = await self._create_payment(
-            order_id=str(created_order.id),
-            amount=created_order.total,
-            user_id=user_id,
-            payment_method_token=order_data.payment_method_token
-        )
-        payment_id = payment.payment_id
-             
-        await self.order_repo.update_order_payment_id(created_order.id, payment_id)
-        await self.order_repo.update_order_status(created_order.id, OrderStatus.PENDING)
-
-        created_order.payment_id = payment_id
-        created_order.status = OrderStatus.PENDING
-
-        client_secret = payment.client_secret
-        
-        order_response = self._build_order_response(created_order, items_dict)
-        order_response.client_secret = client_secret
-
-        return order_response
-
+                return order_response
+                
+            except Exception as payment_error:
+                self.logger.error(f"Payment failed, rolling back order {created_order.id}: {payment_error}")
+                
+                try:
+                    await self.order_repo.update_order_status(
+                        created_order.id, 
+                        OrderStatus.FAILED
+                    )
+                    self.logger.info(f"Order {created_order.id} successfully marked as FAILED")
+                except Exception as rollback_error:
+                    # The error might be that FAILED is a string, not an OrderStatus enum
+                    try:
+                        # Try with the string value if enum fails
+                        await self.order_repo.update_order_status(
+                            created_order.id, 
+                            "FAILED"
+                        )
+                        self.logger.info(f"Order {created_order.id} marked as 'FAILED' (string)")
+                    except Exception as string_error:
+                        self.logger.error(f"Failed to rollback order {created_order.id} with string too: {str(string_error)}")
+                
+                raise Exception(f"Order creation failed: Payment processing error. Order {created_order.id} marked as failed.")
+    
     @OrderServiceDecorators.handle_get_order_errors
     @OrderServiceDecorators.validate_order_ownership
     async def get_order(self, request, order_uuid, user_id, order_db):

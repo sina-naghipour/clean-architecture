@@ -13,3 +13,8 @@ psycopg2-binary
 PyJWT
 grpcio
 grpcio-tools
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-requests
+opentelemetry-exporter-otlp 

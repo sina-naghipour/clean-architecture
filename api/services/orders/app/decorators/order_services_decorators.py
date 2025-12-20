@@ -12,16 +12,37 @@ class OrderServiceDecorators:
         @wraps(func)
         async def wrapper(self, request: Request, order_data, user_id: str, *args, **kwargs) -> Any:
             try:
-                return await func(self, request, order_data, user_id, *args, **kwargs)
+                result = await func(self, request, order_data, user_id, *args, **kwargs)
+                if isinstance(result, JSONResponse) and result.status_code >= 400:
+                    return result
+                return result
             except Exception as e:
                 self.logger.error(f"Create order error: {e}")
-                return create_problem_response(
-                    status_code=500,
-                    error_type="internal-error",
-                    title="Internal Server Error",
-                    detail="Failed to create order",
-                    instance=str(request.url)
-                )
+                error_detail = str(e)
+                if "Payment processing error" in error_detail or "circuit breaker" in error_detail.lower() or "service unavailable" in error_detail.lower():
+                    return create_problem_response(
+                        status_code=503,
+                        error_type="service-unavailable",
+                        title="Payment Service Unavailable",
+                        detail=error_detail,
+                        instance=str(request.url)
+                    )
+                elif "Order creation failed" in error_detail:
+                    return create_problem_response(
+                        status_code=400,
+                        error_type="bad-request",
+                        title="Order Creation Failed",
+                        detail=error_detail,
+                        instance=str(request.url)
+                    )
+                else:
+                    return create_problem_response(
+                        status_code=500,
+                        error_type="internal-error",
+                        title="Internal Server Error",
+                        detail="Failed to create order",
+                        instance=str(request.url)
+                    )
         return wrapper
     
     @staticmethod
