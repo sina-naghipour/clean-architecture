@@ -219,7 +219,7 @@ class TestOrderRepository:
         
         assert result == 2
         mock_session.execute.assert_called_once()
-        mock_logger.debug.assert_called()
+        mock_logger.info.assert_called()
 
     @pytest.mark.asyncio
     async def test_count_orders_empty(self, repository, mock_session, mock_logger):
@@ -234,7 +234,7 @@ class TestOrderRepository:
         
         assert result == 0
         mock_session.execute.assert_called_once()
-        mock_logger.debug.assert_called()
+        mock_logger.info.assert_called()
 
     @pytest.mark.asyncio
     async def test_count_orders_failure(self, repository, mock_session, mock_logger):

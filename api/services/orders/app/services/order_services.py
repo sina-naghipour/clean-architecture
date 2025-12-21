@@ -87,7 +87,7 @@ class OrderService:
                 product_id=item['product_id'],
                 name=item['name'],
                 quantity=item['quantity'],
-                unit_price=item['unit_price']
+                unit_price=item['unit_price'],
             ) for item in items_dict
         ]
 
@@ -102,6 +102,8 @@ class OrderService:
             shipping_address_id=order_db.shipping_address_id,
             payment_id=order_db.payment_id,
             created_at=created_at.isoformat(),
+            client_secret=order_db.client_secret,
+            receipt_url=order_db.receipt_url
         )
 
     @trace_service_operation("get_client_secret_with_retry")
@@ -203,17 +205,13 @@ class OrderService:
                     payment_method_token=order_data.payment_method_token
                 )
                 payment_id = payment.payment_id
-                     
                 await self.order_repo.update_order_payment_id(created_order.id, payment_id)
                 await self.order_repo.update_order_status(created_order.id, OrderStatus.PENDING)
-
+                created_order.client_secret = payment.client_secret
                 created_order.payment_id = payment_id
                 created_order.status = OrderStatus.PENDING
-
-                client_secret = payment.client_secret
                 
                 order_response = self._build_order_response(created_order, items_dict)
-                order_response.client_secret = client_secret
 
                 return order_response
                 

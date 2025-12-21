@@ -6,6 +6,10 @@ from services.order_services import OrderService
 from database import pydantic_models
 from decorators.order_routes_decorators import OrderErrorDecorators
 from database.connection import get_db
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 logger = logging.getLogger(__name__)
 
