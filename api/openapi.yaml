@@ -17,12 +17,8 @@ tags:
     description: Product catalog management
   - name: Product Images
     description: Secure product image management
-  - name: Cart
-    description: Per-user shopping cart
   - name: Orders
     description: Order lifecycle
-  - name: Profile
-    description: User profile and addresses
 
 security:
   - bearerAuth: []
@@ -677,151 +673,10 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
-
-  /cart:
-    get:
-      tags: [Cart]
-      summary: Get current user's cart
-      security:
-        - bearerAuth: []
-      responses:
-        "200":
-          description: Cart returned
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CartResponse"
-              examples:
-                success:
-                  value:
-                    id: "cart_123"
-                    items:
-                      - id: "item_1"
-                        product_id: "prod_42"
-                        name: "Wireless Mouse"
-                        quantity: 2
-                        unit_price: 29.99
-                    total: 59.98
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
-    delete:
-      tags: [Cart]
-      summary: Clear cart
-      security:
-        - bearerAuth: []
-      responses:
-        "204":
-          description: Cart cleared
-        "400": 
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
-  /cart/items:
-    post:
-      tags: [Cart]
-      summary: Add item to cart
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CartItemRequest"
-            examples:
-              example:
-                value:
-                  product_id: "prod_42"
-                  quantity: 2
-      responses:
-        "201":
-          description: Item added to cart
-          headers:
-            Location:
-              description: URI of created cart item
-              schema:
-                type: string
-                format: uri
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CartItemResponse"
-              examples:
-                success:
-                  value:
-                    id: "item_1"
-                    product_id: "prod_42"
-                    quantity: 2
-        "400": 
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "422":
-          $ref: "#/components/responses/UnprocessableEntity"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
-  /cart/items/{itemId}:
-    parameters:
-      - $ref: "#/components/parameters/ItemId"
-    patch:
-      tags: [Cart]
-      summary: Update cart item quantity (partial, idempotent)
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CartItemUpdate"
-      responses:
-        "200":
-          description: Item updated
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CartItemResponse"
-        "400": 
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "422":
-          $ref: "#/components/responses/UnprocessableEntity"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
-    delete:
-      tags: [Cart]
-      summary: Remove cart item
-      security:
-        - bearerAuth: []
-      responses:
-        "204":
-          description: Item removed
-        "400": 
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
   /orders:
     post:
       tags: [Orders]
-      summary: Create order (checkout current cart)
+      summary: Create order
       security:
         - bearerAuth: []
       requestBody:
@@ -833,9 +688,14 @@ paths:
             examples:
               example:
                 value:
-                  billingAddressId: "addr_1"
-                  shippingAddressId: "addr_1"
-                  paymentMethodToken: "pm_tok_abc"
+                  items:
+                    - product_id: "prod_1"
+                      name: "Laptop"
+                      quantity: 1
+                      unit_price: 999.99
+                  billing_address_id: "addr_1"
+                  shipping_address_id: "addr_1"
+                  payment_method_token: "pm_tok_abc"
       responses:
         "201":
           description: Order created
@@ -1306,44 +1166,12 @@ components:
         id: { type: string }
         stock: { type: integer }
 
-    CartItemRequest:
-      type: object
-      properties:
-        product_id: { type: string }
-        quantity: { type: integer, minimum: 1 }
-      required: [product_id, quantity]
-
-    CartItemUpdate:
-      type: object
-      properties:
-        quantity: { type: integer, minimum: 1 }
-      required: [quantity]
-
-    CartItemResponse:
-      type: object
-      properties:
-        id: { type: string }
-        product_id: { type: string }
-        name: { type: string }
-        quantity: { type: integer }
-        unit_price: { type: number }
-
-    CartResponse:
-      type: object
-      properties:
-        id: { type: string }
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/CartItemResponse"
-        total: { type: number }
-
     OrderCreate:
       type: object
       properties:
-        billingAddressId: { type: string }
-        shippingAddressId: { type: string }
-        paymentMethodToken: { type: string }
+        billing_address_id: { type: string }
+        shipping_address_id: { type: string }
+        payment_method_token: { type: string }
 
     OrderItem:
       type: object
@@ -1379,12 +1207,6 @@ components:
         total: { type: integer }
         page: { type: integer }
         page_size: { type: integer }
-
-    ProfileUpdate:
-      type: object
-      properties:
-        name: { type: string }
-        phone: { type: string }
 
     AddressRequest:
       type: object
