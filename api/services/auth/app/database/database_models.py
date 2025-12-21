@@ -19,7 +19,7 @@ class UserModel(Base):
     name = Column(String(255), nullable=False)
     role = Column(Enum(UserRole, name="userrole", values_callable=lambda enum: [e.value for e in enum],),
         nullable=False,default=UserRole.USER,)
-
+    
     is_active = Column(Boolean, default=True)
     last_login = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

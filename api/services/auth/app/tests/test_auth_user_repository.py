@@ -5,7 +5,7 @@ from datetime import datetime
 import uuid
 
 from repository.user_repository import UserRepository
-from database.pydantic_models import UserCreate, ProfileUpdateRequest
+from database.pydantic_models import UserCreate
 
 @pytest.fixture
 def mock_db_session():
@@ -208,15 +208,6 @@ class TestUserRepositoryClass:
         assert result is True
         mock_db_session.execute.assert_called_once()
         mock_db_session.commit.assert_called_once()
-
-    async def test_update_profile_success(self, user_repository, mock_user):
-        profile_data = ProfileUpdateRequest(name="Updated Name")
-        user_repository.update = AsyncMock(return_value=mock_user)
-
-        result = await user_repository.update_profile(mock_user.id, profile_data)
-
-        assert result == mock_user
-        user_repository.update.assert_called_once()
 
     async def test_search_users_success(self, user_repository, mock_db_session, mock_user):
         mock_result = MagicMock()

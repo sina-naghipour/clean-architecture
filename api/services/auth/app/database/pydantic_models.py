@@ -53,18 +53,6 @@ class PasswordChangeRequest(BaseModel):
     old_password: str = Field(..., alias="oldPassword", description="Old password is required")
     new_password: str = Field(..., alias="newPassword", min_length=8, description="New password must be at least 8 characters long")
 
-
-class ProfileUpdateRequest(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, description="Name cannot be empty")
-    phone: Optional[str] = Field(None, min_length=1, description="Phone cannot be empty")
-
-    @field_validator('*', mode='before')
-    def empty_string_to_none(cls, v):
-        if v == "":
-            return None
-        return v
-
-
 class UserResponse(BaseModel):
     id: str
     email: EmailStr

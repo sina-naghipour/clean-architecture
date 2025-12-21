@@ -9,7 +9,7 @@ import logging
 from database.database_models import UserModel
 from .base import BaseRepository
 from optl.trace_decorator import trace_repository_operation 
-from database.pydantic_models import UserCreate, ProfileUpdateRequest
+from database.pydantic_models import UserCreate
 from opentelemetry import trace
 
 logger = logging.getLogger(__name__)
@@ -92,10 +92,6 @@ class UserRepository(BaseRepository[UserModel]):
         await self.db_session.commit()
         return result.rowcount > 0
 
-    @trace_repository_operation("update_profile")
-    async def update_profile(self, user_id: uuid.UUID, profile_data: ProfileUpdateRequest) -> Optional[UserModel]:
-        update_data = profile_data.model_dump(exclude_unset=True)
-        return await self.update(user_id, update_data)
 
     @trace_repository_operation("search_users")
     async def search_users(self, query: str, skip: int = 0, limit: int = 50) -> List[UserModel]:
