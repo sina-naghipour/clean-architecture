@@ -100,7 +100,7 @@ services:
 
   stripe-cli:
     image: stripe/stripe-cli:latest
-    command: listen --api-key ${STRIPE_API_KEY:-sk_test_mock} --forward-to http://payments:8001/webhooks/stripe
+    command: listen --api-key ${STRIPE_SECRET_KEY:-sk_test_mock} --forward-to http://payments:8001/webhooks/stripe
     depends_on:
       - payments
     networks:
@@ -168,7 +168,7 @@ services:
       - ENVIRONMENT=production
       - DATABASE_URL=postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-toor}@payments_db:5432/payments_db
       - STRIPE_MODE=test
-      - STRIPE_SECRET_KEY=${STRIPE_API_KEY:-sk_test_mock}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-sk_test_mock}
       - STRIPE_RETURN_URL=${STRIPE_RETURN_URL:-http://localhost:3000/payment/success}
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
       - OTEL_SERVICE_NAME=payments-service
