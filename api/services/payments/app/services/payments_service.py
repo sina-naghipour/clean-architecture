@@ -12,6 +12,10 @@ import time
 from optl.trace_decorator import trace_service_operation
 from opentelemetry import trace
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 class PaymentService:
     def __init__(self, logger: logging.Logger, db_session):
         self.logger = logger
@@ -236,7 +240,6 @@ class PaymentService:
             
             if event_type.startswith("payment_intent."):
                 stripe_status = event_data.get("status")
-                                
                 if event_type == "payment_intent.payment_failed":
                     await self.payment_repo.update_payment_status(payment.id, PaymentStatus.FAILED)
                     await self._notify_orders_service(payment.id, "failed")

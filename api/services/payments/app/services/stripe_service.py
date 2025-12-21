@@ -5,14 +5,16 @@ from typing import Dict, Any, Optional
 from database.database_models import PaymentStatus
 from optl.trace_decorator import trace_service_operation
 from opentelemetry import trace
+from dotenv import load_dotenv
 
+load_dotenv()
 class StripeService:
     def __init__(self, logger: logging.Logger = None):
         self.logger = logger or logging.getLogger(__name__).getChild("StripeService")
         self.stripe_mode = os.getenv("STRIPE_MODE", "test")
-        self.secret_key = os.getenv("STRIPE_SECRET_KEY", "sk_test_mock")
+        self.secret_key = os.getenv("STRIPE_SECRET_KEY", "sk_test")
         self.tracer = trace.get_tracer(__name__)
-        
+
         stripe.api_key = self.secret_key
         
         api_base = os.getenv("STRIPE_API_BASE")
