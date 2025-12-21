@@ -48,8 +48,6 @@ export default function () {
     '/api/products/health',
     '/api/orders/health',
     '/api/static/health',
-    '/api/profile/health',
-    '/api/cart/health',
   ];
   
   const endpoint = endpoints[Math.floor(Math.random() * endpoints.length)];
