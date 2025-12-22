@@ -93,7 +93,7 @@ class OrderService:
 
         created_at = order_db.created_at if order_db.created_at else datetime.utcnow()
 
-        return pydantic_models.OrderResponse(
+        order_response = pydantic_models.OrderResponse(
             id=str(order_db.id),
             status=order_db.status,
             total=order_db.total,
@@ -102,9 +102,11 @@ class OrderService:
             shipping_address_id=order_db.shipping_address_id,
             payment_id=order_db.payment_id,
             created_at=created_at.isoformat(),
-            client_secret=order_db.client_secret,
-            receipt_url=order_db.receipt_url
+            receipt_url=order_db.receipt_url,
+            client_secret=getattr(order_db, 'client_secret', None)
         )
+       
+        return order_response 
 
     @trace_service_operation("get_client_secret_with_retry")
     async def _get_client_secret_with_retry(self, payment_id: str, max_attempts: int = 5) -> str:

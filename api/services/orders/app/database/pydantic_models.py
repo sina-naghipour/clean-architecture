@@ -9,7 +9,8 @@ class OrderStatus(str, Enum):
     SHIPPED = "shipped"
     PENDING = "pending"
     CANCELED = "canceled"
-
+    FAILED = "failed"
+    
 class OrderItemCreate(BaseModel):
     product_id: str = Field(...)
     name: str = Field(...)
