@@ -14,6 +14,9 @@ from database.database_models import ProductDB
 from .product_image_client import ProductImageClient
 from optl.trace_decorator import trace_service_operation
 
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def get_image_client() -> ProductImageClient:
     base_url = os.getenv(
@@ -21,9 +24,26 @@ def get_image_client() -> ProductImageClient:
         "http://localhost:8005/api/static"
     )
     
+    from utils.resilience_config import ResilienceConfig, RetryConfig, CircuitBreakerConfig
+    
+    resilience_config = ResilienceConfig(
+        retry=RetryConfig(
+            max_retries=int(os.getenv("IMAGE_CLIENT_RETRY_MAX", "3")),
+            initial_backoff=float(os.getenv("IMAGE_CLIENT_RETRY_BACKOFF", "0.1")),
+            max_backoff=float(os.getenv("IMAGE_CLIENT_RETRY_MAX_BACKOFF", "2.0")),
+            backoff_factor=float(os.getenv("IMAGE_CLIENT_RETRY_FACTOR", "2.0"))
+        ),
+        circuit_breaker=CircuitBreakerConfig(
+            failure_threshold=int(os.getenv("IMAGE_CLIENT_CIRCUIT_FAILURE_THRESHOLD", "5")),
+            reset_timeout=float(os.getenv("IMAGE_CLIENT_CIRCUIT_RESET_TIMEOUT", "30.0")),
+            half_open_max_requests=int(os.getenv("IMAGE_CLIENT_CIRCUIT_HALF_OPEN_MAX", "3"))
+        ),
+        timeout=float(os.getenv("IMAGE_CLIENT_TIMEOUT", "30.0"))
+    )
+    
     return ProductImageClient(
         base_url=base_url,
-        timeout=float(os.getenv("IMAGE_CLIENT_TIMEOUT", "30.0")),
+        resilience_config=resilience_config,
         max_concurrent=int(os.getenv("IMAGE_CLIENT_MAX_CONCURRENT", "10")),
         logger=logging.getLogger("product_image_client")
     )
