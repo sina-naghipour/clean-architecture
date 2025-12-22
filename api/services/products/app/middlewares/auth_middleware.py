@@ -89,7 +89,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             )
         
         request.state.user = validation_result["user_data"]
-        
+        request.state.token = token
         response = await call_next(request)
         
         return response

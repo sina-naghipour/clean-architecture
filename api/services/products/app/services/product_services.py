@@ -100,13 +100,14 @@ class ProductService:
         image_files: List[UploadFile]
     ):
         self.logger.info(f"Product creation with images attempt: {product_data.name}")
-        
+        print('request.state is: ', request.state)
         if image_files:
             self.logger.info(f"Uploading {len(image_files)} images...")
             results = await self.image_client.upload_images(
                 image_files,
                 subdirectory=f"products",
-                metadata_list=[{"is_product_image": True} for _ in image_files]
+                metadata_list=[{"is_product_image": True} for _ in image_files],
+                token=request.state.token
             )
             
             image_urls = []
@@ -142,7 +143,7 @@ class ProductService:
         
         valid_images = []
         for image_url in product_db.images:
-            if await self.image_client.validate_image(image_url):
+            if await self.image_client.validate_image(image_url, token=request.state.token):
                 valid_images.append(image_url)
             else:
                 self.logger.warning(f"Invalid image URL for product {product_id}: {image_url}")
@@ -320,7 +321,7 @@ class ProductService:
         deleted_count = 0
         for image_url in product.images:
             file_id = self.image_client.extract_file_id(image_url)
-            if file_id and await self.image_client.delete_image(file_id):
+            if file_id and await self.image_client.delete_image(file_id, token=request.state.token):
                 deleted_count += 1
         
         if deleted_count > 0:
@@ -379,7 +380,6 @@ class ProductService:
         image_files: List[UploadFile]
     ):
         self.logger.info(f"Adding images to product: {product_id}")
-        
         product = await self.product_repository.get_product_by_id(product_id)
         if not product:
             return create_problem_response(
@@ -393,7 +393,8 @@ class ProductService:
         results = await self.image_client.upload_images(
             image_files,
             subdirectory=f"products/{product_id}",
-            metadata_list=[{"product_id": product_id} for _ in image_files]
+            metadata_list=[{"product_id": product_id} for _ in image_files],
+            token=request.state.token
         )
         
         new_image_urls = []
@@ -455,7 +456,7 @@ class ProductService:
         
         file_id = self.image_client.extract_file_id(image_url)
         if file_id:
-            await self.image_client.delete_image(file_id)
+            await self.image_client.delete_image(file_id, token=request.state.token)
             self.logger.info(f"Deleted image file: {file_id}")
         
         response_data = {
@@ -518,7 +519,7 @@ class ProductService:
         invalid_images = []
         
         for image_url in product.images:
-            if await self.image_client.validate_image(image_url):
+            if await self.image_client.validate_image(image_url, token=request.state.token):
                 valid_images.append(image_url)
             else:
                 invalid_images.append(image_url)

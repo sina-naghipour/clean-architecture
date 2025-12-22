@@ -56,7 +56,7 @@ class ProductRepository:
             self.logger.info(f"Fetching product by ID: {product_id}")
             
             product_data = await collection.find_one({"_id": product_id})
-            
+            print('product_data is: ', product_data)
             if product_data:
                 self.logger.info(f"Product found: {product_id}")
                 return ProductDB.from_dict(product_data)

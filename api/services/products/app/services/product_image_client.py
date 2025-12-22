@@ -36,12 +36,16 @@ class ProductImageClient:
         self,
         file: UploadFile,
         subdirectory: str = "products",
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
+        token: str = None
     ) -> UploadResult:
         try:
+            print('token in upload_image is:', token)
             files = {'file': (file.filename, await file.read(), file.content_type)}
             params = {'subdirectory': subdirectory}
-            
+            headers = {}
+            if token:
+                headers['Authorization'] = f'Bearer {token}'
             if metadata:
                 import json
                 params['custom_metadata'] = json.dumps(metadata)
@@ -49,7 +53,8 @@ class ProductImageClient:
             response = await self.client.post(
                 f"{self.base_url}/files",
                 files=files,
-                params=params
+                params=params,
+                headers=headers
             )
             
             if response.status_code == 201:
@@ -66,28 +71,30 @@ class ProductImageClient:
         except Exception as e:
             self.logger.error(f"Upload exception: {str(e)}")
             return UploadResult(success=False, error=str(e))
-    
+        
     @trace_client_operation("upload_images")
     async def upload_images(
         self,
         files: List[UploadFile],
         subdirectory: str = "products",
-        metadata_list: Optional[List[Dict[str, Any]]] = None
+        metadata_list: Optional[List[Dict[str, Any]]] = None,
+        token: str = None
     ) -> List[UploadResult]:
         semaphore = asyncio.Semaphore(self.max_concurrent)
         
         async def upload_with_limit(file: UploadFile, idx: int):
             async with semaphore:
                 metadata = metadata_list[idx] if metadata_list and idx < len(metadata_list) else None
-                return await self.upload_image(file, subdirectory, metadata)
-        
+                return await self.upload_image(file, subdirectory, metadata, token)
         tasks = [upload_with_limit(file, i) for i, file in enumerate(files)]
         return await asyncio.gather(*tasks)
     
     @trace_client_operation("delete_image")
-    async def delete_image(self, file_id: str) -> bool:
+    async def delete_image(self, file_id: str, token=None) -> bool:
         try:
-            response = await self.client.delete(f"{self.base_url}/files/{file_id}")
+            headers = {}
+            headers['Authorization'] = f'Bearer {token}'
+            response = await self.client.delete(f"{self.base_url}/files/{file_id}", headers=headers)
             if response.status_code == 204:
                 return True
             elif response.status_code == 404:
@@ -99,18 +106,20 @@ class ProductImageClient:
             return False
     
     @trace_client_operation("delete_images")
-    async def delete_images(self, file_ids: List[str]) -> List[bool]:
-        tasks = [self.delete_image(file_id) for file_id in file_ids]
+    async def delete_images(self, file_ids: List[str], token: str = None) -> List[bool]:
+        tasks = [self.delete_image(file_id, token) for file_id in file_ids]
         return await asyncio.gather(*tasks)
     
     @trace_client_operation("validate_image")
-    async def validate_image(self, image_url: str) -> bool:
+    async def validate_image(self, image_url: str, token: str= None) -> bool:
         try:
             if '/static/img/' in image_url:
                 filename = image_url.split('/')[-1]
                 file_id = filename.split('.')[0]
                 print(f"{self.base_url}/files/{file_id}")
-                response = await self.client.get(f"{self.base_url}/files/{file_id}")
+                headers = {}
+                headers['Authorization'] = f'Bearer {token}'
+                response = await self.client.get(f"{self.base_url}/files/{file_id}", headers=headers)
                 return response.status_code == 200
             
             elif image_url.startswith('http'):
@@ -135,7 +144,8 @@ class ProductImageClient:
     async def cleanup_unused_images(
         self,
         used_image_urls: List[str],
-        subdirectory: str = "products"
+        subdirectory: str = "products",
+        token: str = None
     ) -> List[str]:
         try:
             response = await self.client.get(
@@ -151,7 +161,7 @@ class ProductImageClient:
                 for file_info in data.get('files', []):
                     file_id = file_info.get('id')
                     if file_id and file_id not in used_ids:
-                        if await self.delete_image(file_id):
+                        if await self.delete_image(file_id, token):
                             deleted_ids.append(file_id)
                 
                 return deleted_ids
