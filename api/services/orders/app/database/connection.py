@@ -4,6 +4,8 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import text
+from sqlalchemy.pool import AsyncAdaptedQueuePool
+
 
 Base = declarative_base()
 
@@ -18,7 +20,7 @@ class PostgreSQLConnection:
         try:
             connection_string = connection_string or os.getenv(
                 "DATABASE_URL", 
-                "postgresql+asyncpg://user:password@localhost:5432/orders_db"
+                "postgresql+asyncpg://user:password@orders_db:5432/orders_db"
             )
             
             self.logger.info("Connecting to PostgreSQL database")
@@ -27,7 +29,12 @@ class PostgreSQLConnection:
             self.engine = create_async_engine(
                 connection_string, 
                 pool_pre_ping=True,
-                echo=False
+                echo=False,
+                pool_size=20,
+                max_overflow=10,
+                pool_recycle=1800,
+                pool_timeout=30,
+                poolclass=AsyncAdaptedQueuePool
             )
             
             self.async_session_local = async_sessionmaker(
