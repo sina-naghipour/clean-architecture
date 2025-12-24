@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import logging
@@ -14,6 +14,7 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExport
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 from middlewares.auth_middleware import AuthMiddleware
+from database.connection import db_connection, init_db, health_check_db
 
 load_dotenv()
 
@@ -46,7 +47,26 @@ async def lifespan(app: FastAPI):
     logger.info(f"Environment: {ENVIRONMENT}")
     logger.info(f"Host: {HOST}, Port: {PORT}")
     
+    try:
+        await init_db()
+        logger.info("Database connection pool initialized")
+        
+        pool_config = {
+            "pool_size": os.getenv("DB_POOL_SIZE", "20"),
+            "max_overflow": os.getenv("DB_MAX_OVERFLOW", "10"),
+            "pool_timeout": os.getenv("DB_POOL_TIMEOUT", "30"),
+            "pool_recycle": os.getenv("DB_POOL_RECYCLE", "3600"),
+        }
+        logger.info(f"Database pool configuration: {pool_config}")
+        
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {e}")
+        raise
+    
     yield
+    
+    await db_connection.close()
+    logger.info("Database connection pool closed")
     
     logger.info("Shutting down Order Service...")
 
@@ -113,23 +133,44 @@ async def list_all_routes(request: Request):
         "total_routes": len(routes),
         "routes": routes
     }
-    
+
 @app.get("/health", tags=["Health"])
 async def health_check():
+    db_health = await health_check_db()
+    
     return {
-        "status": "healthy",
+        "status": "healthy" if db_health.get("status") == "healthy" else "degraded",
         "service": "order",
         "timestamp": "2024-01-01T00:00:00Z",
-        "environment": ENVIRONMENT
+        "environment": ENVIRONMENT,
+        "database": db_health
     }
 
 @app.get("/ready", tags=["Health"])
 async def readiness_check():
-    return {
-        "status": "ready",
-        "service": "order",
-        "timestamp": "2024-01-01T00:00:00Z"
-    }
+    try:
+        from sqlalchemy import text
+        async with db_connection.engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+            
+        pool_stats = await db_connection.get_pool_stats()
+        
+        return {
+            "status": "ready",
+            "service": "order",
+            "timestamp": "2024-01-01T00:00:00Z",
+            "database": {
+                "status": "ready",
+                "pool_stats": pool_stats
+            }
+        }
+    except Exception as e:
+        return {
+            "status": "not_ready",
+            "service": "order",
+            "timestamp": "2024-01-01T00:00:00Z",
+            "error": f"Database not ready: {str(e)}"
+        }
 
 @app.get("/info", tags=["Root"])
 async def root():
@@ -141,6 +182,24 @@ async def root():
         "health": "/health",
         "ready": "/ready"
     }
+
+@app.get("/debug/pool", tags=["Debug"])
+async def debug_pool():
+    try:
+        pool_stats = await db_connection.get_pool_stats()
+        return {
+            "database": {
+                "pool_config": {
+                    "pool_size": os.getenv("DB_POOL_SIZE", "20"),
+                    "max_overflow": os.getenv("DB_MAX_OVERFLOW", "10"),
+                    "pool_timeout": os.getenv("DB_POOL_TIMEOUT", "30"),
+                    "pool_recycle": os.getenv("DB_POOL_RECYCLE", "3600"),
+                },
+                "pool_stats": pool_stats
+            }
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
 app.include_router(order_router)
 
