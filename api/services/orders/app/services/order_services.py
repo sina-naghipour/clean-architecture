@@ -272,6 +272,7 @@ class OrderService:
     @trace_service_operation("handle_payment_webhook")
     async def handle_payment_webhook(self, request, payment_data: dict):
         idempotency_key = request.headers.get("X-Idempotency-Key")
+        
         if idempotency_key and await self._is_duplicate_request(idempotency_key):
             self.logger.info(f"Ignoring duplicate request: {idempotency_key}")
             return {"status": "ignored", "reason": "duplicate"}
@@ -290,7 +291,7 @@ class OrderService:
         
         status_mapping = {
             "succeeded": OrderStatus.PAID,
-            "failed": OrderStatus.FAILED,
+            "failed": OrderStatus.PENDING,
             "refunded": OrderStatus.CANCELED,
             "canceled": OrderStatus.CANCELED
         }
