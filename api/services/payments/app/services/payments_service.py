@@ -49,6 +49,7 @@ class PaymentService:
                     try:
                         idempotency_key = f"payment_{payment_id}_{status}_{int(time.time())}"
                         span.set_attribute("idempotency.key", idempotency_key)
+                        
                         async with httpx.AsyncClient() as client:
                             response = await client.post(
                                 self.orders_webhook_url,
@@ -159,12 +160,12 @@ class PaymentService:
                 
                 span.set_attribute("stripe.id", stripe_result["id"])
                 span.set_attribute("payment.status", str(payment_status.value))
+                
             except Exception as e:
                 span.record_exception(e)
                 await self.payment_repo.update_payment_status(created_payment.id, PaymentStatus.FAILED)
-                await self._notify_orders_service(created_payment.id, "failed")
                 created_payment.status = PaymentStatus.FAILED
-        
+
             return pydantic_models.PaymentResponse(
                 id=str(created_payment.id),
                 order_id=created_payment.order_id,
