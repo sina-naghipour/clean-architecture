@@ -1,6 +1,5 @@
 import pytest
 import pytest_asyncio
-import asyncio
 from httpx import ASGITransport, AsyncClient
 from main import app
 
@@ -10,7 +9,6 @@ class TestAuthAPIContract:
     async def client(self):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             yield client
-        await asyncio.sleep(0.1)
 
     @pytest.mark.asyncio
     async def test_health_endpoint(self, client):
@@ -44,7 +42,7 @@ class TestAuthAPIContract:
         
         response = await client.post("/register", json=register_data)
         
-        assert response.status_code in [201, 409, 500]
+        assert response.status_code in [201, 409]
         
         if response.status_code == 201:
             data = response.json()
@@ -78,7 +76,7 @@ class TestAuthAPIContract:
         
         response = await client.post("/login", json=login_data)
         
-        assert response.status_code in [200, 401, 500]
+        assert response.status_code in [200, 401]
         
         if response.status_code == 200:
             data = response.json()
@@ -91,7 +89,7 @@ class TestAuthAPIContract:
     async def test_login_user_invalid_contract(self, client):
         login_data = {
             "email": "test@example.com",
-            "password": "WrongPassword123!"
+            "password": "WrongPassword"
         }
         
         response = await client.post("/login", json=login_data)
@@ -113,7 +111,7 @@ class TestAuthAPIContract:
         
         response = await client.post("/refresh-token", json=refresh_data)
         
-        assert response.status_code in [200, 400, 401, 500]
+        assert response.status_code in [200, 400, 401]
         
         if response.status_code == 200:
             data = response.json()
@@ -123,27 +121,27 @@ class TestAuthAPIContract:
     @pytest.mark.asyncio
     async def test_get_current_user_contract(self, client):
         response = await client.get("/me")
-        assert response.status_code == 401
+        assert response.status_code == 401  # Changed from 422 to 401
         
         response = await client.get("/me", headers={"Authorization": "Invalid"})
-        assert response.status_code == 401
+        assert response.status_code == 401  # Changed from 422 to 401
         
         response = await client.get("/me", headers={"Authorization": "Bearer invalid_token"})
-        assert response.status_code in [200, 401, 500]
+        assert response.status_code in [200, 401]
 
     @pytest.mark.asyncio
     async def test_logout_contract(self, client):
         response = await client.post("/logout")
-        assert response.status_code == 401
+        assert response.status_code == 401  # Changed from 422 to 401
         
         response = await client.post("/logout", headers={"Authorization": "Bearer mock_token"})
-        assert response.status_code in [204, 401, 500]
+        assert response.status_code in [204, 401]
 
     @pytest.mark.asyncio
     async def test_problem_json_response_contract(self, client):
         login_data = {
             "email": "test@example.com",
-            "password": "WrongPassword123!"
+            "password": "WrongPassword"
         }
         response = await client.post("/login", json=login_data)
         
@@ -162,7 +160,6 @@ class TestAuthAPIErrorScenarios:
     async def client(self):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             yield client
-        await asyncio.sleep(0.1)
 
     @pytest.mark.asyncio
     async def test_malformed_json_contract(self, client):
