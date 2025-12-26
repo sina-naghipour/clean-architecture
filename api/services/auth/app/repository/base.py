@@ -8,8 +8,6 @@ ModelType = TypeVar("ModelType", bound=Base)
 
 logger = logging.getLogger(__name__)
 
-
-
 class BaseRepository(Generic[ModelType]):
     def __init__(self, model: type[ModelType], db_session: AsyncSession):
         self.model = model
@@ -25,10 +23,8 @@ class BaseRepository(Generic[ModelType]):
     @trace_repository_operation("get_all")
     async def get_all(self, skip: int = 0, limit: int = 100) -> List[ModelType]:
         query = select(self.model)
-        
         if hasattr(self.model, 'created_at'):
             query = query.order_by(self.model.created_at.desc())
-        
         query = query.offset(skip).limit(limit)
         result = await self.db_session.execute(query)
         return result.scalars().all()
@@ -41,6 +37,7 @@ class BaseRepository(Generic[ModelType]):
             db_obj = self.model(**obj_in.model_dump())
         
         self.db_session.add(db_obj)
+        await self.db_session.flush()
         await self.db_session.commit()
         await self.db_session.refresh(db_obj)
         return db_obj
@@ -58,13 +55,10 @@ class BaseRepository(Generic[ModelType]):
             .values(**update_data)
             .returning(self.model)
         )
-        
         await self.db_session.commit()
         updated_obj = result.scalar_one_or_none()
-        
         if updated_obj:
             await self.db_session.refresh(updated_obj)
-        
         return updated_obj
 
     @trace_repository_operation("delete")
@@ -72,7 +66,6 @@ class BaseRepository(Generic[ModelType]):
         obj = await self.get_by_id(id)
         if not obj:
             return False
-        
         await self.db_session.delete(obj)
         await self.db_session.commit()
         return True
@@ -95,7 +88,6 @@ class BaseRepository(Generic[ModelType]):
     async def get_multi_by_ids(self, ids: List[Any]) -> List[ModelType]:
         if not ids:
             return []
-            
         result = await self.db_session.execute(
             select(self.model).where(self.model.id.in_(ids))
         )
