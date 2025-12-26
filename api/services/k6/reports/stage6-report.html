@@ -29,16 +29,16 @@
         <div class="header">
             <h1>Stage 6 - Containers & Deployment Report</h1>
             <p>NGINX Reverse Proxy & API Gateway Validation</p>
-            <p>Generated: 2025-12-21T07:51:40.295Z</p>
+            <p>Generated: 2025-12-26T20:14:53.328Z</p>
         </div>
         
         <div class="card">
             <h2>Test Summary</h2>
             <div style="font-size: 48px; text-align: center; margin: 30px 0;">
-                ✅
+                ❌
             </div>
-            <div style="text-align: center; font-size: 24px; margin-bottom: 20px;" class="status-pass">
-                ALL TESTS PASSED
+            <div style="text-align: center; font-size: 24px; margin-bottom: 20px;" class="status-fail">
+                TESTS FAILED
             </div>
         </div>
         
@@ -76,8 +76,8 @@
                 <tr>
                     <td>p95 Latency</td>
                     <td>< 1000ms</td>
-                    <td>3.00ms</td>
-                    <td class="status-pass">PASS</td>
+                    <td>1842.60ms</td>
+                    <td class="status-fail">FAIL</td>
                 </tr>
                 <tr>
                     <td>Error Rate</td>
@@ -88,7 +88,7 @@
                 <tr>
                     <td>Throughput</td>
                     <td>> 10 RPS</td>
-                    <td>84.69 RPS</td>
+                    <td>36.02 RPS</td>
                     <td class="status-pass">PASS</td>
                 </tr>
             </table>
@@ -99,7 +99,7 @@
             <div class="metric-grid">
                 <div class="metric">
                     <div class="metric-label">Total Requests</div>
-                    <div class="metric-value">22033</div>
+                    <div class="metric-value">9375</div>
                 </div>
                 <div class="metric">
                     <div class="metric-label">Error Rate</div>
@@ -107,11 +107,11 @@
                 </div>
                 <div class="metric">
                     <div class="metric-label">p95 Latency</div>
-                    <div class="metric-value">3.00ms</div>
+                    <div class="metric-value">1842.60ms</div>
                 </div>
                 <div class="metric">
                     <div class="metric-label">Throughput</div>
-                    <div class="metric-value">84.69 RPS</div>
+                    <div class="metric-value">36.02 RPS</div>
                 </div>
             </div>
         </div>
@@ -144,7 +144,7 @@
                     <td><span class="tag tag-nginx">Timeout</span></td>
                 </tr>
                 <tr>
-                    <td>✅ SLOs met (p95 < 1s, errors < 5%)</td>
+                    <td>❌ SLOs met (p95 < 1s, errors < 5%)</td>
                     <td><span class="tag tag-slo">SLO</span></td>
                 </tr>
                 <tr>
@@ -158,8 +158,9 @@
             <h2>Test Configuration</h2>
             <p><strong>Base URL:</strong> http://localhost:80</p>
             <p><strong>Services Tested:</strong> nginx, auth, products</p>
-            <p><strong>Test Duration:</strong> 45 seconds total (15s smoke + 30s load)</p>
-            <p><strong>Virtual Users:</strong> Up to 10 concurrent users</p>
+            <p><strong>Test Duration:</strong> 3 minutes total</p>
+            <p><strong>Max VUs:</strong> 50 (within 100 limit)</p>
+            <p><strong>Total Tests:</strong> Health checks + Auth operations</p>
         </div>
     </div>
 </body>

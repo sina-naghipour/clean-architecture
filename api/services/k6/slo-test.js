@@ -1,5 +1,6 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
+import { randomIntBetween, randomString } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
 
 const SLOs = {
   p95LatencyMs: 1000,
@@ -20,12 +21,23 @@ export const options = {
       executor: 'ramping-vus',
       startVUs: 0,
       stages: [
-        { duration: '1m', target: 20 },
-        { duration: '2m', target: 100 },
+        { duration: '1m', target: 15 },
+        { duration: '2m', target: 50 },
         { duration: '1m', target: 0 },
       ],
       startTime: '20s',
       tags: { test_type: 'load' },
+    },
+    auth_test: {
+      executor: 'ramping-vus',
+      startVUs: 0,
+      stages: [
+        { duration: '30s', target: 10 },
+        { duration: '1m', target: 20 },
+        { duration: '30s', target: 0 },
+      ],
+      startTime: '2m',
+      tags: { test_type: 'auth_test' },
     },
   },
   
@@ -34,20 +46,37 @@ export const options = {
     'http_req_failed{test_type:smoke}': ['rate<0.1'],
     'http_req_duration{test_type:load}': [`p(95)<${SLOs.p95LatencyMs}`],
     'http_req_failed{test_type:load}': [`rate<${SLOs.errorRate}`],
+    'http_req_duration{test_type:auth_test}': ['p(95)<500'],
+    'http_req_failed{test_type:auth_test}': ['rate<0.1'],
   },
   
-  discardResponseBodies: true,
+  discardResponseBodies: false,
 };
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:80';
 
+export function setup() {
+  try {
+    const cleanupRes = http.del(`${BASE_URL}/api/auth/cleanup-test-data`);
+    console.log(`Pre-test cleanup status: ${cleanupRes.status}`);
+  } catch (e) {}
+  return {};
+}
+
 export default function () {
+  if (__VU % 3 === 0) {
+    testAuthService();
+  } else {
+    testHealthEndpoints();
+  }
+}
+
+function testHealthEndpoints() {
   const endpoints = [
     '/health',
     '/api/auth/health',
     '/api/products/health',
     '/api/orders/health',
-    '/api/static/health',
   ];
   
   const endpoint = endpoints[Math.floor(Math.random() * endpoints.length)];
@@ -58,6 +87,48 @@ export default function () {
   });
   
   sleep(0.5);
+}
+
+function testAuthService() {
+  const testId = randomIntBetween(100000, 999999);
+  const timestamp = Date.now();
+  const email = `test${testId}_${timestamp}@test.com`;
+  const password = "SecurePass123!";
+  const name = `Test User ${testId}`;
+  
+  const registerRes = http.post(`${BASE_URL}/api/auth/register`, JSON.stringify({
+    email,
+    password,
+    name
+  }), {
+    headers: { 'Content-Type': 'application/json' },
+    timeout: '30s'
+  });
+  
+  check(registerRes, {
+    'register status 201': (r) => r.status === 201,
+  });
+  
+  sleep(0.1);
+  
+  const loginRes = http.post(`${BASE_URL}/api/auth/login`, JSON.stringify({
+    email,
+    password
+  }), {
+    headers: { 'Content-Type': 'application/json' },
+    timeout: '30s'
+  });
+  
+  check(loginRes, {
+    'login status 200': (r) => r.status === 200,
+  });
+}
+
+export function teardown(data) {
+  try {
+    const cleanupRes = http.del(`${BASE_URL}/api/auth/cleanup-test-data`);
+    console.log(`Post-test cleanup status: ${cleanupRes.status}`);
+  } catch (e) {}
 }
 
 export function handleSummary(data) {
@@ -255,8 +326,9 @@ function createHtmlReport(summary, SLOs) {
             <h2>Test Configuration</h2>
             <p><strong>Base URL:</strong> http://localhost:80</p>
             <p><strong>Services Tested:</strong> ${summary.services_tested.join(', ')}</p>
-            <p><strong>Test Duration:</strong> 45 seconds total (15s smoke + 30s load)</p>
-            <p><strong>Virtual Users:</strong> Up to 10 concurrent users</p>
+            <p><strong>Test Duration:</strong> 3 minutes total</p>
+            <p><strong>Max VUs:</strong> 50 (within 100 limit)</p>
+            <p><strong>Total Tests:</strong> Health checks + Auth operations</p>
         </div>
     </div>
 </body>

@@ -60,7 +60,8 @@ app = FastAPI(
 tracer_provider = TracerProvider()
 tracer_provider.add_span_processor(
     BatchSpanProcessor(
-        OTLPSpanExporter(endpoint="http://otel-collector:4318/v1/traces")
+        OTLPSpanExporter(endpoint="http://otel-collector:4318/v1/traces"),
+        timeout=1
     )
 )
 trace.set_tracer_provider(tracer_provider)

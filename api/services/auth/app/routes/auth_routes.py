@@ -1,5 +1,5 @@
 import logging
-from fastapi import APIRouter, Request, Depends, Header
+from fastapi import APIRouter, Request, Depends, Header, status
 from typing import Dict
 from services.token_service import TokenService
 from services.password_service import PasswordService
@@ -9,6 +9,7 @@ from decorators.auth_routes_decorators import AuthErrorDecorators
 from repository.user_repository import UserRepository
 from database.connection import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
 
 logger = logging.getLogger(__name__)
 
@@ -110,3 +111,18 @@ async def get_current_user(
     auth_service: AuthService = Depends(get_auth_service),
 ) -> pydantic_models.UserResponse:
     return await auth_service.get_current_user(request, token)
+
+
+@router.delete(
+    '/cleanup-test-data',
+    summary="Cleanup test data (for k6 testing)",
+    status_code=status.HTTP_204_NO_CONTENT,
+    tags=['testing']
+)
+async def cleanup_test_data(db: AsyncSession = Depends(get_db)):
+    try:
+        await db.execute(text("DELETE FROM users WHERE email LIKE 'test%@test.com'"))
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
