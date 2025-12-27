@@ -1,10 +1,13 @@
 from optl.trace_decorator import trace_service_operation
 from .auth_helpers import create_problem_response
 from decorators.auth_services_decorators import handle_database_errors, handle_validation_errors
-from database.redis_connection import redis_manager
+from cache.redis_manager import redis_manager
 from services.token_cache import TokenCacheService
 from fastapi import Request
 from fastapi.responses import JSONResponse
+import hashlib
+import json
+import time
 
 from services.token_service import TokenService
 from services.password_service import PasswordService
@@ -65,6 +68,22 @@ class AuthService:
     async def login_user(self, request: Request, login_data: pydantic_models.LoginRequest):
         self.logger.info(f"Login attempt: {login_data.email}")
         
+        password_hash = hashlib.md5(login_data.password.encode()).hexdigest()
+        cache_key = f"login:{login_data.email}:{password_hash}"
+        redis_client = await redis_manager.get_client()
+        
+        if redis_client:
+            try:
+                cached = await redis_client.get(cache_key)
+                if cached:
+                    cached_data = json.loads(cached)
+                    token = cached_data.get("accessToken", "")
+                    if token and not await self.token_cache.is_token_blacklisted(token):
+                        self.logger.info(f"Login cache hit: {login_data.email}")
+                        return cached_data
+            except:
+                pass
+        
         user = await self.user_repository.get_active_user_by_email(login_data.email)
         
         if not user:
@@ -103,11 +122,19 @@ class AuthService:
         
         await self.token_cache.store_refresh_token(str(user.id), refresh_token)
         
-        self.logger.info(f"User logged in: {login_data.email}")
-        return {
+        result = {
             "accessToken": access_token,
             "refreshToken": refresh_token
         }
+        
+        if redis_client:
+            try:
+                await redis_client.setex(cache_key, 300, json.dumps(result))
+            except:
+                pass
+        
+        self.logger.info(f"User logged in: {login_data.email}")
+        return result
 
     @handle_validation_errors
     @trace_service_operation("refresh_token")
@@ -115,6 +142,9 @@ class AuthService:
         self.logger.info("Refresh token request")
         
         try:
+            if await self.token_cache.is_token_blacklisted(data.refresh_token):
+                raise ValueError("Token blacklisted")
+                
             payload = self.token_service.get_token_payload(data.refresh_token)
             user_id = payload.get("user_id")
             
@@ -158,15 +188,31 @@ class AuthService:
                 instance=str(request.url)
             )
         
-        await self.token_cache.blacklist_token(token)
-        
         try:
             payload = self.token_service.get_token_payload(token)
             user_id = payload.get("user_id")
+            email = payload.get("email")
+            
+            await self.token_cache.blacklist_token(token)
+            
             if user_id:
                 await self.token_cache.invalidate_user_cache(user_id)
+                refresh_token = await self.token_cache.get_refresh_token(user_id)
+                if refresh_token:
+                    await self.token_cache.blacklist_token(refresh_token)
+                    await self.token_cache.remove_refresh_token(user_id)
+                
+                redis_client = await redis_manager.get_client()
+                if redis_client and email:
+                    try:
+                        pattern = f"login:{email}:*"
+                        keys = await redis_client.keys(pattern)
+                        if keys:
+                            await redis_client.delete(*keys)
+                    except:
+                        pass
         except:
-            pass
+            await self.token_cache.blacklist_token(token)
         
         self.logger.info("User logged out")
         return None
@@ -175,6 +221,16 @@ class AuthService:
     @handle_validation_errors
     @trace_service_operation("get_current_user")
     async def get_current_user(self, request: Request, token: str):
+        if not token:
+            self.logger.warning("No token provided")
+            return create_problem_response(
+                status_code=401,
+                error_type="unauthorized",
+                title="Unauthorized",
+                detail="No token provided",
+                instance=str(request.url)
+            )
+        
         if await self.token_cache.is_token_blacklisted(token):
             self.logger.warning(f"Token blacklisted for request")
             return create_problem_response(
@@ -208,7 +264,6 @@ class AuthService:
                 instance=str(request.url)
             )
         
-        # Check cache
         cached_profile = await self.token_cache.get_cached_profile(user_id)
         if cached_profile:
             self.logger.info(f"🟢 CACHE HIT for user {user_id}")
@@ -248,11 +303,8 @@ class AuthService:
             "name": user.name
         }
         
-        # Cache the profile
         await self.token_cache.cache_user_profile(user_id, user_data)
         self.logger.info(f"🟡 CACHE SET for user {user_id}")
-        
-        self.logger.info(f"User profile retrieved: {user.email}")
         return pydantic_models.UserResponse(
             id=str(user.id),
             email=user.email,

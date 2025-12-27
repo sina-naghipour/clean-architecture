@@ -5,7 +5,7 @@ class RateLimiter:
         self.redis_manager = redis_manager
     
     async def check_rate_limit(self, identifier, max_requests=10, window_seconds=60):
-        redis = await self.redis_manager.get_connection()
+        redis = await self.redis_manager.get_client()
         
         key = f"ratelimit:{identifier}"
         current_time = datetime.now().timestamp()

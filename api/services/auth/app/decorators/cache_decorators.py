@@ -17,7 +17,7 @@ class CacheDecorators:
                 if not user_id:
                     return await func(self, *args, **kwargs)
                 
-                redis = await self.redis_manager.get_connection()
+                redis = await self.redis_manager.get_client()
                 cache_key = f"user:{user_id}:profile"
                 
                 cached_data = await redis.get(cache_key)
@@ -52,7 +52,7 @@ class CacheDecorators:
                 user_id = args[1]
             
             if user_id:
-                redis = await self.redis_manager.get_connection()
+                redis = await self.redis_manager.get_client()
                 cache_keys = [
                     f"user:{user_id}:profile",
                     f"user:{user_id}:tokens"

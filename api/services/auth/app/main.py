@@ -14,7 +14,7 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExport
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 from routes.auth_routes import router as auth_router
-from database.redis_connection import redis_manager
+from cache.redis_manager import redis_manager
 
 HOST = os.getenv('HOST', '0.0.0.0')
 PORT = int(os.getenv('PORT', '8000'))
@@ -42,16 +42,12 @@ async def lifespan(app: FastAPI):
     logger.info(f"Environment: {ENVIRONMENT}")
     logger.info(f"Host: {HOST}, Port: {PORT}")
     
-    await redis_manager.connect()
-    logger.info("Connected to Redis")
-    
     yield
     
-    await redis_manager.disconnect()
+    await redis_manager.close()
     logger.info("Disconnected from Redis")
     
     logger.info("Shutting down Authentication Service...")
-    logger.info("Service is shutting down")
 
 app = FastAPI(
     title="Ecommerce API - Authentication Service",
@@ -67,7 +63,6 @@ tracer_provider = TracerProvider()
 tracer_provider.add_span_processor(
     BatchSpanProcessor(
         OTLPSpanExporter(endpoint="http://otel-collector:4318/v1/traces"),
-        timeout=1
     )
 )
 trace.set_tracer_provider(tracer_provider)
@@ -101,7 +96,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 async def health_check():
     redis_healthy = False
     try:
-        redis = await redis_manager.get_connection()
+        redis = await redis_manager.get_client()
         await redis.ping()
         redis_healthy = True
     except Exception as e:
