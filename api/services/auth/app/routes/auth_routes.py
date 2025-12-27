@@ -1,21 +1,23 @@
 import logging
-from fastapi import APIRouter, Request, Depends, Header, status
+from fastapi import APIRouter, Request, Depends, Header, status, HTTPException
 from typing import Dict
 from services.token_service import TokenService
 from services.password_service import PasswordService
 from services.auth_service import AuthService
+from services.rate_limiter import RateLimiter
 from database import pydantic_models
 from decorators.auth_routes_decorators import AuthErrorDecorators
 from repository.user_repository import UserRepository
 from database.connection import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
+from cache.redis_manager import redis_manager
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=['auth'])
+rate_limiter = RateLimiter(redis_manager)
 
-# Dependency injection functions
 def get_token_service() -> TokenService:
     return TokenService()
 
@@ -39,7 +41,6 @@ async def get_auth_service(
 
 async def get_token_from_header(authorization: str = Header(None)) -> str:
     if not authorization or not authorization.startswith("Bearer "):
-        from fastapi import HTTPException, status
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing or invalid Authorization header"
@@ -52,6 +53,7 @@ async def get_token_from_header(authorization: str = Header(None)) -> str:
     status_code=201,
     summary="Register new user"
 )
+@rate_limiter.limit(max_requests=3, window_seconds=300, by_ip=True)
 @AuthErrorDecorators.handle_register_errors
 async def register_user(
     request: Request,
@@ -65,6 +67,7 @@ async def register_user(
     response_model=Dict[str, str],
     summary="Login user (returns access + refresh tokens)"
 )
+@rate_limiter.limit(max_requests=5, window_seconds=60)
 @AuthErrorDecorators.handle_login_errors
 async def login_user(
     request: Request,
@@ -111,7 +114,6 @@ async def get_current_user(
     auth_service: AuthService = Depends(get_auth_service),
 ) -> pydantic_models.UserResponse:
     return await auth_service.get_current_user(request, token)
-
 
 @router.delete(
     '/cleanup-test-data',
