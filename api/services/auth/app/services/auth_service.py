@@ -1,38 +1,29 @@
 from optl.trace_decorator import trace_service_operation
 from .auth_helpers import create_problem_response
 from decorators.auth_services_decorators import handle_database_errors, handle_validation_errors
+from database.redis_connection import redis_manager
+from services.token_cache import TokenCacheService
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from typing import Dict
 
 from services.token_service import TokenService
 from services.password_service import PasswordService
-
 from database import pydantic_models
 from repository.user_repository import UserRepository
 
 class AuthService:
-    def __init__(
-        self, 
-        logger, 
-        user_repository: UserRepository,
-        password_service: PasswordService,
-        token_service: TokenService
-    ):
+    def __init__(self, logger, user_repository: UserRepository, password_service: PasswordService, token_service: TokenService):
         self.logger = logger
         self.user_repository = user_repository
         self.password_service = password_service
         self.token_service = token_service
+        self.token_cache = TokenCacheService(redis_manager)
 
     @handle_database_errors
     @handle_validation_errors
     @trace_service_operation("register_user")
-    async def register_user(
-        self,
-        request: Request,
-        register_data: pydantic_models.User
-    ) -> pydantic_models.UserResponse:
-        self.logger.info(f"Registration attempt for email: {register_data.email}")
+    async def register_user(self, request: Request, register_data: pydantic_models.User):
+        self.logger.info(f"Registration attempt: {register_data.email}")
         
         user_exists = await self.user_repository.email_exists(register_data.email)
         
@@ -61,28 +52,23 @@ class AuthService:
             name=user.name
         )
         
-        self.logger.info(f"User registered successfully: {register_data.email}")
+        self.logger.info(f"User registered: {register_data.email}")
         
-        response = JSONResponse(
+        return JSONResponse(
             status_code=201,
             content=user_response.model_dump(),
             headers={"Location": f"/api/users/{user_response.id}"}
         )
-        return response
 
     @handle_database_errors
     @trace_service_operation("login_user")
-    async def login_user(
-        self,
-        request: Request,
-        login_data: pydantic_models.LoginRequest
-    ) -> Dict[str, str]:
-        self.logger.info(f"Login attempt for email: {login_data.email}")
+    async def login_user(self, request: Request, login_data: pydantic_models.LoginRequest):
+        self.logger.info(f"Login attempt: {login_data.email}")
         
         user = await self.user_repository.get_active_user_by_email(login_data.email)
         
         if not user:
-            self.logger.warning(f"Invalid login attempt for email: {login_data.email}")
+            self.logger.warning(f"Invalid login: {login_data.email}")
             return create_problem_response(
                 status_code=401,
                 error_type="unauthorized",
@@ -94,7 +80,7 @@ class AuthService:
         is_password_valid = self.password_service.verify_password(login_data.password, user.password)
         
         if not is_password_valid:
-            self.logger.warning(f"Invalid password for email: {login_data.email}")
+            self.logger.warning(f"Invalid password: {login_data.email}")
             return create_problem_response(
                 status_code=401,
                 error_type="unauthorized",
@@ -115,7 +101,9 @@ class AuthService:
         access_token = self.token_service.create_access_token(token_payload)
         refresh_token = self.token_service.create_refresh_token(token_payload)
         
-        self.logger.info(f"User logged in successfully: {login_data.email}")
+        await self.token_cache.store_refresh_token(str(user.id), refresh_token)
+        
+        self.logger.info(f"User logged in: {login_data.email}")
         return {
             "accessToken": access_token,
             "refreshToken": refresh_token
@@ -123,25 +111,44 @@ class AuthService:
 
     @handle_validation_errors
     @trace_service_operation("refresh_token")
-    async def refresh_token(
-        self,
-        request: Request,
-        data: pydantic_models.RefreshTokenRequest
-    ) -> Dict[str, str]:
-        self.logger.info("Refresh token request received")
+    async def refresh_token(self, request: Request, data: pydantic_models.RefreshTokenRequest):
+        self.logger.info("Refresh token request")
         
-        new_access_token = self.token_service.refresh_access_token(data.refresh_token)
-        
-        self.logger.info("Access token refreshed successfully")
-        return {"accessToken": new_access_token}
+        try:
+            payload = self.token_service.get_token_payload(data.refresh_token)
+            user_id = payload.get("user_id")
+            
+            if not user_id:
+                raise ValueError("Invalid token payload")
+            
+            stored_refresh = await self.token_cache.get_refresh_token(user_id)
+            
+            if not stored_refresh or stored_refresh != data.refresh_token:
+                return create_problem_response(
+                    status_code=401,
+                    error_type="unauthorized",
+                    title="Unauthorized",
+                    detail="Invalid refresh token",
+                    instance=str(request.url)
+                )
+            
+            new_access_token = self.token_service.refresh_access_token(data.refresh_token)
+            
+            self.logger.info("Access token refreshed")
+            return {"accessToken": new_access_token}
+            
+        except Exception as e:
+            return create_problem_response(
+                status_code=401,
+                error_type="unauthorized",
+                title="Unauthorized",
+                detail="Invalid refresh token",
+                instance=str(request.url)
+            )
 
     @handle_validation_errors
     @trace_service_operation("logout")
-    async def logout(
-        self,
-        request: Request,
-        token: str
-    ) -> None:
+    async def logout(self, request: Request, token: str):
         if not self.token_service.validate_token(token):
             return create_problem_response(
                 status_code=401,
@@ -151,18 +158,35 @@ class AuthService:
                 instance=str(request.url)
             )
         
-        self.logger.info("User logged out successfully")
+        await self.token_cache.blacklist_token(token)
+        
+        try:
+            payload = self.token_service.get_token_payload(token)
+            user_id = payload.get("user_id")
+            if user_id:
+                await self.token_cache.invalidate_user_cache(user_id)
+        except:
+            pass
+        
+        self.logger.info("User logged out")
         return None
 
     @handle_database_errors
     @handle_validation_errors
     @trace_service_operation("get_current_user")
-    async def get_current_user(
-        self,
-        request: Request,
-        token: str
-    ) -> pydantic_models.UserResponse:
+    async def get_current_user(self, request: Request, token: str):
+        if await self.token_cache.is_token_blacklisted(token):
+            self.logger.warning(f"Token blacklisted for request")
+            return create_problem_response(
+                status_code=401,
+                error_type="unauthorized",
+                title="Unauthorized",
+                detail="Token has been revoked",
+                instance=str(request.url)
+            )
+        
         if not self.token_service.validate_token(token):
+            self.logger.warning(f"Invalid token for request")
             return create_problem_response(
                 status_code=401,
                 error_type="unauthorized",
@@ -173,10 +197,9 @@ class AuthService:
         
         payload = self.token_service.get_token_payload(token)
         user_id = payload.get("user_id")
-        email = payload.get("email")
-        name = payload.get("name")
         
-        if not all([user_id, email, name]):
+        if not user_id:
+            self.logger.warning(f"No user_id in token payload")
             return create_problem_response(
                 status_code=401,
                 error_type="unauthorized",
@@ -185,9 +208,22 @@ class AuthService:
                 instance=str(request.url)
             )
         
+        # Check cache
+        cached_profile = await self.token_cache.get_cached_profile(user_id)
+        if cached_profile:
+            self.logger.info(f"🟢 CACHE HIT for user {user_id}")
+            return pydantic_models.UserResponse(
+                id=cached_profile["id"],
+                email=cached_profile["email"],
+                name=cached_profile["name"]
+            )
+        
+        self.logger.info(f"🔴 CACHE MISS for user {user_id}")
+        
         user = await self.user_repository.get_by_id(user_id)
         
         if not user:
+            self.logger.warning(f"User not found: {user_id}")
             return create_problem_response(
                 status_code=404,
                 error_type="not_found",
@@ -197,6 +233,7 @@ class AuthService:
             )
         
         if not user.is_active:
+            self.logger.warning(f"User inactive: {user_id}")
             return create_problem_response(
                 status_code=403,
                 error_type="forbidden",
@@ -205,11 +242,19 @@ class AuthService:
                 instance=str(request.url)
             )
         
-        user_data = pydantic_models.UserResponse(
+        user_data = {
+            "id": str(user.id),
+            "email": user.email,
+            "name": user.name
+        }
+        
+        # Cache the profile
+        await self.token_cache.cache_user_profile(user_id, user_data)
+        self.logger.info(f"🟡 CACHE SET for user {user_id}")
+        
+        self.logger.info(f"User profile retrieved: {user.email}")
+        return pydantic_models.UserResponse(
             id=str(user.id),
             email=user.email,
             name=user.name
         )
-        
-        self.logger.info(f"User profile retrieved: {email}")
-        return user_data
