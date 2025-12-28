@@ -4,6 +4,10 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import text
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 Base = declarative_base()
 
@@ -26,7 +30,11 @@ class PostgreSQLConnection:
             
             self.engine = create_async_engine(
                 connection_string, 
+                pool_size=int(os.getenv('DB_POOL_SIZE', '20')),
+                max_overflow=int(os.getenv('DB_MAX_OVERFLOW', '40')),
                 pool_pre_ping=True,
+                pool_recycle=int(os.getenv('DB_POOL_RECYCLE', '3600')),
+                pool_timeout=int(os.getenv('DB_POOL_TIMEOUT', '30')),
                 echo=False
             )
             
@@ -37,7 +45,7 @@ class PostgreSQLConnection:
             )
             
             await self._test_connection()
-            self.logger.info("Successfully connected to PostgreSQL database")
+            self.logger.info(f"Successfully connected to PostgreSQL database with pool_size={os.getenv('DB_POOL_SIZE', '20')}, max_overflow={os.getenv('DB_MAX_OVERFLOW', '40')}")
             
         except SQLAlchemyError as e:
             self.logger.error(f"PostgreSQL connection failed: {e}")
@@ -99,7 +107,12 @@ db_connection = PostgreSQLConnection()
 async def get_db():
     if not db_connection.async_session_local:
         await db_connection.connect()
-    return await db_connection.get_session()
+    
+    session = db_connection.async_session_local()
+    try:
+        yield session
+    finally:
+        await session.close()
 
 async def init_db():
     if not db_connection.engine:

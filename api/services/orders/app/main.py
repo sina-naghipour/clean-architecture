@@ -14,6 +14,7 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExport
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 from middlewares.auth_middleware import AuthMiddleware
+from cache.redis_client import redis_client
 
 load_dotenv()
 
@@ -46,8 +47,19 @@ async def lifespan(app: FastAPI):
     logger.info(f"Environment: {ENVIRONMENT}")
     logger.info(f"Host: {HOST}, Port: {PORT}")
     
+    try:
+        await redis_client.get_pool()
+        if await redis_client.ping():
+            logger.info("Redis connected successfully")
+        else:
+            logger.warning("Redis connection failed")
+    except Exception as e:
+        logger.warning(f"Redis initialization failed: {e}")
+    
     yield
     
+    await redis_client.close()
+    logger.info("Redis connection closed")
     logger.info("Shutting down Order Service...")
 
 app = FastAPI(
@@ -63,7 +75,7 @@ app = FastAPI(
 tracer_provider = TracerProvider()
 tracer_provider.add_span_processor(
     BatchSpanProcessor(
-        OTLPSpanExporter(endpoint="http://otel-collector:4318/v1/traces")
+        OTLPSpanExporter(endpoint="http://otel-collector:4318/v1/traces"),
     )
 )
 trace.set_tracer_provider(tracer_provider)
@@ -109,27 +121,47 @@ async def list_all_routes(request: Request):
         routes.append(route_info)
     
     return {
-        "service": "authentication",
+        "service": "order",
         "total_routes": len(routes),
         "routes": routes
     }
-    
+
 @app.get("/health", tags=["Health"])
 async def health_check():
+    redis_healthy = await redis_client.ping()
     return {
-        "status": "healthy",
+        "status": "healthy" if redis_healthy else "degraded",
         "service": "order",
+        "redis": "healthy" if redis_healthy else "unhealthy",
         "timestamp": "2024-01-01T00:00:00Z",
         "environment": ENVIRONMENT
     }
 
 @app.get("/ready", tags=["Health"])
 async def readiness_check():
+    redis_ready = await redis_client.ping()
     return {
-        "status": "ready",
+        "status": "ready" if redis_ready else "not_ready",
         "service": "order",
+        "redis": "ready" if redis_ready else "not_ready",
         "timestamp": "2024-01-01T00:00:00Z"
     }
+
+@app.get("/cache/health", tags=["Cache"])
+async def cache_health():
+    try:
+        is_healthy = await redis_client.ping()
+        return {
+            "status": "healthy" if is_healthy else "unhealthy",
+            "redis_connected": is_healthy,
+            "cache_enabled": os.getenv('CACHE_ENABLED', 'true').lower() == 'true',
+            "db": 1
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e)
+        }
 
 @app.get("/info", tags=["Root"])
 async def root():
@@ -137,9 +169,11 @@ async def root():
         "message": "Ecommerce Order Service",
         "version": "1.0.0",
         "environment": ENVIRONMENT,
+        "cache": "enabled" if os.getenv('CACHE_ENABLED', 'true').lower() == 'true' else "disabled",
         "docs": "/docs",
         "health": "/health",
-        "ready": "/ready"
+        "ready": "/ready",
+        "cache_health": "/cache/health"
     }
 
 app.include_router(order_router)
