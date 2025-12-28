@@ -40,7 +40,6 @@ class PaymentDB(Base):
             "stripe_payment_intent_id": self.stripe_payment_intent_id,
             "payment_method_token": self.payment_method_token,
             "currency": self.currency,
-            "payment_metadata": self.payment_metadata,
             "created_at": self.created_at,
             "updated_at": self.updated_at
         }
@@ -56,7 +55,6 @@ class PaymentDB(Base):
             stripe_payment_intent_id=data.get("stripe_payment_intent_id"),
             payment_method_token=data["payment_method_token"],
             currency=data.get("currency", "usd"),
-            payment_metadata=data.get("payment_metadata"),
             created_at=data.get("created_at", datetime.utcnow()),
             updated_at=data.get("updated_at", datetime.utcnow())
         )

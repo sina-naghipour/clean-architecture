@@ -13,6 +13,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from services.stripe_service import StripeService
 
 load_dotenv()
 
@@ -56,14 +57,15 @@ async def lifespan(app: FastAPI):
     tracer_provider = TracerProvider()
     tracer_provider.add_span_processor(
         BatchSpanProcessor(
-            OTLPSpanExporter(endpoint="http://otel-collector:4318/v1/traces")
+            OTLPSpanExporter(endpoint="http://otel-collector:4318/v1/traces"),
         )
     )
     trace.set_tracer_provider(tracer_provider)
     
     # Initialize payment service
     async for session in get_db():
-        payment_service = PaymentService(logger, session)
+        stripe_service = StripeService(logger)
+        payment_service = PaymentService(logger, session,stripe_service=stripe_service)
         
         # Start gRPC server in background task
         grpc_task = asyncio.create_task(
