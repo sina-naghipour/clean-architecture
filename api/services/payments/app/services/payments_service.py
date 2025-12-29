@@ -16,6 +16,7 @@ from .payment_orchestrator import PaymentOrchestrator
 from .payment_notification_service import PaymentNotificationService
 from .webhook_handler import WebhookHandler
 from .refund_processor import RefundProcessor
+from cache.redis_cache import cached, invalidate_cache
 
 
 class PaymentService:
@@ -54,11 +55,13 @@ class PaymentService:
         )
     
     @trace_service_operation("create_payment")
+    @invalidate_cache(pattern="cache:payment_by_order:*")
     async def create_payment(self, payment_data: pydantic_models.PaymentCreate):
         payment = await self.payment_orchestrator.create_and_process_payment(payment_data, self.tracer)
         return self._to_payment_response(payment)
     
     @trace_service_operation("get_payment")
+    @cached(ttl=300, key_prefix="payment_service")
     async def get_payment(self, payment_id: str):
         with self.tracer.start_as_current_span("get_payment") as span:
             span.set_attribute("payment.id", payment_id)
@@ -72,6 +75,7 @@ class PaymentService:
             return self._to_payment_response(payment)
     
     @trace_service_operation("process_webhook")
+    @invalidate_cache(pattern="cache:payment_by_id:*")
     async def process_webhook(self, request: Request, payload: bytes, sig_header: str):
         with self.tracer.start_as_current_span("process_webhook") as span:
             span.set_attributes({
@@ -111,6 +115,7 @@ class PaymentService:
             return {"status": "processed", "event": event_type}
     
     @trace_service_operation("create_refund")
+    @invalidate_cache(pattern="cache:payment_by_id:*")
     async def create_refund(self, payment_id: str, refund_data: pydantic_models.RefundRequest):
         with self.tracer.start_as_current_span("create_refund") as span:
             span.set_attributes({
