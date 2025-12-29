@@ -6,7 +6,7 @@ import uvicorn
 from contextlib import asynccontextmanager
 import os
 from datetime import datetime
-from middlewares.security_headers import SecurityHeadersMiddleware
+from middleware.security_headers import SecurityHeadersMiddleware
 
 
 from opentelemetry import trace
