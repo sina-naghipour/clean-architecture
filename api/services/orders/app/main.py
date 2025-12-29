@@ -6,6 +6,7 @@ import uvicorn
 from contextlib import asynccontextmanager
 import os
 from dotenv import load_dotenv
+from middlewares.security_headers import SecurityHeadersMiddleware
 
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
@@ -99,6 +100,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(SecurityHeadersMiddleware)
 
 app.add_middleware(AuthMiddleware)
 
