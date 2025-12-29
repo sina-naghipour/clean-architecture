@@ -1,0 +1,31 @@
+{
+  "stage": 8,
+  "timestamp": "2025-12-29T19:50:48.185Z",
+  "services_tested": [
+    "nginx",
+    "auth",
+    "products",
+    "orders"
+  ],
+  "slos": {
+    "p95LatencyMs": 500,
+    "errorRate": 0.02,
+    "throughput": 20,
+    "cacheHitRate": 0.7
+  },
+  "performance": {
+    "p95_latency": 9053.06325,
+    "error_rate": 0.2011251758087201,
+    "throughput": 3.0928956480159404,
+    "cache_hit_rate": 0,
+    "total_requests": 711,
+    "rate_limit_hits": 0
+  },
+  "compliance": {
+    "latency_met": false,
+    "error_budget_met": false,
+    "throughput_met": false,
+    "cache_performance_met": false
+  },
+  "all_passed": false
+}
