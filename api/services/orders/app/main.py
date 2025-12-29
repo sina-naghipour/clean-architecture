@@ -12,6 +12,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from services.orders_grpc_client import PaymentGRPCClient
 
 from middlewares.auth_middleware import AuthMiddleware
 from cache.redis_client import redis_client
@@ -41,6 +42,8 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+payment_client = PaymentGRPCClient()
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting Order Service...")
@@ -56,12 +59,19 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Redis initialization failed: {e}")
     
+    try:
+        await payment_client.initialize()
+        logger.info("GRPC client initialized successfully")
+    except Exception as e:
+        logger.warning(f"GRPC client initialization failed: {e}")
+    
     yield
     
     await redis_client.close()
+    await payment_client.close()
     logger.info("Redis connection closed")
+    logger.info("GRPC client closed")
     logger.info("Shutting down Order Service...")
-
 app = FastAPI(
     title="Ecommerce API - Order Service",
     description="Order management microservice for Ecommerce API",
