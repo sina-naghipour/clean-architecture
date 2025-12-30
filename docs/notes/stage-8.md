@@ -1,70 +1,69 @@
+Based on the analysis provided, here are the key findings about the high response time issues:
 
-after using pgbouncer, we could see more drops in response time but overall, the issue of our high response time seems to be not related to db pooling.
+## Performance Analysis Summary
 
-before pgbouncer :
+### **1. PgBouncer Impact**
+- **Before PgBouncer:** ![alt text](image-1.png)
+- **After PgBouncer:** ![alt text](image.png)
+- **Finding:** PgBouncer showed some drops in response time but **did not solve the core issue**.
 
-![alt text](image-1.png)
-
-after pgbouncer :
-
-![alt text](image.png)
-
-
-we learned that only pgbouncer does not solve the issue, lets see what takes our time :
-
+### **2. Root Cause Identification**
 ![alt text](image-2.png)
+- Some requests are taking **up to 12 seconds** to respond
+- **Recommendation:** Focus on normal requests rather than longest outliers for accurate diagnosis
 
-we can see some requests are taking 12 seconds to respond!!!
+### **3. Service-Level Analysis**
 
-but to find the issue, we should not check the one that took the longest, as probably all parts of the request took a long time, lets revise a rather normal one.
-
-POST /register :
-
+**POST /register:**
 ![alt text](image-3.png)
-
-POST /register :
-
 ![alt text](image-4.png)
 
-POST /login :
-
+**POST /login:**
 ![alt text](image-5.png)
 
-as we can see AuthService takes sooo long and it is not responding in enough time to be considered ok.
+**Critical Finding:** `AuthService` is taking **excessively long** to respond.
 
-butttt after :
-
-
+### **4. Testing Issues**
 ![alt text](image-6.png)
+- **k6 Test Problem:** `/me` endpoints returning `401 Unauthorized` repeatedly
+- **Root Cause:** One user logging out (blacklisting token) while another concurrent user tries to use that same token
 
+### **5. Database Connection Errors**
 
-when i  ran the k6 tests, for some reason i got /me 401 unauthorized over and over again.
+**OrdersDB Error (before pooling):**
+```
+2025-12-28 16:41:35,563 - routes.order_routes - ERROR - Create order error: 
+QueuePool limit of size 5 overflow 10 reached, connection timed out, timeout 30.00
+```
 
-the issue? in test, one user is using logout and blacklisting the token, the other concurrent user is trying to login using that token.
-
-this is an error that we encountered when running k6, whilst our ordersDB had not been using db pooling :
-
-2025-12-28 16:41:35,563 - routes.order_routes - ERROR - Create order error: QueuePool limit of size 5 overflow 10 reached, connection timed out, timeout 30.00 (Background on this error at: https://sqlalche.me/e/20/3o7r)⁠
-
-
-
-
-otel.status_code	
-ERROR
-otel.status_description	
-AioRpcError: <AioRpcError of RPC that terminated with:
-	status = StatusCode.INTERNAL
-	details = "This session is provisioning a new connection; concurrent operations are not permitted (Background on this error at: https://sqlalche.me/e/20/isce)"
-	debug_error_string = "UNKNOWN:Error received from peer  {grpc_message:"This session is provisioning a new connection; concurrent operations are not permitted (Background on this error at: https://sqlalche.me/e/20/isce)", grpc_status:13}"
+**PaymentGRPCClient Error:**
+```
+otel.status_code: ERROR
+otel.status_description: AioRpcError: <AioRpcError of RPC that terminated with:
+    status = StatusCode.INTERNAL
+    details = "This session is provisioning a new connection; concurrent operations are not permitted (Background on this error at: https://sqlalche.me/e/20/isce)"
+    debug_error_string = "UNKNOWN:Error received from peer {grpc_message:"This session is provisioning a new connection; concurrent operations are not permitted (Background on this error at: https://sqlalche.me/e/20/isce)", grpc_status:13}"
 >
-service.name	
-PaymentGRPCClient
+service.name: PaymentGRPCClient
+```
 
-what is this error? Key Issue: ISCE Error
-The error code isce stands for "This session is provisioning a new connection; concurrent operations are not permitted". This occurs when:
+### **6. Key Issue: ISCE Error**
+The **isce** error code indicates: **"This session is provisioning a new connection; concurrent operations are not permitted"**
 
-Multiple async operations are trying to use the same database session simultaneously
+**This occurs when:**
+- Multiple async operations try to use the same database session simultaneously
+- The session hasn't fully initialized its database connection yet
+- SQLAlchemy prevents concurrent operations during this provisioning phase
 
-The session hasn't fully initialized its database connection yet
+## **Primary Conclusions:**
+1. **AuthService is the main bottleneck** - causing most response time issues
+2. **Database session management problems** - ISCE errors indicate improper async session handling
+3. **Token management issues** in concurrent testing scenarios
+4. **PgBouncer alone is insufficient** - architectural changes needed in service layer
 
-SQLAlchemy prevents concurrent operations during this provisioning phase
+## when did we succeed
+
+after implementing cache and db pooling correctly, we actually reduced response time 
+by a great number, but still under high load we could actually see that still some responses take a high amount of time to get response.
+
+![alt text](image-7.png)
