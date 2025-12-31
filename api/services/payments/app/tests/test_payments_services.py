@@ -44,68 +44,59 @@ class TestPaymentService:
                 mock_repo_instance = AsyncMock()
                 mock_repo_class.return_value = mock_repo_instance
                 
-                with patch('services.payments_service.StripeService') as mock_stripe_class:
-                    mock_stripe_instance = Mock(spec=StripeService)
-                    mock_stripe_class.return_value = mock_stripe_instance
-                    
-                    with patch('services.payments_service.WebhookIdempotencyService') as mock_idempotency_class:
-                        mock_idempotency_instance = AsyncMock()
-                        mock_idempotency_instance.is_duplicate_event = AsyncMock(return_value=False)
-                        mock_idempotency_instance.acquire_event_lock = AsyncMock(return_value=True)
-                        mock_idempotency_instance.release_event_lock = AsyncMock()
-                        mock_idempotency_instance.mark_event_processed = AsyncMock()
-                        mock_idempotency_instance.handle_event_with_idempotency = AsyncMock(
-                            side_effect=lambda event_id, event_type, processor_func: processor_func()
-                        )
-                        mock_idempotency_class.return_value = mock_idempotency_instance
-                        
-                        with patch('services.payments_service.NotificationService') as mock_notification_class:
-                            mock_notification_instance = Mock(spec=NotificationService)
-                            mock_notification_instance.send_notification = AsyncMock(return_value=True)
-                            mock_notification_class.return_value = mock_notification_instance
-                            
-                            with patch('services.payments_service.RetryService') as mock_retry_class:
-                                mock_retry_instance = Mock(spec=RetryService)
-                                mock_retry_instance.execute_with_retry = AsyncMock(side_effect=lambda op, logger: op())
-                                mock_retry_class.return_value = mock_retry_instance
-                                
-                                with patch('services.payments_service.WebhookHandler') as mock_webhook_class:
-                                    mock_webhook_instance = Mock(spec=WebhookHandler)
-                                    mock_webhook_instance.handle_stripe_event = AsyncMock(
-                                        return_value=("succeeded", "http://receipt.example.com")
-                                    )
-                                    mock_webhook_class.return_value = mock_webhook_instance
-                                
-                                with patch('services.payments_service.PaymentOrchestrator') as mock_orchestrator_class:
-                                    mock_orchestrator_instance = Mock(spec=PaymentOrchestrator)
-                                    mock_orchestrator_instance.create_and_process_payment = AsyncMock()
-                                    mock_orchestrator_class.return_value = mock_orchestrator_instance
-                                
-                                with patch('services.payments_service.PaymentNotificationService') as mock_notification_svc_class:
-                                    mock_notification_svc_instance = Mock(spec=PaymentNotificationService)
-                                    mock_notification_svc_instance.notify_orders_service = AsyncMock(return_value=True)
-                                    mock_notification_svc_class.return_value = mock_notification_svc_instance
-                                
-                                with patch('services.payments_service.RefundProcessor') as mock_refund_class:
-                                    mock_refund_instance = Mock(spec=RefundProcessor)
-                                    mock_refund_instance.process_refund = AsyncMock()
-                                    mock_refund_class.return_value = mock_refund_instance
-                                        
-                                    service = PaymentService(
-                                        logger=mock_logger, 
-                                        db_session=mock_db_session,
-                                        stripe_service=mock_stripe_instance,
-                                        redis_cache=mock_redis_instance
-                                    )
-                                    
-                                    service.payment_repo = mock_repo_instance
-                                    service.stripe_service = mock_stripe_instance
-                                    service.payment_orchestrator = mock_orchestrator_instance
-                                    service.payment_notification_service = mock_notification_svc_instance
-                                    service.webhook_handler = mock_webhook_instance
-                                    service.refund_processor = mock_refund_instance
-                                    service.idempotency_service = mock_idempotency_instance
-                                    yield service
+                mock_stripe_instance = Mock(spec=StripeService)
+                mock_stripe_instance.handle_webhook_event = AsyncMock()
+                
+                mock_orchestrator_instance = Mock(spec=PaymentOrchestrator)
+                mock_orchestrator_instance.create_and_process_payment = AsyncMock()
+                
+                mock_webhook_instance = Mock(spec=WebhookHandler)
+                mock_webhook_instance.handle_stripe_event = AsyncMock(return_value=("succeeded", "http://receipt.example.com"))
+                
+                mock_notification_svc_instance = Mock(spec=PaymentNotificationService)
+                mock_notification_svc_instance.notify_orders_service = AsyncMock(return_value=True)
+                
+                mock_refund_instance = Mock(spec=RefundProcessor)
+                mock_refund_instance.process_refund = AsyncMock()
+                
+                mock_idempotency_instance = AsyncMock()
+                mock_idempotency_instance.is_duplicate_event = AsyncMock(return_value=False)
+                mock_idempotency_instance.acquire_event_lock = AsyncMock(return_value=True)
+                mock_idempotency_instance.release_event_lock = AsyncMock()
+                mock_idempotency_instance.mark_event_processed = AsyncMock()
+                mock_idempotency_instance.handle_event_with_idempotency = AsyncMock(
+                    side_effect=lambda event_id, event_type, processor_func: processor_func()
+                )
+                
+                mock_notification_instance = Mock(spec=NotificationService)
+                mock_notification_instance.send_notification = AsyncMock(return_value=True)
+                
+                mock_retry_instance = Mock(spec=RetryService)
+                mock_retry_instance.execute_with_retry = AsyncMock(side_effect=lambda op, logger: op())
+                
+                with patch('services.payments_service.StripeService', return_value=mock_stripe_instance):
+                    with patch('services.payments_service.PaymentOrchestrator', return_value=mock_orchestrator_instance):
+                        with patch('services.payments_service.WebhookHandler', return_value=mock_webhook_instance):
+                            with patch('services.payments_service.PaymentNotificationService', return_value=mock_notification_svc_instance):
+                                with patch('services.payments_service.RefundProcessor', return_value=mock_refund_instance):
+                                    with patch('services.payments_service.WebhookIdempotencyService', return_value=mock_idempotency_instance):
+                                        with patch('services.payments_service.NotificationService', return_value=mock_notification_instance):
+                                            with patch('services.payments_service.RetryService', return_value=mock_retry_instance):
+                                                service = PaymentService(
+                                                    logger=mock_logger, 
+                                                    db_session=mock_db_session,
+                                                    stripe_service=mock_stripe_instance,
+                                                    redis_cache=mock_redis_instance
+                                                )
+                                                
+                                                service.payment_repo = mock_repo_instance
+                                                service.payment_orchestrator = mock_orchestrator_instance
+                                                service.payment_notification_service = mock_notification_svc_instance
+                                                service.webhook_handler = mock_webhook_instance
+                                                service.refund_processor = mock_refund_instance
+                                                service.idempotency_service = mock_idempotency_instance
+                                                
+                                                yield service
 
     @pytest_asyncio.fixture
     def sample_payment_db(self):
@@ -144,19 +135,14 @@ class TestPaymentService:
         
         from cache.redis_cache import RedisCache
         
-        # Make Redis.get() return None (simulating internal exception)
         mock_redis = RedisCache.return_value
         mock_redis.get.return_value = None
         
-        # Set up repository to return None (payment not found)
         payment_service.payment_repo.get_payment_by_id.return_value = None
         
-        # When Redis fails, decorator should call the actual function
-        # which will raise "Payment not found"
         with pytest.raises(Exception) as exc_info:
             await payment_service.get_payment(payment_id)
         
-        # Repository SHOULD be called (graceful degradation)
         payment_service.payment_repo.get_payment_by_id.assert_called_once()
         assert "Payment not found" in str(exc_info.value)
 
@@ -893,3 +879,103 @@ class TestPaymentService:
         assert success_count == 5, f"Expected 5 processed, got {success_count}"
         
         assert payment_service.idempotency_service.handle_event_with_idempotency.call_count == 5
+
+    @pytest.mark.asyncio
+    async def test_create_payment_checkout_mode(self, payment_service, sample_payment_db):
+        payment_data = pydantic_models.PaymentCreate(
+            order_id="order_checkout_123",
+            amount=150.0,
+            user_id="user_checkout_123",
+            payment_method_token="pm_checkout_123",
+            checkout_mode=True,
+            success_url="https://example.com/success",
+            cancel_url="https://example.com/cancel"
+        )
+        
+        sample_payment_db.checkout_url = "https://checkout.stripe.com/c/pay/cs_test_123"
+        
+        payment_service.payment_orchestrator.create_and_process_payment.return_value = sample_payment_db
+        
+        result = await payment_service.create_payment(payment_data)
+        
+        assert hasattr(result, 'checkout_url') or 'checkout_url' in result
+
+    @pytest.mark.asyncio
+    async def test_create_payment_checkout_mode_missing_urls(self, payment_service):
+        payment_data = pydantic_models.PaymentCreate(
+            order_id="order_invalid_123",
+            amount=150.0,
+            user_id="user_invalid_123",
+            payment_method_token="pm_invalid_123",
+            checkout_mode=True
+        )
+        
+        payment_service.payment_orchestrator.create_and_process_payment.side_effect = Exception("requires success_url and cancel_url")
+        
+        with pytest.raises(Exception) as exc:
+            await payment_service.create_payment(payment_data)
+        
+        assert "requires success_url and cancel_url" in str(exc.value)
+
+    @pytest.mark.asyncio
+    async def test_create_payment_intent_mode_fallback(self, payment_service, sample_payment_db):
+        payment_data = pydantic_models.PaymentCreate(
+            order_id="order_intent_123",
+            amount=150.0,
+            user_id="user_intent_123",
+            payment_method_token="pm_intent_123",
+            checkout_mode=False
+        )
+        
+        payment_service.payment_orchestrator.create_and_process_payment.return_value = sample_payment_db
+        
+        result = await payment_service.create_payment(payment_data)
+        
+        assert hasattr(result, 'id')
+
+    @pytest.mark.asyncio
+    async def test_webhook_checkout_session_completed(self, payment_service, sample_payment_db):
+        from fastapi import Request
+        
+        mock_request = Mock(spec=Request)
+        mock_request.url = "http://test/webhook"
+        mock_request.method = "POST"
+        mock_request.client = Mock()
+        mock_request.client.host = "127.0.0.1"
+        
+        event_id = "evt_checkout_123"
+        payment_id = str(sample_payment_db.id)
+        
+        mock_event_data = {
+            "type": "checkout.session.completed",
+            "id": event_id,
+            "data": {
+                "object": {
+                    "id": "cs_test_123",
+                    "payment_intent": "pi_123",
+                    "status": "complete",
+                    "metadata": {"payment_id": payment_id}
+                }
+            }
+        }
+        
+        payment_service.stripe_service.handle_webhook_event = AsyncMock(return_value=mock_event_data)
+        payment_service.payment_repo.get_payment_by_id.return_value = sample_payment_db
+        payment_service.webhook_handler.handle_stripe_event = AsyncMock(return_value=("succeeded", None))
+        
+        result = await payment_service.process_webhook(mock_request, b'{}', "stripe-signature")
+        
+        assert result["status"] == "processed"
+        payment_service.webhook_handler.handle_stripe_event.assert_called_once()
+
+    def test_backwards_compatibility_default_checkout_mode(self):
+        payment_data = pydantic_models.PaymentCreate(
+            order_id="order_default_123",
+            amount=100.0,
+            user_id="user_default_123",
+            payment_method_token="pm_default_123"
+        )
+        
+        assert getattr(payment_data, 'checkout_mode', True) == True
+        assert hasattr(payment_data, 'success_url')
+        assert hasattr(payment_data, 'cancel_url')

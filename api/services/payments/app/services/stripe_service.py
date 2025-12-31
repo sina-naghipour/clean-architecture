@@ -274,3 +274,87 @@ class StripeService:
                 "data": {"object": {}},
                 "created": 1234567890
             }
+    async def create_checkout_session(self, amount, currency, order_id, user_id, success_url, cancel_url, metadata=None):
+        try:
+            session = stripe.checkout.Session.create(
+                payment_method_types=['card'],
+                line_items=[{
+                    'price_data': {
+                        'currency': currency,
+                        'product_data': {'name': f'Order #{order_id}'},
+                        'unit_amount': int(amount * 100),
+                    },
+                    'quantity': 1,
+                }],
+                mode='payment',
+                success_url=success_url,
+                cancel_url=cancel_url,
+                metadata={
+                    'order_id': order_id,
+                    'user_id': user_id,
+                    'payment_type': 'checkout_session',
+                    **(metadata or {})
+                }
+            )
+            return {
+                'id': session.id,
+                'url': session.url,
+                'payment_intent_id': session.payment_intent,
+                'type': 'checkout'
+            }
+        except stripe.error.StripeError as e:
+            self.logger.error(f"Stripe Checkout failed: {e}")
+            raise Exception(f"Checkout creation failed: {e.user_message}")
+
+    async def create_payment(self, amount, currency, payment_method_token, metadata, checkout_mode=True, success_url=None, cancel_url=None):
+        with self.tracer.start_as_current_span("stripe.create_payment") as span:
+            span.set_attributes({
+                "stripe.amount": amount,
+                "stripe.currency": currency,
+                "stripe.mode": self.stripe_mode,
+                "stripe.checkout_mode": checkout_mode
+            })
+            
+            if checkout_mode:
+                if not success_url or not cancel_url:
+                    raise Exception("Checkout mode requires success_url and cancel_url")
+                
+                result = await self.create_checkout_session(
+                    amount=amount,
+                    currency=currency,
+                    order_id=metadata.get('order_id'),
+                    user_id=metadata.get('user_id'),
+                    success_url=success_url,
+                    cancel_url=cancel_url,
+                    metadata=metadata
+                )
+                span.set_attribute("stripe.payment_type", "checkout_session")
+                span.set_attribute("stripe.checkout_url", result.get('url', ''))
+                return result
+            else:
+                result = await self.create_payment_intent(
+                    amount=amount,
+                    currency=currency,
+                    payment_method_token=payment_method_token,
+                    metadata=metadata
+                )
+                span.set_attribute("stripe.payment_type", "payment_intent")
+                return result
+
+    async def retrieve_checkout_session(self, session_id):
+        try:
+            session = stripe.checkout.Session.retrieve(session_id)
+            return {
+                'id': session.id,
+                'status': session.status,
+                'payment_intent_id': session.payment_intent,
+                'amount_total': session.amount_total / 100,
+                'currency': session.currency,
+                'metadata': session.metadata
+            }
+        except stripe.error.StripeError as e:
+            self.logger.error(f"Failed to retrieve checkout session: {e}")
+            raise
+
+
+

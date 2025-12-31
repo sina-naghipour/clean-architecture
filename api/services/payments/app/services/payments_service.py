@@ -52,13 +52,19 @@ class PaymentService:
             currency=payment.currency,
             created_at=payment.created_at.isoformat(),
             updated_at=payment.updated_at.isoformat(),
-            client_secret=payment.client_secret
+            client_secret=payment.client_secret,
+            checkout_url=getattr(payment, 'checkout_url', None)
         )
     
     @trace_service_operation("create_payment")
     @invalidate_cache(pattern="cache:payment_by_order:*")
     async def create_payment(self, payment_data: pydantic_models.PaymentCreate):
-        payment = await self.payment_orchestrator.create_and_process_payment(payment_data, self.tracer)
+        checkout_mode = getattr(payment_data, 'checkout_mode', True)
+        
+        payment = await self.payment_orchestrator.create_and_process_payment(
+            payment_data, self.tracer, checkout_mode
+        )
+        
         return self._to_payment_response(payment)
     
     @trace_service_operation("get_payment")

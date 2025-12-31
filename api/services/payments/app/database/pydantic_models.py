@@ -18,6 +18,9 @@ class PaymentCreate(BaseModel):
     payment_method_token: str = Field(...)
     currency: str = Field(default="usd")
     metadata: Optional[Dict[str, Any]] = Field(default=None)
+    success_url: Optional[str] = Field(default=None)
+    cancel_url: Optional[str] = Field(default=None)
+    checkout_mode: Optional[bool] = Field(default=True)
 
 class PaymentResponse(BaseModel):
     id: str
@@ -32,6 +35,7 @@ class PaymentResponse(BaseModel):
     created_at: str
     updated_at: str
     client_secret: Optional[str] = Field(None)
+    checkout_url: Optional[str] = Field(None)
     @field_validator('created_at', 'updated_at', mode='before')
     @classmethod
     def convert_datetime(cls, v):

@@ -12,7 +12,7 @@ class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
         self.payment_service = payment_service
         self.logger = logger
         self.tracer = trace.get_tracer(__name__)
-    
+        
     @trace_service_operation("grpc_create_payment")
     async def CreatePayment(self, request, context):
         try:
@@ -22,7 +22,8 @@ class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
                     "grpc.service": "PaymentService",
                     "order.id": str(request.order_id),
                     "user.id": str(request.user_id),
-                    "amount": float(request.amount)
+                    "amount": float(request.amount),
+                    "checkout.mode": request.checkout_mode if request.HasField("checkout_mode") else True
                 })
                 
                 self.logger.info(f"gRPC CreatePayment for order: {request.order_id}")
@@ -47,20 +48,32 @@ class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
                         stripe_payment_intent_id=str(result.stripe_payment_intent_id or ""),
                         payment_method_token=str(result.payment_method_token or ""),
                         currency=str(result.currency or "usd"),
-                        client_secret=result.client_secret
+                        client_secret=result.client_secret or "",
+                        checkout_url=result.checkout_url or "" if hasattr(result, 'checkout_url') else ""
                     )
 
+                # Get optional fields with defaults
+                checkout_mode = request.checkout_mode if request.HasField("checkout_mode") else True
+                success_url = request.success_url if request.HasField("success_url") else None
+                cancel_url = request.cancel_url if request.HasField("cancel_url") else None
+                
                 payment_data = pydantic_models.PaymentCreate(
                     order_id=request.order_id,
                     amount=request.amount,
                     user_id=request.user_id,
                     payment_method_token=request.payment_method_token,
                     currency=request.currency or "usd",
+                    checkout_mode=checkout_mode,
+                    success_url=success_url,
+                    cancel_url=cancel_url
                 )
                 
                 result = await self.payment_service.create_payment(payment_data)
                 span.set_attribute("payment.id", str(result.id))
                 span.set_attribute("payment.status", str(result.status.value))
+                
+                # Get checkout_url if it exists
+                checkout_url = getattr(result, 'checkout_url', None) or ""
                 
                 return payments_pb2.PaymentResponse(
                     payment_id=str(result.id),
@@ -71,7 +84,8 @@ class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
                     stripe_payment_intent_id=str(result.stripe_payment_intent_id or ""),
                     payment_method_token=str(result.payment_method_token or ""),
                     currency=str(result.currency or "usd"),
-                    client_secret=result.client_secret
+                    client_secret=result.client_secret or "",
+                    checkout_url=checkout_url
                 )
                 
         except Exception as e:
@@ -96,6 +110,8 @@ class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
                 result = await self.payment_service.get_payment(request.payment_id)
                 span.set_attribute("payment.status", str(result.status.value))
                 
+                checkout_url = getattr(result, 'checkout_url', None) or ""
+                
                 return payments_pb2.PaymentResponse(
                     payment_id=str(result.id),
                     order_id=str(result.order_id),
@@ -105,7 +121,8 @@ class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
                     stripe_payment_intent_id=str(result.stripe_payment_intent_id or ""),
                     payment_method_token=str(result.payment_method_token or ""),
                     currency=str(result.currency or "usd"),
-                    client_secret=result.client_secret
+                    client_secret=result.client_secret or "",
+                    checkout_url=checkout_url
                 )
                 
         except Exception as e:

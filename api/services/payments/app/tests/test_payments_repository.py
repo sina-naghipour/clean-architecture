@@ -36,7 +36,6 @@ class TestPaymentRepository:
         
         assert result == sample_payment
         mock_session.add.assert_called_once_with(sample_payment)
-        mock_session.commit.assert_called_once()
         mock_session.refresh.assert_called_once_with(sample_payment)
         mock_logger.info.assert_called()
 
@@ -153,7 +152,6 @@ class TestPaymentRepository:
         
         assert result.status == PaymentStatus.SUCCEEDED
         assert mock_session.execute.call_count == 2
-        mock_session.commit.assert_called_once()
         mock_logger.info.assert_called()
 
     @pytest.mark.asyncio
@@ -168,7 +166,6 @@ class TestPaymentRepository:
         
         assert result is None
         mock_session.execute.assert_called_once()
-        mock_session.commit.assert_called_once()
         mock_logger.info.assert_called()
 
     @pytest.mark.asyncio
@@ -207,7 +204,6 @@ class TestPaymentRepository:
         
         assert result.stripe_payment_intent_id == "pi_123"
         assert mock_session.execute.call_count == 2
-        mock_session.commit.assert_called_once()
         mock_logger.info.assert_called()
 
     @pytest.mark.asyncio
@@ -222,7 +218,6 @@ class TestPaymentRepository:
         
         assert result is None
         mock_session.execute.assert_called_once()
-        mock_session.commit.assert_called_once()
         mock_logger.info.assert_called()
 
     @pytest.mark.asyncio

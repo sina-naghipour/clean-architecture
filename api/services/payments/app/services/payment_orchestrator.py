@@ -9,14 +9,15 @@ class PaymentOrchestrator:
     def __init__(self, payment_repo: PaymentRepository, stripe_service: StripeService):
         self.payment_repo = payment_repo
         self.stripe_service = stripe_service
-    
-    async def create_and_process_payment(self, payment_data: pydantic_models.PaymentCreate, tracer: trace.Tracer) -> PaymentDB:
+
+    async def create_and_process_payment(self, payment_data: pydantic_models.PaymentCreate, tracer: trace.Tracer, checkout_mode: bool = True) -> PaymentDB:
         with tracer.start_as_current_span("create_and_process_payment") as span:
             span.set_attributes({
                 "order.id": payment_data.order_id,
                 "user.id": payment_data.user_id,
                 "amount": float(payment_data.amount),
-                "currency": payment_data.currency
+                "currency": payment_data.currency,
+                "checkout_mode": checkout_mode
             })
             
             existing_payment = await self.payment_repo.get_payment_by_order_id(payment_data.order_id)
@@ -37,30 +38,42 @@ class PaymentOrchestrator:
             span.set_attribute("payment.id", str(created_payment.id))
             
             try:
-                stripe_result = await self.stripe_service.create_payment_intent(
+                metadata = {
+                    'order_id': payment_data.order_id,
+                    'user_id': payment_data.user_id,
+                    'payment_id': str(created_payment.id),
+                    'payment_type': 'checkout' if checkout_mode else 'payment_intent'
+                }
+                
+                stripe_result = await self.stripe_service.create_payment(
                     amount=payment_data.amount,
                     currency=payment_data.currency,
                     payment_method_token=payment_data.payment_method_token,
-                    metadata={
-                        "order_id": payment_data.order_id,
-                        "user_id": payment_data.user_id,
-                        "payment_id": str(created_payment.id)
-                    }
+                    metadata=metadata,
+                    checkout_mode=checkout_mode,
+                    success_url=payment_data.success_url,
+                    cancel_url=payment_data.cancel_url
                 )
                 
-                await self.payment_repo.update_payment_stripe_id(created_payment.id, stripe_result["id"])
+                if checkout_mode:
+                    created_payment.checkout_url = stripe_result.get("url")
+                    stripe_id = stripe_result.get("payment_intent_id") or stripe_result.get("id")
+                else:
+                    stripe_id = stripe_result.get("id")
+                    if stripe_result.get("client_secret"):
+                        await self.payment_repo.update_payment_client_secret(created_payment.id, stripe_result.get("client_secret"))
+                        created_payment.client_secret = stripe_result.get("client_secret")
+                
+                if stripe_id:
+                    await self.payment_repo.update_payment_stripe_id(created_payment.id, stripe_id)
                 
                 payment_status = self.stripe_service.map_stripe_status_to_payment_status(stripe_result["status"])
                 await self.payment_repo.update_payment_status(created_payment.id, payment_status)
                 
-                if stripe_result.get("client_secret"):
-                    await self.payment_repo.update_payment_client_secret(created_payment.id, stripe_result.get("client_secret"))
-                    created_payment.client_secret = stripe_result.get("client_secret")
-                
-                created_payment.stripe_payment_intent_id = stripe_result["id"]
+                created_payment.stripe_payment_intent_id = stripe_id
                 created_payment.status = payment_status
                 
-                span.set_attribute("stripe.id", stripe_result["id"])
+                span.set_attribute("stripe.id", stripe_id or "none")
                 span.set_attribute("payment.status", str(payment_status.value))
                 
             except Exception as e:

@@ -21,6 +21,9 @@ message CreatePaymentRequest {
   string currency = 4;           // Default: "usd"
   string payment_method_token = 5; // From OrderCreate.payment_method_token
   map<string, string> metadata = 6; // Additional info (optional)
+  optional string success_url = 7; // Required for Stripe Checkout - redirect after success
+  optional string cancel_url = 8;  // Required for Stripe Checkout - redirect after cancel
+  optional bool checkout_mode = 9; // True = use Stripe Checkout, False = use Payment Intents
 }
 
 message GetPaymentRequest {
@@ -40,10 +43,11 @@ message PaymentResponse {
   string user_id = 3;            // Same as request
   double amount = 4;             // Same as request
   string status = 5;             // "created", "processing", "succeeded", "failed", "refunded", "canceled"
-  string stripe_payment_intent_id = 6; // From Stripe
+  string stripe_payment_intent_id = 6; // From Stripe (for both Checkout and Payment Intents)
   string payment_method_token = 7; // Same as request
   string currency = 8;           // Same as request
-  string client_secret = 9;      // For frontend Stripe Elements (CRITICAL!)
+  string client_secret = 9;      // For frontend Stripe Elements (Payment Intents only)
+  optional string checkout_url = 10; // For Stripe Checkout - redirect URL to hosted checkout page
 }
 
 message RefundResponse {

@@ -24,7 +24,9 @@ class WebhookHandler:
             result = None
             receipt_url = None
             
-            if event_type.startswith("payment_intent."):
+            if event_type.startswith("checkout.session"):
+                result = await self._handle_checkout_session(event_type, event_data, payment)
+            elif event_type.startswith("payment_intent."):
                 result = await self._handle_payment_intent(event_type, event_data, payment)
             elif event_type.startswith("charge."):
                 result = await self._handle_charge(event_type, event_data, payment)
@@ -35,6 +37,27 @@ class WebhookHandler:
                 span.set_attribute("payment.new_status", result.upper())
             
             return result, receipt_url
+    
+    async def _handle_checkout_session(self, event_type: str, event_data: dict, payment: PaymentDB) -> Optional[str]:
+        if event_type == "checkout.session.completed":
+            session = event_data
+            payment_intent_id = session.get("payment_intent")
+            
+            if payment_intent_id:
+                await self.payment_repo.update_payment_stripe_id(payment.id, payment_intent_id)
+            
+            await self.payment_repo.update_payment_status(payment.id, PaymentStatus.SUCCEEDED)
+            return "succeeded"
+        
+        elif event_type == "checkout.session.expired":
+            await self.payment_repo.update_payment_status(payment.id, PaymentStatus.CANCELED)
+            return "canceled"
+        
+        elif event_type == "checkout.session.async_payment_failed":
+            await self.payment_repo.update_payment_status(payment.id, PaymentStatus.FAILED)
+            return "failed"
+        
+        return None
     
     async def _handle_payment_intent(self, event_type: str, event_data: dict, payment: PaymentDB) -> Optional[str]:
         if event_type == "payment_intent.payment_failed":
