@@ -1,6 +1,6 @@
 {
   "stage": 8,
-  "timestamp": "2025-12-29T19:50:48.185Z",
+  "timestamp": "2025-12-31T07:49:34.391Z",
   "services_tested": [
     "nginx",
     "auth",
@@ -14,11 +14,11 @@
     "cacheHitRate": 0.7
   },
   "performance": {
-    "p95_latency": 9053.06325,
-    "error_rate": 0.2011251758087201,
-    "throughput": 3.0928956480159404,
+    "p95_latency": 9063.339619999999,
+    "error_rate": 0.0567139282735613,
+    "throughput": 5.1571206263461065,
     "cache_hit_rate": 0,
-    "total_requests": 711,
+    "total_requests": 1199,
     "rate_limit_hits": 0
   },
   "compliance": {

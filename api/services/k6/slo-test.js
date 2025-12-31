@@ -194,7 +194,7 @@ function testOrderCreationAndRetrieval(accessToken) {
     ],
     billing_address_id: `addr_${randomIntBetween(1, 10)}`,
     shipping_address_id: `addr_${randomIntBetween(1, 10)}`,
-    payment_method_token: `pm_${randomIntBetween(1, 10)}`
+    payment_method_token: `pm_card_visa`
   };
   
   const createRes = http.post(`${BASE_URL}/api/orders/`, JSON.stringify(orderData), {
