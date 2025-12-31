@@ -6,6 +6,7 @@ import uvicorn
 from contextlib import asynccontextmanager
 import os
 from dotenv import load_dotenv
+from middlewares.security_headers import SecurityHeadersMiddleware
 
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
@@ -62,11 +63,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Initialize OpenTelemetry tracing
 tracer_provider = TracerProvider()
 tracer_provider.add_span_processor(
     BatchSpanProcessor(
-        OTLPSpanExporter(endpoint="http://otel-collector:4318/v1/traces")
+        OTLPSpanExporter(endpoint="http://otel-collector:4318/v1/traces"),
     )
 )
 trace.set_tracer_provider(tracer_provider)
@@ -81,6 +81,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(SecurityHeadersMiddleware)
 
 app.add_middleware(AuthMiddleware)
 

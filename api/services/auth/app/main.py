@@ -5,6 +5,9 @@ import logging
 import uvicorn
 from contextlib import asynccontextmanager
 import os
+from datetime import datetime
+from middleware.security_headers import SecurityHeadersMiddleware
+
 
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
@@ -13,15 +16,14 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExport
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 from routes.auth_routes import router as auth_router
+from cache.redis_manager import redis_manager
 
-# Load environment variables
 HOST = os.getenv('HOST', '0.0.0.0')
 PORT = int(os.getenv('PORT', '8000'))
 RELOAD = os.getenv('RELOAD', 'True').lower() == 'true'
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'info')
 ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
 
-# CORS origins from environment
 CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000')
 ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ORIGINS.split(',')]
 
@@ -44,8 +46,10 @@ async def lifespan(app: FastAPI):
     
     yield
     
+    await redis_manager.close()
+    logger.info("Disconnected from Redis")
+    
     logger.info("Shutting down Authentication Service...")
-    logger.info("Service is shutting down")
 
 app = FastAPI(
     title="Ecommerce API - Authentication Service",
@@ -60,7 +64,7 @@ app = FastAPI(
 tracer_provider = TracerProvider()
 tracer_provider.add_span_processor(
     BatchSpanProcessor(
-        OTLPSpanExporter(endpoint="http://otel-collector:4318/v1/traces")
+        OTLPSpanExporter(endpoint="http://otel-collector:4318/v1/traces"),
     )
 )
 trace.set_tracer_provider(tracer_provider)
@@ -74,6 +78,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(SecurityHeadersMiddleware)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -92,14 +98,21 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 @app.get("/health", tags=["Health"])
 async def health_check():
-    """Health check endpoint for service monitoring"""
+    redis_healthy = False
+    try:
+        redis = await redis_manager.get_client()
+        await redis.ping()
+        redis_healthy = True
+    except Exception as e:
+        logger.error(f"Redis health check failed: {e}")
+    
     return {
         "status": "healthy",
         "service": "authentication",
-        "timestamp": "2024-01-01T00:00:00Z",
+        "redis": "healthy" if redis_healthy else "unhealthy",
+        "timestamp": datetime.now().isoformat(),
         "environment": ENVIRONMENT
     }
-
 
 @app.get("/info", tags=["Root"])
 async def root():

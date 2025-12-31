@@ -1,0 +1,9 @@
+{
+  "p95_latency_ms": 9063.339619999999,
+  "error_rate": 0.0567139282735613,
+  "throughput_rps": 5.1571206263461065,
+  "cache_hit_rate": 0,
+  "total_requests": 1199,
+  "timestamp": "2025-12-31T07:49:34.391Z",
+  "rate_limit_hits": 0
+}

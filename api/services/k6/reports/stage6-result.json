@@ -1,6 +1,6 @@
 {
   "stage": 6,
-  "timestamp": "2025-12-21T07:51:40.295Z",
+  "timestamp": "2025-12-27T18:07:49.970Z",
   "services_tested": [
     "nginx",
     "auth",
@@ -12,15 +12,15 @@
     "throughput": 10
   },
   "metrics": {
-    "requests": 22033,
-    "error_rate": 0,
-    "p95_latency": 3.0012,
-    "throughput": 84.69420363229841
+    "requests": 8899,
+    "error_rate": 0.031576581638386336,
+    "p95_latency": 2348.198210000001,
+    "throughput": 33.858089574451185
   },
   "compliance": {
-    "p95_met": true,
+    "p95_met": false,
     "error_budget_met": true,
     "throughput_met": true
   },
-  "all_passed": true
+  "all_passed": false
 }

@@ -95,7 +95,7 @@ class OrderServiceDecorators:
         @wraps(func)
         async def wrapper(self, request: Request, order_uuid: UUID, user_id: str, *args, **kwargs) -> Any:
             try:
-                order_db = await self.order_repo.get_order_by_id(order_uuid)
+                order_data = await self.order_repo.get_order_by_id(order_uuid)
             except Exception as e:
                 self.logger.error(f"Failed to fetch order: {e}")
                 return create_problem_response(
@@ -106,7 +106,7 @@ class OrderServiceDecorators:
                     instance=str(request.url)
                 )
             
-            if not order_db:
+            if not order_data:
                 return create_problem_response(
                     status_code=404,
                     error_type="not-found",
@@ -115,7 +115,16 @@ class OrderServiceDecorators:
                     instance=str(request.url)
                 )
             
-            if order_db.user_id != user_id:
+            # Get user_id from order data (handles both OrderDB objects and dictionaries)
+            order_user_id = None
+            if isinstance(order_data, dict):
+                order_user_id = order_data.get('user_id')
+            elif hasattr(order_data, 'user_id'):
+                order_user_id = order_data.user_id
+            
+            self.logger.debug(f"Order type: {type(order_data)}, Request user: {user_id}, Order user: {order_user_id}")
+            
+            if not order_user_id or order_user_id != user_id:
                 return create_problem_response(
                     status_code=404,
                     error_type="not-found",
@@ -124,7 +133,7 @@ class OrderServiceDecorators:
                     instance=str(request.url)
                 )
             
-            return await func(self, request, order_uuid, user_id, order_db, *args, **kwargs)
+            return await func(self, request, order_uuid, user_id, order_data, *args, **kwargs)
         return wrapper
 
     @staticmethod

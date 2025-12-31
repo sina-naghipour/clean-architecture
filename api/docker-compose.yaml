@@ -38,6 +38,15 @@ services:
       POSTGRES_DB: auth
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-toor}
+      POSTGRES_MAX_CONNECTIONS: "200"
+    command: >
+      postgres 
+      -c max_connections=200 
+      -c shared_buffers=128MB 
+      -c effective_cache_size=1GB 
+      -c max_prepared_transactions=100
+      -c wal_buffers=16MB
+      -c synchronous_commit=off
     volumes:
       - auth_db_data:/var/lib/postgresql/data
     networks:
@@ -48,6 +57,46 @@ services:
       timeout: 5s
       retries: 5
       start_period: 5s
+
+  pgbouncer:
+    image: pgbouncer/pgbouncer
+    environment:
+      DATABASES_HOST: "auth_db"
+      DATABASES_PORT: "5432"
+      DATABASES_USER: "postgres"
+      DATABASES_PASS: "${POSTGRES_PASSWORD:-toor}"
+      DATABASES_NAME: "auth"
+      AUTH_TYPE: "trust"
+      POOL_MODE: "transaction"
+      MAX_CLIENT_CONN: "500"
+      DEFAULT_POOL_SIZE: "50"
+    ports:
+      - "6432:6432"
+    depends_on:
+      auth_db:
+        condition: service_healthy
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "localhost", "-p", "6432", "-U", "postgres", "-d", "auth"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   orders_db:
     image: postgres:15
@@ -114,6 +163,9 @@ services:
       - DATABASE_URL=postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-toor}@auth_db:5432/auth
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
       - OTEL_SERVICE_NAME=auth-service
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
     depends_on:
       auth_db:
         condition: service_healthy
@@ -274,6 +326,8 @@ volumes:
   payments_db_data:
   mongodb_data:
   statics_storage:
+  redis_data:
+
 
 networks:
   app-network:

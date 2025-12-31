@@ -3,7 +3,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
 import uuid
 from enum import Enum
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 from .connection import Base
 
@@ -14,6 +14,8 @@ class OrderStatus(str, Enum):
     CANCELED = "canceled"
     PENDING = "pending"
     FAILED = "failed"
+    REFUNDED = "refunded"
+
 class OrderDB(Base):
     __tablename__ = "orders"
 
@@ -39,7 +41,8 @@ class OrderDB(Base):
             "payment_method_token": self.payment_method_token,
             "payment_id": self.payment_id,
             "items": self.items,
-            "created_at": self.created_at
+            "created_at": self.created_at,
+            "user_id": self.user_id
         }
 
     @classmethod

@@ -12,16 +12,18 @@ class PaymentGRPCClient:
         self.host = os.getenv("PAYMENTS_GRPC_HOST", "payments")
         self.port = int(os.getenv("PAYMENTS_GRPC_PORT", "50051"))
         self.channel = None
+        self.initialized = False
         self.failure_count = 0
         self.circuit_open = False
         self.circuit_open_until = 0
         self.max_retries = 3
         self.tracer = trace.get_tracer(__name__)
     
-    async def connect(self):
-        if not self.channel:
+    async def initialize(self):
+        if not self.initialized:
             server_address = f"{self.host}:{self.port}"
             self.channel = grpc.aio.insecure_channel(server_address)
+            self.initialized = True
     
     def _should_try_request(self) -> bool:
         if self.circuit_open:
@@ -45,6 +47,9 @@ class PaymentGRPCClient:
     
     @trace_service_operation("create_payment_grpc")
     async def create_payment(self, order_id, amount, user_id, payment_method_token):
+        if not self.initialized:
+            await self.initialize()
+        
         idempotency_key = f"create_{order_id}_{int(time.time())}"
         
         for attempt in range(self.max_retries):
@@ -63,7 +68,6 @@ class PaymentGRPCClient:
                         "idempotency_key": idempotency_key
                     })
                     
-                    await self.connect()
                     stub = payments_pb2_grpc.PaymentServiceStub(self.channel)
                     request = payments_pb2.CreatePaymentRequest(
                         order_id=order_id,
@@ -101,6 +105,9 @@ class PaymentGRPCClient:
     
     @trace_service_operation("get_payment_grpc")
     async def get_payment(self, payment_id):
+        if not self.initialized:
+            await self.initialize()
+        
         if not self._should_try_request():
             raise Exception("Circuit breaker open - payments service unavailable")
         
@@ -112,7 +119,6 @@ class PaymentGRPCClient:
                     "payment.id": str(payment_id)
                 })
                 
-                await self.connect()
                 stub = payments_pb2_grpc.PaymentServiceStub(self.channel)
                 request = payments_pb2.GetPaymentRequest(payment_id=payment_id)
                 
@@ -138,3 +144,5 @@ class PaymentGRPCClient:
     async def close(self):
         if self.channel:
             await self.channel.close()
+            self.initialized = False
+            self.channel = None

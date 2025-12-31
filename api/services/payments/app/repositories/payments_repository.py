@@ -21,7 +21,7 @@ class PaymentRepository:
             self.logger.info(f"Creating payment for order: {payment_data.order_id}")
             
             self.session.add(payment_data)
-            await self.session.commit()
+            await self.session.flush()
             await self.session.refresh(payment_data)
 
             self.logger.info(f"Payment created successfully: {payment_data.id}")
@@ -106,7 +106,7 @@ class PaymentRepository:
                 .values(status=new_status, updated_at=datetime.utcnow())
             )
             result = await self.session.execute(stmt)
-            await self.session.commit()
+            await self.session.flush()
             
             if result.rowcount > 0:
                 self.logger.info(f"Payment status updated successfully: {payment_id}")
@@ -134,7 +134,7 @@ class PaymentRepository:
                 )
             )
             result = await self.session.execute(stmt)
-            await self.session.commit()
+            await self.session.flush()
             
             if result.rowcount > 0:
                 self.logger.info(f"Payment Stripe ID updated successfully: {payment_id}")
@@ -162,7 +162,7 @@ class PaymentRepository:
                 )
             )
             result = await self.session.execute(stmt)
-            await self.session.commit()
+            await self.session.flush()
             
             if result.rowcount > 0:
                 self.logger.info(f"Payment client secret updated successfully: {payment_id}")
