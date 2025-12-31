@@ -7,6 +7,7 @@ import logging
 from contextlib import asynccontextmanager
 import os
 from dotenv import load_dotenv
+from cache.redis_cache import RedisCache
 
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
@@ -61,13 +62,13 @@ async def lifespan(app: FastAPI):
         )
     )
     trace.set_tracer_provider(tracer_provider)
+    redis_cache = RedisCache()
+    await redis_cache.connect()
     
-    # Initialize payment service
     async for session in get_db():
         stripe_service = StripeService(logger)
-        payment_service = PaymentService(logger, session,stripe_service=stripe_service)
+        payment_service = PaymentService(logger, session,stripe_service=stripe_service, redis_cache=redis_cache)
         
-        # Start gRPC server in background task
         grpc_task = asyncio.create_task(
             serve_grpc(payment_service, port=GRPC_PORT)
         )
@@ -75,6 +76,7 @@ async def lifespan(app: FastAPI):
         # Store for shutdown
         app.state.payment_service = payment_service
         app.state.grpc_task = grpc_task
+        app.state.redis_cache = redis_cache
         break
     
     yield
@@ -88,6 +90,9 @@ async def lifespan(app: FastAPI):
             await app.state.grpc_task
         except asyncio.CancelledError:
             pass
+
+    if hasattr(app.state, 'redis_cache'):
+        await app.state.redis_cache.close()
 
 app = FastAPI(
     title="Ecommerce API - Payments Service",

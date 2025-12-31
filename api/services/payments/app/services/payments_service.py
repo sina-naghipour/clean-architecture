@@ -17,14 +17,14 @@ from .payment_notification_service import PaymentNotificationService
 from .webhook_handler import WebhookHandler
 from .refund_processor import RefundProcessor
 from cache.redis_cache import cached, invalidate_cache
-
+from .webhook_idempotency import WebhookIdempotencyService
 
 class PaymentService:
     def __init__(self, 
                  logger: logging.Logger, 
                  db_session,
                  stripe_service: StripeService,
-                 http_client: Optional[httpx.AsyncClient] = None):
+                 http_client: Optional[httpx.AsyncClient] = None, redis_cache = None):
         self.logger = logger
         self.tracer = trace.get_tracer(__name__)
         
@@ -33,7 +33,8 @@ class PaymentService:
         
         notification_service = NotificationService(http_client)
         retry_service = RetryService()
-        
+        self.idempotency_service = WebhookIdempotencyService(redis_cache, logger)
+
         self.payment_orchestrator = PaymentOrchestrator(self.payment_repo, stripe_service)
         self.payment_notification_service = PaymentNotificationService(notification_service, retry_service, logger)
         self.webhook_handler = WebhookHandler(self.payment_repo, self.tracer)
@@ -86,34 +87,57 @@ class PaymentService:
             
             event = await self.stripe_service.handle_webhook_event(payload, sig_header)
             event_type = event["type"]
-            event_data = event["data"]
+            event_id = event["id"]
             
-            if isinstance(event_data, dict) and "object" in event_data:
-                event_data = event_data["object"]
+            async def process_event():
+                event_data = event["data"]
+                if isinstance(event_data, dict) and "object" in event_data:
+                    event_data = event_data["object"]
+                
+                self.logger.info(f"Processing webhook {event_type} from IP: {request.client.host}")
+                span.set_attribute("stripe.event_type", event_type)
+                span.set_attribute("stripe.event_id", event_id)
+                
+                metadata = event_data.get('metadata', {})
+                payment_id = metadata.get('payment_id')
+                print(f'payment_id : {payment_id}, event_data : {event_data}')
+                self.logger.info(f'payment_id : {payment_id}, event_data : {event_data}')
+                
+                if not payment_id:
+                    self.logger.warning(f"No payment_id in metadata for event: {event_type}")
+                    return {"status": "ignored", "reason": "no_payment_id"}
+                
+                result, receipt_url = await self.webhook_handler.handle_stripe_event(
+                    event_type, event_data, UUID(payment_id)
+                )
+                
+                if result and result != "ignored":
+                    payment = await self.payment_repo.get_payment_by_id(UUID(payment_id))
+                    if payment:
+                        await self.payment_notification_service.notify_orders_service(payment, result, receipt_url)
+                
+                self.logger.info(f"Processed {event_type} for payment ID: {payment_id}")
+                return {"status": "processed", "event": event_type}
             
-            self.logger.info(f"Processing webhook {event_type} from IP: {request.client.host}")
-            span.set_attribute("stripe.event_type", event_type)
-            
-            metadata = event_data.get('metadata', {})
-            payment_id = metadata.get('payment_id')
-            print(f'payment_id : {payment_id}, event_data : {event_data}')
-            self.logger.info(f'payment_id : {payment_id}, event_data : {event_data}')
-            if not payment_id:
-                self.logger.warning(f"No payment_id in metadata for event: {event_type}")
-                return {"status": "ignored", "reason": "no_payment_id"}
-            
-            result, receipt_url = await self.webhook_handler.handle_stripe_event(
-                event_type, event_data, UUID(payment_id)
-            )
-            
-            if result and result != "ignored":
-                payment = await self.payment_repo.get_payment_by_id(UUID(payment_id))
-                if payment:
-                    await self.payment_notification_service.notify_orders_service(payment, result, receipt_url)
-            
-            self.logger.info(f"Processed {event_type} for payment ID: {payment_id}")
-            return {"status": "processed", "event": event_type}
-    
+            try:
+                result = await self.idempotency_service.handle_event_with_idempotency(
+                    event_id=event_id,
+                    event_type=event_type,
+                    processor_func=process_event
+                )
+                
+                span.set_attribute("webhook.idempotency_status", result.get("status", "unknown"))
+                
+                return result
+                
+            except Exception as e:
+                self.logger.error(f"Idempotency service error for event {event_id}: {e}")
+                span.record_exception(e)
+                span.set_attribute("webhook.idempotency_error", True)
+                
+                self.logger.warning(f"Falling back to non-idempotent processing for event {event_id}")
+                return await process_event()
+
     @trace_service_operation("create_refund")
     @invalidate_cache(pattern="cache:payment_by_id:*")
     async def create_refund(self, payment_id: str, refund_data: pydantic_models.RefundRequest):

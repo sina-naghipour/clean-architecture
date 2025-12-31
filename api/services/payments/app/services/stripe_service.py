@@ -187,12 +187,17 @@ class StripeService:
         }
         
         return status_mapping.get(stripe_status, PaymentStatus.FAILED)
-    
+        
     @trace_service_operation("handle_webhook_event")
     async def handle_webhook_event(self, payload: bytes, sig_header: str) -> Dict[str, Any]:
         try:
             with self.tracer.start_as_current_span("stripe.handle_webhook") as span:
                 import json
+                
+                if not sig_header and os.getenv("ENVIRONMENT") == "production":
+                    self.logger.error("Missing Stripe signature header in production")
+                    span.set_attribute("stripe.missing_signature", True)
+                    raise ValueError("Missing Stripe-Signature header")
                 
                 try:
                     payload_str = payload.decode('utf-8')
@@ -219,14 +224,29 @@ class StripeService:
                     "stripe.signature_present": bool(sig_header)
                 })
                 
-                if not os.getenv("STRIPE_API_BASE") and self.webhook_secret and self.webhook_secret != "whsec_mock":
+
+                if self.webhook_secret and self.webhook_secret != "whsec_mock":
                     try:
                         event = stripe.Webhook.construct_event(payload, sig_header, self.webhook_secret)
-                        self.logger.info(f"Successfully verified Stripe webhook signature")
+                        self.logger.info(f"Successfully verified Stripe webhook signature for event: {event_type}")
                         span.set_attribute("stripe.signature_verified", True)
+                        
+                        return {
+                            "type": event.type,
+                            "id": event.id,
+                            "data": {"object": event.data.object},
+                            "created": event.created
+                        }
                     except stripe.error.SignatureVerificationError as sig_error:
-                        self.logger.warning(f"Signature verification failed: {sig_error}")
+                        self.logger.error(f"Stripe signature verification failed: {sig_error}")
                         span.set_attribute("stripe.signature_verified", False)
+                        span.set_attribute("stripe.signature_error", str(sig_error))
+                        
+                        if os.getenv("ENVIRONMENT") == "production":
+                            raise ValueError(f"Invalid webhook signature: {sig_error}")
+                else:
+                    self.logger.warning(f"Webhook secret not configured or using mock secret, skipping verification for event: {event_type}")
+                    span.set_attribute("stripe.signature_verified", "skipped")
                 
                 event_dict = {
                     "type": event_type,
@@ -236,13 +256,17 @@ class StripeService:
                     },
                     "created": created if created else 1234567890
                 }
-                            
+                
+                if os.getenv("ENVIRONMENT") == "production" and not (self.webhook_secret and self.webhook_secret != "whsec_mock"):
+                    self.logger.warning(f"Processing unverified webhook in production: {event_type}")
+                
                 return event_dict
                 
         except Exception as e:
             span = trace.get_current_span()
             span.record_exception(e)
             span.set_attribute("stripe.error", True)
+            span.set_attribute("stripe.error_type", type(e).__name__)
             self.logger.error(f"Error handling webhook event: {e}")
             return {
                 "type": "unknown",
