@@ -22,7 +22,7 @@ class RedisCache:
     
     async def connect(self):
         if self._client is None:
-            redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+            redis_url = os.getenv("REDIS_URL", "redis://redis:6379/2")
             self._client = redis.from_url(
                 redis_url,
                 decode_responses=True,
