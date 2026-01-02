@@ -38,7 +38,9 @@ class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
                 existing_payment = await self.payment_service.payment_repo.get_payment_by_order_id(request.order_id)
                 if existing_payment:
                     span.set_attribute("payment.exists", True)
+
                     result = await self.payment_service.get_payment(str(existing_payment.id))
+                    client_secret = "NONE" if request.checkout_mode else result.client_secret
                     return payments_pb2.PaymentResponse(
                         payment_id=str(result.id),
                         order_id=str(result.order_id),
@@ -48,7 +50,7 @@ class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
                         stripe_payment_intent_id=str(result.stripe_payment_intent_id or ""),
                         payment_method_token=str(result.payment_method_token or ""),
                         currency=str(result.currency or "usd"),
-                        client_secret=result.client_secret or "",
+                        client_secret=client_secret or "",
                         checkout_url=result.checkout_url or "" if hasattr(result, 'checkout_url') else ""
                     )
 
@@ -72,10 +74,9 @@ class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
                 span.set_attribute("payment.id", str(result.id))
                 span.set_attribute("payment.status", str(result.status.value))
                 
-                # Get checkout_url if it exists
                 checkout_url = getattr(result, 'checkout_url', None) or ""
-                
-                return payments_pb2.PaymentResponse(
+                client_secret = "NONE" if checkout_mode else result.client_secret
+                response = payments_pb2.PaymentResponse(
                     payment_id=str(result.id),
                     order_id=str(result.order_id),
                     user_id=str(result.user_id),
@@ -84,10 +85,11 @@ class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
                     stripe_payment_intent_id=str(result.stripe_payment_intent_id or ""),
                     payment_method_token=str(result.payment_method_token or ""),
                     currency=str(result.currency or "usd"),
-                    client_secret=result.client_secret or "",
+                    client_secret=client_secret or "",
                     checkout_url=checkout_url
                 )
-                
+                return response
+
         except Exception as e:
             span = trace.get_current_span()
             span.record_exception(e)
@@ -111,7 +113,6 @@ class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
                 span.set_attribute("payment.status", str(result.status.value))
                 
                 checkout_url = getattr(result, 'checkout_url', None) or ""
-                
                 return payments_pb2.PaymentResponse(
                     payment_id=str(result.id),
                     order_id=str(result.order_id),

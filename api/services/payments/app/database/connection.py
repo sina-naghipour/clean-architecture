@@ -103,14 +103,11 @@ async def get_db():
     session = await db_connection.get_session()
     try:
         yield session
-        await session.commit()
-
     except Exception:
         await session.rollback()
         raise
     finally:
         await session.close()
-        await session.aclose()
 
 async def init_db():
     if not db_connection.engine:

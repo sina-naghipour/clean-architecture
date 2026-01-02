@@ -3,13 +3,13 @@ from database.database_models import PaymentDB, PaymentStatus
 from repositories.payments_repository import PaymentRepository
 from .stripe_service import StripeService
 from opentelemetry import trace
-
+import logging
 
 class PaymentOrchestrator:
-    def __init__(self, payment_repo: PaymentRepository, stripe_service: StripeService):
+    def __init__(self, payment_repo: PaymentRepository, stripe_service: StripeService, logger: logging.Logger):
         self.payment_repo = payment_repo
         self.stripe_service = stripe_service
-
+        self.logger = logger
     async def create_and_process_payment(self, payment_data: pydantic_models.PaymentCreate, tracer: trace.Tracer, checkout_mode: bool = True) -> PaymentDB:
         with tracer.start_as_current_span("create_and_process_payment") as span:
             span.set_attributes({
@@ -44,7 +44,6 @@ class PaymentOrchestrator:
                     'payment_id': str(created_payment.id),
                     'payment_type': 'checkout' if checkout_mode else 'payment_intent'
                 }
-                
                 stripe_result = await self.stripe_service.create_payment(
                     amount=payment_data.amount,
                     currency=payment_data.currency,
@@ -54,9 +53,9 @@ class PaymentOrchestrator:
                     success_url=payment_data.success_url,
                     cancel_url=payment_data.cancel_url
                 )
-                
                 if checkout_mode:
                     created_payment.checkout_url = stripe_result.get("url")
+                    await self.payment_repo.update_payment_checkout_url(created_payment.id, stripe_result.get("url"))
                     stripe_id = stripe_result.get("payment_intent_id") or stripe_result.get("id")
                 else:
                     stripe_id = stripe_result.get("id")
@@ -66,11 +65,17 @@ class PaymentOrchestrator:
                 
                 if stripe_id:
                     await self.payment_repo.update_payment_stripe_id(created_payment.id, stripe_id)
-                
-                payment_status = self.stripe_service.map_stripe_status_to_payment_status(stripe_result["status"])
+                if not checkout_mode:
+                    payment_status = self.stripe_service.map_stripe_status_to_payment_status(stripe_result["status"])
+                    created_payment.stripe_payment_intent_id = stripe_id
+                    
+                else:
+                    if stripe_result["type"] == "checkout":
+                        payment_status = PaymentStatus.PROCESSING
+                        created_payment.checkout_session_id = stripe_result["id"]
+                        created_payment.stripe_payment_intent_id = None
+
                 await self.payment_repo.update_payment_status(created_payment.id, payment_status)
-                
-                created_payment.stripe_payment_intent_id = stripe_id
                 created_payment.status = payment_status
                 
                 span.set_attribute("stripe.id", stripe_id or "none")

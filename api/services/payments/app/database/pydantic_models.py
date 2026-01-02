@@ -22,7 +22,7 @@ class PaymentCreate(BaseModel):
     cancel_url: Optional[str] = Field(default=None)
     checkout_mode: Optional[bool] = Field(default=True)
 
-class PaymentResponse(BaseModel):
+class   PaymentResponse(BaseModel):
     id: str
     order_id: str
     user_id: str
@@ -36,6 +36,7 @@ class PaymentResponse(BaseModel):
     updated_at: str
     client_secret: Optional[str] = Field(None)
     checkout_url: Optional[str] = Field(None)
+    checkout_session_id : Optional[str] = Field(None)
     @field_validator('created_at', 'updated_at', mode='before')
     @classmethod
     def convert_datetime(cls, v):

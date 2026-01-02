@@ -10,14 +10,24 @@ class WebhookIdempotencyService:
         self.logger = logger or logging.getLogger(__name__)
         self.EVENT_EXPIRY_DAYS = 7
         self.LOCK_TIMEOUT_SECONDS = 30
-    
+        if redis_cache:
+            self.logger.info("Idempotency service initialized with Redis")
+        else:
+            self.logger.warning("Idempotency service initialized WITHOUT Redis - idempotency disabled")
     async def is_duplicate_event(self, event_id: str) -> bool:
-        key = f"stripe_webhook:{event_id}"
-        exists = await self.redis.exists(key)
+        if not self.redis:
+            self.logger.error("Redis is None in is_duplicate_event!")
+            return False
         
-        if exists:
-            self.logger.info(f"Duplicate webhook detected, skipping: {event_id}")
-            return True
+        self.logger.info(f"Checking duplicate for event {event_id}, redis type: {type(self.redis)}")
+        
+        key = f"stripe_webhook:{event_id}"
+        try:
+            exists = await self.redis.exists(key)
+            self.logger.info(f"Redis.exists() result: {exists}")
+            return bool(exists)
+        except Exception as e:
+            self.logger.error(f"Redis.exists() failed: {e}")
         return False
     
     async def acquire_event_lock(self, event_id: str) -> bool:

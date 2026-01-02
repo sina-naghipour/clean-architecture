@@ -13,6 +13,7 @@ class PaymentNotificationService:
         self.logger = logger
     
     async def notify_orders_service(self, payment: PaymentDB, status: str, receipt_url: str = None) -> bool:
+        self.logger.info(f"SENDING TO ORDERS SERVICE: payment {payment.id}, status: {status}, receipt_url: {receipt_url}")
         if not payment or not payment.order_id:
             return False
         

@@ -27,6 +27,8 @@ class PaymentDB(Base):
     payment_method_token = Column(String, nullable=False)
     currency = Column(String, nullable=False, default="usd")
     client_secret = Column(String, nullable=True, default="PENDING") 
+    checkout_session_id = Column(String, nullable=True)
+    checkout_url = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

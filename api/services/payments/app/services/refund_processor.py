@@ -3,12 +3,13 @@ from database import pydantic_models
 from database.database_models import PaymentStatus
 from repositories.payments_repository import PaymentRepository
 from .stripe_service import StripeService
-
+import logging
 
 class RefundProcessor:
-    def __init__(self, payment_repo: PaymentRepository, stripe_service: StripeService):
+    def __init__(self, payment_repo: PaymentRepository, stripe_service: StripeService, logger: logging.Logger):
         self.payment_repo = payment_repo
         self.stripe_service = stripe_service
+        self.logger = logger
     
     async def process_refund(self, payment_id: str, refund_data: pydantic_models.RefundRequest) -> dict:
         payment_uuid = UUID(payment_id)

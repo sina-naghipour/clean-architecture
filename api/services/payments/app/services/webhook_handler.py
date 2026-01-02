@@ -3,12 +3,13 @@ from typing import Optional, Tuple
 from database.database_models import PaymentDB, PaymentStatus
 from repositories.payments_repository import PaymentRepository
 from opentelemetry import trace
-
+import logging
 
 class WebhookHandler:
-    def __init__(self, payment_repo: PaymentRepository, tracer: trace.Tracer):
+    def __init__(self, payment_repo: PaymentRepository, tracer: trace.Tracer, logger: logging.Logger):
         self.payment_repo = payment_repo
         self.tracer = tracer
+        self.logger = logger
     
     async def handle_stripe_event(self, event_type: str, event_data: dict, payment_id: UUID) -> Tuple[Optional[str], Optional[str]]:
         with self.tracer.start_as_current_span("handle_stripe_event") as span:
@@ -19,10 +20,13 @@ class WebhookHandler:
             
             payment = await self.payment_repo.get_payment_by_id(payment_id)
             if not payment:
+                self.logger.warning(f"Payment not found: {payment_id}")
                 return None, None
             
             result = None
             receipt_url = None
+            
+            self.logger.info(f"Handling {event_type} for payment {payment_id}, current status: {payment.status}")
             
             if event_type.startswith("checkout.session"):
                 result = await self._handle_checkout_session(event_type, event_data, payment)
@@ -35,6 +39,9 @@ class WebhookHandler:
             
             if result:
                 span.set_attribute("payment.new_status", result.upper())
+                self.logger.info(f"Payment {payment_id} updated to {result}")
+            else:
+                self.logger.info(f"No status change for {event_type}")
             
             return result, receipt_url
     
@@ -64,10 +71,15 @@ class WebhookHandler:
             await self.payment_repo.update_payment_status(payment.id, PaymentStatus.FAILED)
             return "failed"
         elif event_type == "payment_intent.created":
-            await self.payment_repo.update_payment_status(payment.id, PaymentStatus.CREATED)
-            if event_data.get("client_secret"):
-                await self.payment_repo.update_payment_client_secret(payment.id, event_data.get("client_secret"))
-            return "created"
+            # Only update if current status is earlier
+            if payment.status in [PaymentStatus.CREATED, PaymentStatus.PENDING]:
+                await self.payment_repo.update_payment_status(payment.id, PaymentStatus.CREATED)
+                if event_data.get("client_secret"):
+                    await self.payment_repo.update_payment_client_secret(payment.id, event_data.get("client_secret"))
+                return "created"
+            else:
+                self.logger.info(f"Ignoring payment_intent.created for payment {payment.id} - already {payment.status}")
+                return None
         elif event_type == "payment_intent.canceled":
             await self.payment_repo.update_payment_status(payment.id, PaymentStatus.CANCELED)
             return "canceled"
@@ -77,7 +89,13 @@ class WebhookHandler:
         if event_type == "charge.refunded":
             await self.payment_repo.update_payment_status(payment.id, PaymentStatus.REFUNDED)
             return "refunded"
-        elif event_type == "charge.succeeded" and event_data.get("status") == "succeeded":
+        elif event_type == "charge.succeeded":
             await self.payment_repo.update_payment_status(payment.id, PaymentStatus.SUCCEEDED)
+            self.logger.info(f"Charge succeeded for payment ID: {payment.id}")
             return "succeeded"
+        elif event_type == "charge.updated":
+            if event_data.get("status") == "succeeded" and event_data.get("paid") == True:
+                await self.payment_repo.update_payment_status(payment.id, PaymentStatus.SUCCEEDED)
+                self.logger.info(f"Charge updated to succeeded for payment ID: {payment.id}")
+                return "succeeded"
         return None

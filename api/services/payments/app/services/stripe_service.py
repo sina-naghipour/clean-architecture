@@ -300,7 +300,8 @@ class StripeService:
                 'id': session.id,
                 'url': session.url,
                 'payment_intent_id': session.payment_intent,
-                'type': 'checkout'
+                'type': 'checkout',
+                'client_secret' : 'NONE'
             }
         except stripe.error.StripeError as e:
             self.logger.error(f"Stripe Checkout failed: {e}")
@@ -330,6 +331,7 @@ class StripeService:
                 )
                 span.set_attribute("stripe.payment_type", "checkout_session")
                 span.set_attribute("stripe.checkout_url", result.get('url', ''))
+                
                 return result
             else:
                 result = await self.create_payment_intent(
@@ -344,6 +346,7 @@ class StripeService:
     async def retrieve_checkout_session(self, session_id):
         try:
             session = stripe.checkout.Session.retrieve(session_id)
+            
             return {
                 'id': session.id,
                 'status': session.status,

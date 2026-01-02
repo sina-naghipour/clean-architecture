@@ -22,6 +22,7 @@ class PaymentRepository:
             
             self.session.add(payment_data)
             await self.session.flush()
+            await self.session.commit()
             await self.session.refresh(payment_data)
 
             self.logger.info(f"Payment created successfully: {payment_data.id}")
@@ -107,6 +108,7 @@ class PaymentRepository:
             )
             result = await self.session.execute(stmt)
             await self.session.flush()
+            await self.session.commit()
             
             if result.rowcount > 0:
                 self.logger.info(f"Payment status updated successfully: {payment_id}")
@@ -135,6 +137,7 @@ class PaymentRepository:
             )
             result = await self.session.execute(stmt)
             await self.session.flush()
+            await self.session.commit()
             
             if result.rowcount > 0:
                 self.logger.info(f"Payment Stripe ID updated successfully: {payment_id}")
@@ -163,6 +166,8 @@ class PaymentRepository:
             )
             result = await self.session.execute(stmt)
             await self.session.flush()
+            await self.session.commit()
+
             
             if result.rowcount > 0:
                 self.logger.info(f"Payment client secret updated successfully: {payment_id}")
@@ -173,6 +178,35 @@ class PaymentRepository:
                 
         except SQLAlchemyError as e:
             self.logger.error(f"Error updating payment client secret {payment_id}: {e}")
+            await self.session.rollback()
+            raise
+    
+    @trace_repository_operation("update_payment_checkout_url")
+    async def update_payment_checkout_url(self, payment_id: UUID, checkout_url: str) -> Optional[PaymentDB]:
+        try:
+            self.logger.info(f"Updating payment checkout URL: {payment_id}")
+            
+            stmt = (
+                update(PaymentDB)
+                .where(PaymentDB.id == payment_id)
+                .values(
+                    checkout_url=checkout_url,
+                    updated_at=datetime.utcnow()
+                )
+            )
+            result = await self.session.execute(stmt)
+            await self.session.flush()
+            await self.session.commit()
+            
+            if result.rowcount > 0:
+                self.logger.info(f"Payment checkout URL updated successfully: {payment_id}")
+                return await self.get_payment_by_id(payment_id)
+            else:
+                self.logger.info(f"No payment found for checkout URL update: {payment_id}")
+                return None
+                
+        except SQLAlchemyError as e:
+            self.logger.error(f"Error updating payment checkout URL {payment_id}: {e}")
             await self.session.rollback()
             raise
 
@@ -212,4 +246,81 @@ class PaymentRepository:
             
         except SQLAlchemyError as e:
             self.logger.error(f"Error counting payments: {e}")
+            raise
+
+    @trace_repository_operation("get_payment_by_stripe_id")
+    async def get_payment_by_stripe_id(self, stripe_id: str) -> Optional[PaymentDB]:
+        """
+        Find payment by Stripe ID (payment_intent_id or session_id).
+        Searches in both stripe_payment_intent_id and stripe_session_id fields.
+        """
+        try:
+            self.logger.info(f"Fetching payment by Stripe ID: {stripe_id}")
+            
+            # First try to find by stripe_payment_intent_id
+            stmt = select(PaymentDB).where(PaymentDB.stripe_payment_intent_id == stripe_id)
+            result = await self.session.execute(stmt)
+            payment = result.scalar_one_or_none()
+            
+            # If not found, try to find by stripe_session_id
+            if not payment:
+                stmt = select(PaymentDB).where(PaymentDB.stripe_session_id == stripe_id)
+                result = await self.session.execute(stmt)
+                payment = result.scalar_one_or_none()
+            
+            if payment:
+                self.logger.info(f"Payment found for Stripe ID: {stripe_id}")
+            else:
+                self.logger.info(f"No payment found for Stripe ID: {stripe_id}")
+                
+            return payment
+            
+        except SQLAlchemyError as e:
+            self.logger.error(f"Error fetching payment for Stripe ID {stripe_id}: {e}")
+            raise
+
+    @trace_repository_operation("update_stripe_metadata")
+    async def update_stripe_metadata(self, payment_id: UUID, metadata: dict) -> Optional[PaymentDB]:
+        """
+        Update Stripe-specific metadata for a payment.
+        Merges new metadata with existing metadata if it exists.
+        """
+        try:
+            self.logger.info(f"Updating Stripe metadata for payment: {payment_id}")
+            
+            # First get the current payment to check existing metadata
+            payment = await self.get_payment_by_id(payment_id)
+            if not payment:
+                self.logger.warning(f"No payment found for metadata update: {payment_id}")
+                return None
+            
+            # Prepare the updated metadata
+            current_metadata = payment.metadata or {}
+            updated_metadata = {**current_metadata, **metadata}
+            
+            # Update the payment with new metadata
+            stmt = (
+                update(PaymentDB)
+                .where(PaymentDB.id == payment_id)
+                .values(
+                    metadata=updated_metadata,
+                    updated_at=datetime.utcnow()
+                )
+            )
+            result = await self.session.execute(stmt)
+            await self.session.flush()
+            await self.session.commit()
+            
+            if result.rowcount > 0:
+                self.logger.info(f"Stripe metadata updated successfully for payment: {payment_id}")
+                # Refresh and return the updated payment
+                await self.session.refresh(payment)
+                return payment
+            else:
+                self.logger.info(f"No payment updated for metadata: {payment_id}")
+                return None
+                
+        except SQLAlchemyError as e:
+            self.logger.error(f"Error updating Stripe metadata for payment {payment_id}: {e}")
+            await self.session.rollback()
             raise
