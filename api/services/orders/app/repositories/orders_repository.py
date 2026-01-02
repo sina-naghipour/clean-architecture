@@ -34,7 +34,6 @@ class OrderRepository:
         stmt = select(OrderDB).where(OrderDB.id == order_id)
         result = await self.session.execute(stmt)
         order = result.scalar_one_or_none()
-        
         if order:
             return order
         return None
@@ -77,7 +76,20 @@ class OrderRepository:
             return None
         
         return await self.get_order_by_id(order_id)
-    
+
+    @trace_repository_operation("update_order_checkout_url")
+    @OrderRepositoryDecorators.handle_repository_operation("update_order_checkout_url")
+    @invalidate_order_cache
+    async def update_order_checkout_url(self, order_id: UUID, checkout_url: str) -> Optional[OrderDB]:
+        stmt = update(OrderDB).where(OrderDB.id == order_id).values(checkout_url=checkout_url)
+        result = await self.session .execute(stmt)
+        await self.session.commit()
+        
+        if result.rowcount == 0:
+            return None
+        
+        return await self.get_order_by_id(order_id)
+
     @cache_user_orders
     @trace_repository_operation("list_orders")
     @OrderRepositoryDecorators.handle_repository_operation("list_orders")

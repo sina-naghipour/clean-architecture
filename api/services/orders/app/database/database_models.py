@@ -30,7 +30,8 @@ class OrderDB(Base):
     user_id = Column(String, nullable=True)
     receipt_url = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-
+    checkout_url = Column(String, nullable=True)
+    
     def to_dict(self) -> Dict[str, Any]:
         return {
             "id": str(self.id),
@@ -42,7 +43,8 @@ class OrderDB(Base):
             "payment_id": self.payment_id,
             "items": self.items,
             "created_at": self.created_at,
-            "user_id": self.user_id
+            "user_id": self.user_id,
+            "checkout_url": self.checkout_url,
         }
 
     @classmethod
@@ -58,5 +60,6 @@ class OrderDB(Base):
             items=data["items"],
             created_at=data.get("created_at", datetime.utcnow()),
             user_id=data.get("user_id"),
-            receipt_url=data.get("receipt_url")
+            receipt_url=data.get("receipt_url"),
+            checkout_url=data.get("checkout_url"),
         )

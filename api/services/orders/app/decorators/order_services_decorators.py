@@ -123,7 +123,7 @@ class OrderServiceDecorators:
                 order_user_id = order_data.user_id
             
             self.logger.debug(f"Order type: {type(order_data)}, Request user: {user_id}, Order user: {order_user_id}")
-            
+            self.logger.info(f"Fetched nooooooooooooooooooo {order_data.to_dict()}")
             if not order_user_id or order_user_id != user_id:
                 return create_problem_response(
                     status_code=404,

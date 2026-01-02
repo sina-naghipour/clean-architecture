@@ -12,7 +12,7 @@ class PaymentNotificationService:
         self.retry_service = retry_service
         self.logger = logger
     
-    async def notify_orders_service(self, payment: PaymentDB, status: str, receipt_url: str = None) -> bool:
+    async def notify_orders_service(self, payment: PaymentDB, status: str, receipt_url: str = None, checkout_url: str = None) -> bool:
         self.logger.info(f"SENDING TO ORDERS SERVICE: payment {payment.id}, status: {status}, receipt_url: {receipt_url}")
         if not payment or not payment.order_id:
             return False
@@ -23,7 +23,8 @@ class PaymentNotificationService:
             "payment_id": str(payment.id),
             "status": status,
             "stripe_payment_intent_id": payment.stripe_payment_intent_id,
-            "receipt_url": receipt_url
+            "receipt_url": receipt_url,
+            "checkout_url": checkout_url
         }
         
         try:

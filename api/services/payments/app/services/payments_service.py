@@ -116,12 +116,13 @@ class PaymentService:
                 result, receipt_url = await self.webhook_handler.handle_stripe_event(
                     event_type, event_data, UUID(payment_id)
                 )
-                
                 if result and result != "ignored":
                     payment = await self.payment_repo.get_payment_by_id(UUID(payment_id))
+                    checkout_url = getattr(payment, 'checkout_url', None)
+                   
                     if payment:
-                        self.logger.info(f"HEREE GOT CALEDDDDDDDDDDDDDDDDDDDDDDDDDDDDD : {payment} - {result} - {receipt_url}")
-                        await self.payment_notification_service.notify_orders_service(payment, result, receipt_url)
+                        self.logger.info(f"HEREE GOT CALEDDDDDDDDDDDDDDDDDDDDDDDDDDDDD : {checkout_url} - {result} - {receipt_url}")
+                        await self.payment_notification_service.notify_orders_service(payment, result, receipt_url, checkout_url)
                 
                 self.logger.info(f"Processed {event_type} for payment ID: {payment_id}")
                 return {"status": "processed", "event": event_type}
@@ -172,142 +173,11 @@ class PaymentService:
         
     @trace_service_operation("handle_checkout_success")
     async def handle_checkout_success(self, request):
-        """
-        Handle successful Stripe Checkout redirect.
-        The request object contains the payment_intent_id in its id field.
-        """
         return {"status": "success", "message": "Checkout success handled"}
-        # with self.tracer.start_as_current_span("handle_checkout_success") as span:
-        #     try:
-        #         # Extract payment intent ID from request
-        #         payment_intent_id = request.get("id")  # This is the key part!
-                
-        #         if not payment_intent_id:
-        #             raise ValueError("No payment_intent_id found in request")
-                    
-        #         span.set_attribute("stripe.payment_intent_id", payment_intent_id)
-        #         self.logger.info(f"Processing successful checkout for payment intent: {payment_intent_id}")
-                
-        #         # Get payment intent details from Stripe
-        #         payment_intent_data = await self.stripe_service.retrieve_payment_intent(payment_intent_id)
-                
-        #         # Find payment using stripe_payment_intent_id
-        #         payment = await self.payment_repo.get_payment_by_stripe_id(payment_intent_id)
-                
-        #         if payment:
-        #             # Update payment status to SUCCEEDED
-        #             await self.payment_repo.update_payment_status(payment.id, PaymentStatus.SUCCEEDED)
-                    
-        #             # Update payment with additional Stripe data if needed
-        #             await self.payment_repo.update_stripe_metadata(
-        #                 payment.id,
-        #                 {
-        #                     "stripe_payment_intent_id": payment_intent_id,
-        #                     "stripe_payment_intent_status": payment_intent_data.get('status'),
-        #                     "stripe_charge_id": payment_intent_data.get('latest_charge'),
-        #                     "last_status_update": datetime.utcnow().isoformat(),
-        #                     "payment_method": payment_intent_data.get('payment_method'),
-        #                     "customer_id": payment_intent_data.get('customer')
-        #                 }
-        #             )
-                    
-        #             # Update the order status (assuming you have an order service)
-        #             # if hasattr(self, 'order_service'):
-        #             #     await self.order_service.update_order_status(
-        #             #         payment.order_id, 
-        #             #         OrderStatus.PAID  # or whatever your order status enum is
-        #             #     )
-                    
-        #             span.set_attribute("payment.updated", True)
-        #             span.set_attribute("payment.id", str(payment.id))
-        #             span.set_attribute("order.id", payment.order_id)
-        #             self.logger.info(f"Payment {payment_intent_id} updated to SUCCEEDED for order {payment.order_id}")
-        #         else:
-        #             # Log if payment record not found
-        #             self.logger.warning(f"No payment found for Stripe payment intent: {payment_intent_id}")
-        #             span.set_attribute("payment.not_found", True)
-        #             # You might want to create a payment record here if it doesn't exist
-            
-        #         return {
-        #             "status": "success",
-        #             "stripe_payment_intent_id": payment_intent_id,
-        #             "payment_intent_status": payment_intent_data.get('status'),
-        #             "amount": payment_intent_data.get('amount'),
-        #             "currency": payment_intent_data.get('currency'),
-        #             "customer_id": payment_intent_data.get('customer'),
-        #             "payment_method": payment_intent_data.get('payment_method'),
-        #             "message": "Payment completed successfully"
-        #         }
-        #     except Exception as e:
-        #         span.record_exception(e)
-        #         self.logger.error(f"Error handling checkout success: {e}")
-        #         raise Exception(f"Failed to process checkout success: {str(e)}")
+
 
     @trace_service_operation("handle_checkout_cancel")
     async def handle_checkout_cancel(self, request):
-        """
-        Handle cancelled Stripe Checkout redirect.
-        The request object contains the payment_intent_id in its id field.
-        """
         return {"status": "cancelled", "message": "Checkout cancel handled"}
-        # with self.tracer.start_as_current_span("handle_checkout_cancel") as span:
-        #     try:
-        #         # Extract payment intent ID from request
-        #         payment_intent_id = request.get("id")  # This is the key part!
-                
-        #         if not payment_intent_id:
-        #             raise ValueError("No payment_intent_id found in request")
-                    
-        #         span.set_attribute("stripe.payment_intent_id", payment_intent_id)
-        #         self.logger.info(f"Processing cancelled checkout for payment intent: {payment_intent_id}")
-                
-        #         # Get payment intent details from Stripe
-        #         payment_intent_data = await self.stripe_service.retrieve_payment_intent(payment_intent_id)
-                
-        #         # Find payment using stripe_payment_intent_id
-        #         payment = await self.payment_repo.get_payment_by_stripe_id(payment_intent_id)
-                
-        #         if payment:
-        #             # Update payment status to CANCELED
-        #             await self.payment_repo.update_payment_status(payment.id, PaymentStatus.CANCELED)
-                    
-        #             # Update payment with cancellation metadata
-        #             await self.payment_repo.update_stripe_metadata(
-        #                 payment.id,
-        #                 {
-        #                     "stripe_payment_intent_id": payment_intent_id,
-        #                     "stripe_payment_intent_status": payment_intent_data.get('status'),
-        #                     "cancellation_reason": "user_cancelled",
-        #                     "last_status_update": datetime.utcnow().isoformat()
-        #                 }
-        #             )
-                    
-        #             # Update the order status
-        #             # if hasattr(self, 'order_service'):
-        #             #     await self.order_service.update_order_status(
-        #             #         payment.order_id, 
-        #             #         OrderStatus.CANCELLED  # or whatever your order status enum is
-        #             #     )
-                    
-        #             span.set_attribute("payment.updated", True)
-        #             span.set_attribute("payment.id", str(payment.id))
-        #             span.set_attribute("order.id", payment.order_id)
-        #             self.logger.info(f"Payment {payment_intent_id} updated to CANCELLED for order {payment.order_id}")
-        #         else:
-        #             self.logger.warning(f"No payment found for Stripe payment intent: {payment_intent_id}")
-        #             span.set_attribute("payment.not_found", True)
-            
-        #         return {
-        #             "status": "cancelled",
-        #             "stripe_payment_intent_id": payment_intent_id,
-        #             "payment_intent_status": payment_intent_data.get('status'),
-        #             "amount": payment_intent_data.get('amount'),
-        #             "currency": payment_intent_data.get('currency'),
-        #             "message": "Payment was cancelled by user"
-        #         }
-        #     except Exception as e:
-        #         span.record_exception(e)
-        #         self.logger.error(f"Error handling checkout cancel: {e}")
-        #         raise Exception(f"Failed to process checkout cancel: {str(e)}")
             
 

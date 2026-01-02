@@ -97,7 +97,6 @@ class OrderService:
             order_dict = order_db
         else:
             order_dict = order_db.to_dict()
-        
         return self._build_order_response(order_dict)
     
     @OrderServiceDecorators.handle_list_orders_errors
@@ -218,13 +217,12 @@ class OrderService:
         
         order_id = payment_data.get("order_id")
         status = payment_data.get("status")
-        
         if not order_id or not status:
             raise Exception("Missing order_id or status")
         
         order_uuid = UUID(order_id)
         order = await self.order_repo.get_order_by_id(order_uuid)
-        
+
         if not order:
             raise Exception(f"Order not found: {order_id}")
         
@@ -243,10 +241,12 @@ class OrderService:
             return {"status": "ignored", "reason": "already_in_state"}
         
         receipt_url = payment_data.get("receipt_url")
+        checkout_url = payment_data.get("checkout_url")
         if order.status == OrderStatus.PAID and order_status == OrderStatus.CREATED:
             return {"status": "ignored", "reason": "invalid_transition"}            
         await self.order_repo.update_order_status(order.id, order_status)
         await self.order_repo.update_order_receipt_url(order.id, receipt_url)
+        await self.order_repo.update_order_checkout_url(order.id, checkout_url)
         
         if idempotency_key:
             await self._store_idempotency_key(idempotency_key)
