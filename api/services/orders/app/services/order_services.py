@@ -97,6 +97,7 @@ class OrderService:
             order_dict = order_db
         else:
             order_dict = order_db.to_dict()
+        self.logger.info(f"order_dict: {order_dict}")
         return self._build_order_response(order_dict)
     
     @OrderServiceDecorators.handle_list_orders_errors
@@ -189,7 +190,6 @@ class OrderService:
                 unit_price=item['unit_price'],
             ) for item in items_dict
         ]
-        
         order_response = pydantic_models.OrderResponse(
             id=order_dict['id'],
             status=order_dict['status'],

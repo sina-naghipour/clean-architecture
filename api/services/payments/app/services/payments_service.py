@@ -18,8 +18,8 @@ from .payment_notification_service import PaymentNotificationService
 from .webhook_handler import WebhookHandler
 from .refund_processor import RefundProcessor
 from cache.redis_cache import cached, invalidate_cache
-from .webhook_idempotency import WebhookIdempotencyService
 from database.pydantic_models import PaymentStatus
+from .idempotency_service import IdempotencyService
 
 class PaymentService:
     def __init__(self, 
@@ -29,7 +29,8 @@ class PaymentService:
                  http_client: Optional[httpx.AsyncClient] = None, redis_cache = None):
         self.logger = logger
         self.tracer = trace.get_tracer(__name__)
-        
+        self.idempotency_service = IdempotencyService(redis_cache)
+
         self.payment_repo = PaymentRepository(db_session)
         self.stripe_service = stripe_service
         
@@ -67,7 +68,6 @@ class PaymentService:
         payment = await self.payment_orchestrator.create_and_process_payment(
             payment_data, self.tracer, checkout_mode
         )
-        self.logger.info(f"Created payment with HEREEEEEEEEEEEE : {self._to_payment_response(payment)}")
         return self._to_payment_response(payment)
     
     @trace_service_operation("get_payment")
@@ -119,36 +119,18 @@ class PaymentService:
                 if result and result != "ignored":
                     payment = await self.payment_repo.get_payment_by_id(UUID(payment_id))
                     checkout_url = getattr(payment, 'checkout_url', None)
-                   
+                
                     if payment:
-                        self.logger.info(f"HEREE GOT CALEDDDDDDDDDDDDDDDDDDDDDDDDDDDDD : {checkout_url} - {result} - {receipt_url}")
                         await self.payment_notification_service.notify_orders_service(payment, result, receipt_url, checkout_url)
                 
                 self.logger.info(f"Processed {event_type} for payment ID: {payment_id}")
                 return {"status": "processed", "event": event_type}
-            
-            # COMMENT OUT IDEMPOTENCY FOR NOW
-            # try:
-            #     result = await self.idempotency_service.handle_event_with_idempotency(
-            #         event_id=event_id,
-            #         event_type=event_type,
-            #         processor_func=process_event
-            #     )
-            #     
-            #     span.set_attribute("webhook.idempotency_status", result.get("status", "unknown"))
-            #     
-            #     return result
-            #     
-            # except Exception as e:
-            #     self.logger.error(f"Idempotency service error for event {event_id}: {e}")
-            #     span.record_exception(e)
-            #     span.set_attribute("webhook.idempotency_error", True)
-            #     
-            #     self.logger.warning(f"Falling back to non-idempotent processing for event {event_id}")
-            #     return await process_event()
-            
-            # DIRECT PROCESSING WITHOUT IDEMPOTENCY
-            return await process_event()
+        
+            return await self.idempotency_service.execute_once(
+                key=f"webhook:{event_id}",
+                operation=process_event,
+                ttl=7*86400
+            )
         
     @trace_service_operation("create_refund")
     @invalidate_cache(pattern="cache:payment_by_id:*")

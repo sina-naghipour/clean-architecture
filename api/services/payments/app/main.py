@@ -63,8 +63,12 @@ async def lifespan(app: FastAPI):
     )
     trace.set_tracer_provider(tracer_provider)
     redis_cache = RedisCache()
-    await redis_cache.connect()
-    
+    try:
+        await redis_cache.connect()
+        logger.info("Redis connected for idempotency")
+    except Exception as e:
+        logger.warning(f"Redis connection failed: {e}. Idempotency disabled.")
+        redis_cache = None 
     async for session in get_db():
         stripe_service = StripeService(logger)
         payment_service = PaymentService(logger, session,stripe_service=stripe_service, redis_cache=redis_cache)

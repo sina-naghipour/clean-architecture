@@ -45,6 +45,7 @@ class OrderDB(Base):
             "created_at": self.created_at,
             "user_id": self.user_id,
             "checkout_url": self.checkout_url,
+            "receipt_url": self.receipt_url,
         }
 
     @classmethod

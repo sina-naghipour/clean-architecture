@@ -14,9 +14,14 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=['payments'])
 
-def get_payment_service(db_session: AsyncSession = Depends(get_db)) -> PaymentService:
+async def get_redis_cache(request: Request):
+    return request.app.state.redis_cache
+
+
+def get_payment_service(db_session: AsyncSession = Depends(get_db), redis_cache = Depends(get_redis_cache)) -> PaymentService:
     stripe_service = StripeService(logger)
-    return PaymentService(logger=logger, db_session=db_session, stripe_service=stripe_service)
+    return PaymentService(logger=logger, db_session=db_session, stripe_service=stripe_service, redis_cache=redis_cache)
+
 
 @router.get(
     '/checkout_success',
