@@ -43,7 +43,7 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-payment_client = PaymentGRPCClient()
+payment_client = PaymentGRPCClient(logger)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

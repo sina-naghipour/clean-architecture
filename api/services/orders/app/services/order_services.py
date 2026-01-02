@@ -22,7 +22,7 @@ class OrderService:
     def __init__(self, logger, db_session):
         self.logger = logger
         self.order_repo = OrderRepository(db_session)
-        self.payment_client = PaymentGRPCClient()
+        self.payment_client = PaymentGRPCClient(logger)
         self.tracer = trace.get_tracer(__name__)
         self._payment_failure_count = 0
         self._circuit_open = False
@@ -70,7 +70,6 @@ class OrderService:
                 user_id=user_id,
                 payment_method_token=order_data.payment_method_token
             )
-            
             payment_id = payment.payment_id
             await self.order_repo.update_order_payment_id(created_order.id, payment_id)
             await self.order_repo.update_order_status(created_order.id, OrderStatus.PENDING)
@@ -79,7 +78,8 @@ class OrderService:
             order_dict['client_secret'] = payment.client_secret
             order_dict['payment_id'] = payment_id
             order_dict['status'] = OrderStatus.PENDING.value
-            
+            order_dict['checkout_url'] = payment.checkout_url
+
             if cache_service.enabled:
                 await cache_service.set_order(str(created_order.id), order_dict)
             
@@ -135,7 +135,10 @@ class OrderService:
                     order_id=order_id,
                     amount=amount,
                     user_id=user_id,
-                    payment_method_token=payment_method_token
+                    payment_method_token=payment_method_token,
+                    checkout_mode=os.getenv("PAYMENT_CHECKOUT_MODE", "true").lower() == "true",
+                    success_url=os.getenv("PAYMENT_SUCCESS_URL"),
+                    cancel_url=os.getenv("PAYMENT_CANCEL_URL")
                 )
                 self._payment_failure_count = 0
                 self._circuit_open = False
@@ -166,7 +169,16 @@ class OrderService:
                 await asyncio.sleep(delay)
         
         raise Exception(f"Payment processing failed")
+    async def _is_duplicate_request(self, idempotency_key: str) -> bool:
+        if not hasattr(self, '_processed_keys'):
+            self._processed_keys = set()
+        return idempotency_key in self._processed_keys
     
+    async def _store_idempotency_key(self, idempotency_key: str):
+        if not hasattr(self, '_processed_keys'):
+            self._processed_keys = set()
+        self._processed_keys.add(idempotency_key)
+
     def _build_order_response(self, order_dict):
         items_dict = order_dict.get('items', [])
         
@@ -189,7 +201,57 @@ class OrderService:
             payment_id=order_dict.get('payment_id'),
             created_at=order_dict.get('created_at'),
             receipt_url=order_dict.get('receipt_url'),
-            client_secret=order_dict.get('client_secret')
+            client_secret=order_dict.get('client_secret'),
+            checkout_url=order_dict.get('checkout_url')
         )
        
         return order_response
+    
+    @OrderServiceDecorators.handle_payment_webhook_errors
+    @trace_service_operation("handle_payment_webhook")
+    async def handle_payment_webhook(self, request, payment_data: dict):
+        idempotency_key = request.headers.get("X-Idempotency-Key")
+        
+        if idempotency_key and await self._is_duplicate_request(idempotency_key):
+            self.logger.info(f"Ignoring duplicate request: {idempotency_key}")
+            return {"status": "ignored", "reason": "duplicate"}
+        
+        order_id = payment_data.get("order_id")
+        status = payment_data.get("status")
+        
+        if not order_id or not status:
+            raise Exception("Missing order_id or status")
+        
+        order_uuid = UUID(order_id)
+        order = await self.order_repo.get_order_by_id(order_uuid)
+        
+        if not order:
+            raise Exception(f"Order not found: {order_id}")
+        
+        status_mapping = {
+            "succeeded": OrderStatus.PAID,
+            "failed": OrderStatus.PENDING,
+            "refunded": OrderStatus.CANCELED,
+            "canceled": OrderStatus.CANCELED,
+            "created" : OrderStatus.PENDING
+        }
+        
+        order_status = status_mapping.get(status)
+        if not order_status:
+            raise Exception(f"Unknown status: {status}")
+        if order.status == order_status:
+            return {"status": "ignored", "reason": "already_in_state"}
+        
+        receipt_url = payment_data.get("receipt_url")
+        if order.status == OrderStatus.PAID and order_status == OrderStatus.CREATED:
+            return {"status": "ignored", "reason": "invalid_transition"}            
+        await self.order_repo.update_order_status(order.id, order_status)
+        await self.order_repo.update_order_receipt_url(order.id, receipt_url)
+        
+        if idempotency_key:
+            await self._store_idempotency_key(idempotency_key)
+        
+        self.logger.info(f"Updated order {order_id} to {order_status.value}")
+        
+        return {"status": "success", "order_id": order_id, "updated_status": order_status.value}
+        

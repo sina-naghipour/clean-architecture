@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0epayments.proto\x12\x08payments\"\xea\x01\n\x14\x43reatePaymentRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\x12\x0e\n\x06\x61mount\x18\x03 \x01(\x01\x12\x10\n\x08\x63urrency\x18\x04 \x01(\t\x12\x1c\n\x14payment_method_token\x18\x05 \x01(\t\x12>\n\x08metadata\x18\x06 \x03(\x0b\x32,.payments.CreatePaymentRequest.MetadataEntry\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\'\n\x11GetPaymentRequest\x12\x12\n\npayment_id\x18\x01 \x01(\t\"C\n\rRefundRequest\x12\x12\n\npayment_id\x18\x01 \x01(\t\x12\x0e\n\x06\x61mount\x18\x02 \x01(\x01\x12\x0e\n\x06reason\x18\x03 \x01(\t\"\xd1\x01\n\x0fPaymentResponse\x12\x12\n\npayment_id\x18\x01 \x01(\t\x12\x10\n\x08order_id\x18\x02 \x01(\t\x12\x0f\n\x07user_id\x18\x03 \x01(\t\x12\x0e\n\x06\x61mount\x18\x04 \x01(\x01\x12\x0e\n\x06status\x18\x05 \x01(\t\x12 \n\x18stripe_payment_intent_id\x18\x06 \x01(\t\x12\x1c\n\x14payment_method_token\x18\x07 \x01(\t\x12\x10\n\x08\x63urrency\x18\x08 \x01(\t\x12\x15\n\rclient_secret\x18\t \x01(\t\"e\n\x0eRefundResponse\x12\x11\n\trefund_id\x18\x01 \x01(\t\x12\x0e\n\x06status\x18\x02 \x01(\t\x12\x0e\n\x06\x61mount\x18\x03 \x01(\x01\x12\x10\n\x08\x63urrency\x18\x04 \x01(\t\x12\x0e\n\x06reason\x18\x05 \x01(\t2\xe6\x01\n\x0ePaymentService\x12J\n\rCreatePayment\x12\x1e.payments.CreatePaymentRequest\x1a\x19.payments.PaymentResponse\x12\x44\n\nGetPayment\x12\x1b.payments.GetPaymentRequest\x1a\x19.payments.PaymentResponse\x12\x42\n\rProcessRefund\x12\x17.payments.RefundRequest\x1a\x18.payments.RefundResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0epayments.proto\x12\x08payments\"\xea\x02\n\x14\x43reatePaymentRequest\x12\x10\n\x08order_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\x12\x0e\n\x06\x61mount\x18\x03 \x01(\x01\x12\x10\n\x08\x63urrency\x18\x04 \x01(\t\x12\x1c\n\x14payment_method_token\x18\x05 \x01(\t\x12>\n\x08metadata\x18\x06 \x03(\x0b\x32,.payments.CreatePaymentRequest.MetadataEntry\x12\x18\n\x0bsuccess_url\x18\x07 \x01(\tH\x00\x88\x01\x01\x12\x17\n\ncancel_url\x18\x08 \x01(\tH\x01\x88\x01\x01\x12\x1a\n\rcheckout_mode\x18\t \x01(\x08H\x02\x88\x01\x01\x1a/\n\rMetadataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x42\x0e\n\x0c_success_urlB\r\n\x0b_cancel_urlB\x10\n\x0e_checkout_mode\"\'\n\x11GetPaymentRequest\x12\x12\n\npayment_id\x18\x01 \x01(\t\"C\n\rRefundRequest\x12\x12\n\npayment_id\x18\x01 \x01(\t\x12\x0e\n\x06\x61mount\x18\x02 \x01(\x01\x12\x0e\n\x06reason\x18\x03 \x01(\t\"\xfd\x01\n\x0fPaymentResponse\x12\x12\n\npayment_id\x18\x01 \x01(\t\x12\x10\n\x08order_id\x18\x02 \x01(\t\x12\x0f\n\x07user_id\x18\x03 \x01(\t\x12\x0e\n\x06\x61mount\x18\x04 \x01(\x01\x12\x0e\n\x06status\x18\x05 \x01(\t\x12 \n\x18stripe_payment_intent_id\x18\x06 \x01(\t\x12\x1c\n\x14payment_method_token\x18\x07 \x01(\t\x12\x10\n\x08\x63urrency\x18\x08 \x01(\t\x12\x15\n\rclient_secret\x18\t \x01(\t\x12\x19\n\x0c\x63heckout_url\x18\n \x01(\tH\x00\x88\x01\x01\x42\x0f\n\r_checkout_url\"e\n\x0eRefundResponse\x12\x11\n\trefund_id\x18\x01 \x01(\t\x12\x0e\n\x06status\x18\x02 \x01(\t\x12\x0e\n\x06\x61mount\x18\x03 \x01(\x01\x12\x10\n\x08\x63urrency\x18\x04 \x01(\t\x12\x0e\n\x06reason\x18\x05 \x01(\t2\xe6\x01\n\x0ePaymentService\x12J\n\rCreatePayment\x12\x1e.payments.CreatePaymentRequest\x1a\x19.payments.PaymentResponse\x12\x44\n\nGetPayment\x12\x1b.payments.GetPaymentRequest\x1a\x19.payments.PaymentResponse\x12\x42\n\rProcessRefund\x12\x17.payments.RefundRequest\x1a\x18.payments.RefundResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -34,17 +34,17 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_CREATEPAYMENTREQUEST_METADATAENTRY']._loaded_options = None
   _globals['_CREATEPAYMENTREQUEST_METADATAENTRY']._serialized_options = b'8\001'
   _globals['_CREATEPAYMENTREQUEST']._serialized_start=29
-  _globals['_CREATEPAYMENTREQUEST']._serialized_end=263
-  _globals['_CREATEPAYMENTREQUEST_METADATAENTRY']._serialized_start=216
-  _globals['_CREATEPAYMENTREQUEST_METADATAENTRY']._serialized_end=263
-  _globals['_GETPAYMENTREQUEST']._serialized_start=265
-  _globals['_GETPAYMENTREQUEST']._serialized_end=304
-  _globals['_REFUNDREQUEST']._serialized_start=306
-  _globals['_REFUNDREQUEST']._serialized_end=373
-  _globals['_PAYMENTRESPONSE']._serialized_start=376
-  _globals['_PAYMENTRESPONSE']._serialized_end=585
-  _globals['_REFUNDRESPONSE']._serialized_start=587
-  _globals['_REFUNDRESPONSE']._serialized_end=688
-  _globals['_PAYMENTSERVICE']._serialized_start=691
-  _globals['_PAYMENTSERVICE']._serialized_end=921
+  _globals['_CREATEPAYMENTREQUEST']._serialized_end=391
+  _globals['_CREATEPAYMENTREQUEST_METADATAENTRY']._serialized_start=295
+  _globals['_CREATEPAYMENTREQUEST_METADATAENTRY']._serialized_end=342
+  _globals['_GETPAYMENTREQUEST']._serialized_start=393
+  _globals['_GETPAYMENTREQUEST']._serialized_end=432
+  _globals['_REFUNDREQUEST']._serialized_start=434
+  _globals['_REFUNDREQUEST']._serialized_end=501
+  _globals['_PAYMENTRESPONSE']._serialized_start=504
+  _globals['_PAYMENTRESPONSE']._serialized_end=757
+  _globals['_REFUNDRESPONSE']._serialized_start=759
+  _globals['_REFUNDRESPONSE']._serialized_end=860
+  _globals['_PAYMENTSERVICE']._serialized_start=863
+  _globals['_PAYMENTSERVICE']._serialized_end=1093
 # @@protoc_insertion_point(module_scope)

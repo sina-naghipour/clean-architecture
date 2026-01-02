@@ -1,4 +1,3 @@
-# app/repositories/orders_repository.py
 from typing import List, Optional, Dict
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -42,6 +41,7 @@ class OrderRepository:
     
     @trace_repository_operation("update_order_payment_id")
     @OrderRepositoryDecorators.handle_repository_operation("update_order_payment_id")
+    @invalidate_order_cache
     async def update_order_payment_id(self, order_id: UUID, payment_id: str) -> Optional[OrderDB]:
         stmt = update(OrderDB).where(OrderDB.id == order_id).values(payment_id=payment_id)
         result = await self.session.execute(stmt)
@@ -50,14 +50,11 @@ class OrderRepository:
         if result.rowcount == 0:
             return None
         
-        if cache_service.enabled:
-            await cache_service.delete_order(str(order_id))
-        
         return await self.get_order_by_id(order_id)
     
-    @invalidate_order_cache
     @trace_repository_operation("update_order_status")
     @OrderRepositoryDecorators.handle_repository_operation("update_order_status")
+    @invalidate_order_cache
     async def update_order_status(self, order_id: UUID, new_status: OrderStatus) -> Optional[OrderDB]:
         stmt = update(OrderDB).where(OrderDB.id == order_id).values(status=new_status)
         result = await self.session.execute(stmt)
@@ -68,9 +65,9 @@ class OrderRepository:
         
         return await self.get_order_by_id(order_id)
     
-    @invalidate_order_cache
     @trace_repository_operation("update_order_receipt_url")
     @OrderRepositoryDecorators.handle_repository_operation("update_order_receipt_url")
+    @invalidate_order_cache
     async def update_order_receipt_url(self, order_id: UUID, receipt_url: str) -> Optional[OrderDB]:
         stmt = update(OrderDB).where(OrderDB.id == order_id).values(receipt_url=receipt_url)
         result = await self.session.execute(stmt)

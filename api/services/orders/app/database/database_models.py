@@ -56,5 +56,7 @@ class OrderDB(Base):
             payment_method_token=data.get("payment_method_token"),
             payment_id=data.get("payment_id"),
             items=data["items"],
-            created_at=data.get("created_at", datetime.utcnow())
+            created_at=data.get("created_at", datetime.utcnow()),
+            user_id=data.get("user_id"),
+            receipt_url=data.get("receipt_url")
         )

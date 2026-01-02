@@ -6,11 +6,12 @@ import time
 from typing import Optional
 from optl.trace_decorator import trace_service_operation
 from opentelemetry import trace
-
+import logging
 class PaymentGRPCClient:
-    def __init__(self):
+    def __init__(self,  logger: logging.Logger):
         self.host = os.getenv("PAYMENTS_GRPC_HOST", "payments")
         self.port = int(os.getenv("PAYMENTS_GRPC_PORT", "50051"))
+        self.logger = logger
         self.channel = None
         self.initialized = False
         self.failure_count = 0
@@ -46,10 +47,10 @@ class PaymentGRPCClient:
         self.circuit_open = False
     
     @trace_service_operation("create_payment_grpc")
-    async def create_payment(self, order_id, amount, user_id, payment_method_token):
+    async def create_payment(self, order_id, amount, user_id, payment_method_token, 
+                            checkout_mode=False, success_url=None, cancel_url=None):
         if not self.initialized:
             await self.initialize()
-        
         idempotency_key = f"create_{order_id}_{int(time.time())}"
         
         for attempt in range(self.max_retries):
@@ -65,21 +66,33 @@ class PaymentGRPCClient:
                         "order.id": str(order_id),
                         "user.id": str(user_id),
                         "amount": float(amount),
+                        "checkout.mode": checkout_mode,
                         "idempotency_key": idempotency_key
                     })
                     
                     stub = payments_pb2_grpc.PaymentServiceStub(self.channel)
-                    request = payments_pb2.CreatePaymentRequest(
-                        order_id=order_id,
-                        user_id=user_id,
-                        amount=amount,
-                        payment_method_token=payment_method_token,
-                        currency="usd"
-                    )
+                    
+                    # Build request with new optional fields
+                    request_kwargs = {
+                        "order_id": order_id,
+                        "user_id": user_id,
+                        "amount": amount,
+                        "payment_method_token": payment_method_token,
+                        "currency": "usd"
+                    }
+                    
+                    # Add optional fields if provided
+                    if success_url:
+                        request_kwargs["success_url"] = success_url
+                    if cancel_url:
+                        request_kwargs["cancel_url"] = cancel_url
+                    if not checkout_mode:  # Default is True, only send if False
+                        request_kwargs["checkout_mode"] = checkout_mode
+                    
+                    request = payments_pb2.CreatePaymentRequest(**request_kwargs)
                     
                     metadata = (('idempotency-key', idempotency_key),)
                     response = await stub.CreatePayment(request, metadata=metadata, timeout=10)
-                    
                     self._record_success()
                     span.set_attribute("grpc.success", True)
                     span.set_attribute("payment.id", response.payment_id)
@@ -100,9 +113,9 @@ class PaymentGRPCClient:
                 if attempt < self.max_retries - 1:
                     delay = 1.0 * (2 ** attempt)
                     await asyncio.sleep(delay)
-                    continue
+                continue
                 raise
-    
+
     @trace_service_operation("get_payment_grpc")
     async def get_payment(self, payment_id):
         if not self.initialized:
@@ -116,7 +129,7 @@ class PaymentGRPCClient:
                 span.set_attributes({
                     "grpc.service": "PaymentService",
                     "grpc.method": "GetPayment",
-                    "payment.id": str(payment_id)
+                    "payment.id": str(payment_id),
                 })
                 
                 stub = payments_pb2_grpc.PaymentServiceStub(self.channel)
@@ -127,11 +140,17 @@ class PaymentGRPCClient:
                 
                 span.set_attribute("grpc.success", True)
                 span.set_attribute("payment.status", response.status)
-                
                 return {
                     "id": response.payment_id,
+                    "order_id": response.order_id,
+                    "user_id": response.user_id,
+                    "amount": response.amount,
                     "status": response.status,
-                    "client_secret": response.client_secret
+                    "stripe_payment_intent_id": response.stripe_payment_intent_id,
+                    "payment_method_token": response.payment_method_token,
+                    "currency": response.currency,
+                    "client_secret": response.client_secret,
+                    "checkout_url": response.checkout_url if response.checkout_url else None
                 }
                 
         except grpc.RpcError as e:
@@ -139,8 +158,7 @@ class PaymentGRPCClient:
             span = trace.get_current_span()
             span.set_attribute("grpc.error_code", e.code().name)
             span.set_attribute("grpc.error_details", e.details()[:100])
-            raise
-    
+            raise   
     async def close(self):
         if self.channel:
             await self.channel.close()
