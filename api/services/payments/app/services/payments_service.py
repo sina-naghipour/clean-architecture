@@ -36,7 +36,6 @@ class PaymentService:
         
         notification_service = NotificationService(http_client)
         retry_service = RetryService()
-        # self.idempotency_service = WebhookIdempotencyService(redis_cache, logger)
 
         self.payment_orchestrator = PaymentOrchestrator(self.payment_repo, stripe_service, logger)
         self.payment_notification_service = PaymentNotificationService(notification_service, retry_service, logger)
