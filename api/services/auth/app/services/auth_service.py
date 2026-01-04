@@ -127,7 +127,8 @@ class AuthService:
             "user_id": str(user.id),
             "email": user.email,
             "name": user.name,
-            "role": user.role
+            "role": user.role,
+            "referral_code" : user.referral_code
         }
         
         access_token = self.token_service.create_access_token(token_payload)
@@ -289,7 +290,6 @@ class AuthService:
         self.logger.info(f"🔴 CACHE MISS for user {user_id}")
         
         user = await self.user_repository.get_by_id(user_id)
-        self.logger.info(f"USERRRRRRRRRRRRRRRR : {user}")
         if not user:
             self.logger.warning(f"User not found: {user_id}")
             return create_problem_response(
@@ -315,7 +315,7 @@ class AuthService:
             "email": user.email,
             "name": user.name,
             "referral_code": user.referral_code,
-            "referral_created_at": user.referral_created_at.isoformat(),
+            "referral_created_at": user.referral_created_at.isoformat() if user.referral_created_at else None,
             "referred_by": user.referred_by
             
         }
