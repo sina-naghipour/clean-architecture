@@ -7,9 +7,13 @@ from jwt import decode, ExpiredSignatureError, InvalidTokenError
 import os
 from services.order_helpers import create_problem_response
 from optl.trace_decorator import trace_middleware_operation
+import logging
+
+logger = logging.Logger(__name__)
 
 load_dotenv()
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "random_secret_key")
+
 
 class UserRole:
     ADMIN = "admin"
@@ -17,7 +21,7 @@ class UserRole:
 
 class AuthMiddleware(BaseHTTPMiddleware):
     
-    ALLOWED_ROLES: List[str] = [UserRole.ADMIN]
+    ALLOWED_ROLES: List[str] = [UserRole.ADMIN, UserRole.USER]
     
     @staticmethod
     def validate_token(token: str) -> dict:
@@ -34,7 +38,6 @@ class AuthMiddleware(BaseHTTPMiddleware):
             
             if payload.get('type') != 'access':
                 return {"valid": False, "error": "Invalid token type"}
-            
             return {
                 "valid": True,
                 "user_data": {
@@ -42,7 +45,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
                     "email": payload['email'],
                     "name": payload.get('name'),
                     "role": payload['role'],
-                    "is_active": payload.get('is_active', True)
+                    "is_active": payload.get('is_active', True),
+                    "referral_code": payload.get('referral_code', None)
                 }
             }
             

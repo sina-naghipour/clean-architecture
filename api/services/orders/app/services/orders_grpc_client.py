@@ -48,7 +48,7 @@ class PaymentGRPCClient:
     
     @trace_service_operation("create_payment_grpc")
     async def create_payment(self, order_id, amount, user_id, payment_method_token, 
-                            checkout_mode=False, success_url=None, cancel_url=None):
+                            checkout_mode=False, success_url=None, cancel_url=None, referral_code=None):
         if not self.initialized:
             await self.initialize()
         idempotency_key = f"create_{order_id}_{int(time.time())}"
@@ -72,21 +72,20 @@ class PaymentGRPCClient:
                     
                     stub = payments_pb2_grpc.PaymentServiceStub(self.channel)
                     
-                    # Build request with new optional fields
                     request_kwargs = {
                         "order_id": order_id,
                         "user_id": user_id,
                         "amount": amount,
                         "payment_method_token": payment_method_token,
-                        "currency": "usd"
+                        "currency": "usd",
+                        "referral_code": referral_code
                     }
                     
-                    # Add optional fields if provided
                     if success_url:
                         request_kwargs["success_url"] = success_url
                     if cancel_url:
                         request_kwargs["cancel_url"] = cancel_url
-                    if not checkout_mode:  # Default is True, only send if False
+                    if not checkout_mode:
                         request_kwargs["checkout_mode"] = checkout_mode
                     
                     request = payments_pb2.CreatePaymentRequest(**request_kwargs)
