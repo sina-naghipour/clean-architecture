@@ -10,6 +10,7 @@ class PaymentOrchestrator:
         self.payment_repo = payment_repo
         self.stripe_service = stripe_service
         self.logger = logger
+
     async def create_and_process_payment(self, payment_data: pydantic_models.PaymentCreate, tracer: trace.Tracer, checkout_mode: bool = True) -> PaymentDB:
         with tracer.start_as_current_span("create_and_process_payment") as span:
             span.set_attributes({
@@ -25,13 +26,18 @@ class PaymentOrchestrator:
                 span.set_attribute("payment.exists", True)
                 return existing_payment
             
+            referral_code = payment_data.metadata.get('referral_code') if payment_data.metadata else None
+            if referral_code:
+                span.set_attribute("referral.code", referral_code)
+            
             payment = PaymentDB(
                 order_id=payment_data.order_id,
                 user_id=payment_data.user_id,
                 amount=payment_data.amount,
                 payment_method_token=payment_data.payment_method_token,
                 currency=payment_data.currency,
-                status=PaymentStatus.CREATED
+                status=PaymentStatus.CREATED,
+                referral_code=referral_code 
             )
             
             created_payment = await self.payment_repo.create_payment(payment)
@@ -42,7 +48,8 @@ class PaymentOrchestrator:
                     'order_id': payment_data.order_id,
                     'user_id': payment_data.user_id,
                     'payment_id': str(created_payment.id),
-                    'payment_type': 'checkout' if checkout_mode else 'payment_intent'
+                    'payment_type': 'checkout' if checkout_mode else 'payment_intent',
+                    'referral_code': referral_code if referral_code else ''
                 }
                 stripe_result = await self.stripe_service.create_payment(
                     amount=payment_data.amount,

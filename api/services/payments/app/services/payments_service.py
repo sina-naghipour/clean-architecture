@@ -20,16 +20,18 @@ from .refund_processor import RefundProcessor
 from cache.redis_cache import cached, invalidate_cache
 from database.pydantic_models import PaymentStatus
 from .idempotency_service import IdempotencyService
-
+from .referrals_service import ReferralService
 class PaymentService:
     def __init__(self, 
-                 logger: logging.Logger, 
-                 db_session,
-                 stripe_service: StripeService,
-                 http_client: Optional[httpx.AsyncClient] = None, redis_cache = None):
+                logger: logging.Logger, 
+                db_session,
+                stripe_service: StripeService,
+                referral_service: Optional[ReferralService] = None,
+                http_client: Optional[httpx.AsyncClient] = None, redis_cache = None):
         self.logger = logger
         self.tracer = trace.get_tracer(__name__)
         self.idempotency_service = IdempotencyService(redis_cache)
+        self.referral_service = referral_service
 
         self.payment_repo = PaymentRepository(db_session)
         self.stripe_service = stripe_service
@@ -120,6 +122,19 @@ class PaymentService:
                     checkout_url = getattr(payment, 'checkout_url', None)
                 
                     if payment:
+                        # ADDED: Call referral service on successful payment
+                        if result == "succeeded" and self.referral_service and payment.referral_code:
+                            try:
+                                await self.referral_service.accrue_commission(
+                                    order_id=payment.order_id,
+                                    customer_id=payment.user_id,
+                                    amount=payment.amount,
+                                    referral_code=payment.referral_code
+                                )
+                                self.logger.info(f"Referral commission accrued for order: {payment.order_id}")
+                            except Exception as e:
+                                self.logger.error(f"Failed to accrue referral commission: {e}", exc_info=True)
+                        
                         await self.payment_notification_service.notify_orders_service(payment, result, receipt_url, checkout_url)
                 
                 self.logger.info(f"Processed {event_type} for payment ID: {payment_id}")
@@ -130,7 +145,7 @@ class PaymentService:
                 operation=process_event,
                 ttl=7*86400
             )
-        
+            
     @trace_service_operation("create_refund")
     @invalidate_cache(pattern="cache:payment_by_id:*")
     async def create_refund(self, payment_id: str, refund_data: pydantic_models.RefundRequest):
