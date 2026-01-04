@@ -21,7 +21,16 @@ class PaymentCreate(BaseModel):
     success_url: Optional[str] = Field(default=None)
     cancel_url: Optional[str] = Field(default=None)
     checkout_mode: Optional[bool] = Field(default=True)
-
+    referral_code: Optional[str] = Field(default=None)
+    
+    @field_validator('metadata', mode='before')
+    @classmethod
+    def prepare_metadata(cls, v, info):
+        if info.data.get('referral_code'):
+            if v is None:
+                v = {}
+            v['referral_code'] = info.data['referral_code']
+        return v
 class   PaymentResponse(BaseModel):
     id: str
     order_id: str

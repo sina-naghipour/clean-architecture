@@ -24,6 +24,7 @@ message CreatePaymentRequest {
   optional string success_url = 7; // Required for Stripe Checkout - redirect after success
   optional string cancel_url = 8;  // Required for Stripe Checkout - redirect after cancel
   optional bool checkout_mode = 9; // True = use Stripe Checkout, False = use Payment Intents
+  optional string referral_code = 10; // ADDED: Explicit referral code field
 }
 
 message GetPaymentRequest {

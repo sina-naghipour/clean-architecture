@@ -6,10 +6,11 @@ from opentelemetry import trace
 import logging
 
 class WebhookHandler:
-    def __init__(self, payment_repo: PaymentRepository, tracer: trace.Tracer, logger: logging.Logger):
+    def __init__(self, payment_repo: PaymentRepository, tracer: trace.Tracer, logger: logging.Logger, referral_service=None):
         self.payment_repo = payment_repo
         self.tracer = tracer
         self.logger = logger
+        self.referral_service = referral_service
     
     async def handle_stripe_event(self, event_type: str, event_data: dict, payment_id: UUID) -> Tuple[Optional[str], Optional[str]]:
         with self.tracer.start_as_current_span("handle_stripe_event") as span:
@@ -36,6 +37,20 @@ class WebhookHandler:
                 result = await self._handle_charge(event_type, event_data, payment)
                 if result == "succeeded":
                     receipt_url = event_data.get("receipt_url")
+            
+            if result == "succeeded" and payment.referral_code and self.referral_service:
+                try:
+                    await self.referral_service.accrue_commission(
+                        order_id=payment.order_id,
+                        customer_id=payment.user_id,
+                        amount=payment.amount,
+                        referral_code=payment.referral_code
+                    )
+                    span.set_attribute("referral.commission_attempted", True)
+                    self.logger.info(f"Referral commission attempted for order: {payment.order_id}")
+                except Exception as e:
+                    self.logger.error(f"Failed to accrue referral commission: {e}", exc_info=True)
+                    span.set_attribute("referral.error", str(e))
             
             if result:
                 span.set_attribute("payment.new_status", result.upper())
@@ -71,7 +86,6 @@ class WebhookHandler:
             await self.payment_repo.update_payment_status(payment.id, PaymentStatus.FAILED)
             return "failed"
         elif event_type == "payment_intent.created":
-            # Only update if current status is earlier
             if payment.status in [PaymentStatus.CREATED, PaymentStatus.PENDING]:
                 await self.payment_repo.update_payment_status(payment.id, PaymentStatus.CREATED)
                 if event_data.get("client_secret"):

@@ -274,8 +274,16 @@ class StripeService:
                 "data": {"object": {}},
                 "created": 1234567890
             }
+
     async def create_checkout_session(self, amount, currency, order_id, user_id, success_url, cancel_url, metadata=None):
         try:
+            stripe_metadata = {
+                'order_id': order_id,
+                'user_id': user_id,
+                'payment_type': 'checkout_session',
+                **(metadata or {})
+            }
+            
             session = stripe.checkout.Session.create(
                 payment_method_types=['card'],
                 line_items=[{
@@ -289,24 +297,79 @@ class StripeService:
                 mode='payment',
                 success_url=success_url,
                 cancel_url=cancel_url,
-                metadata={
-                    'order_id': order_id,
-                    'user_id': user_id,
-                    'payment_type': 'checkout_session',
-                    **(metadata or {})
-                }
+                metadata=stripe_metadata
             )
             return {
                 'id': session.id,
                 'url': session.url,
                 'payment_intent_id': session.payment_intent,
                 'type': 'checkout',
-                'client_secret' : 'NONE'
+                'client_secret': 'NONE'
             }
         except stripe.error.StripeError as e:
             self.logger.error(f"Stripe Checkout failed: {e}")
             raise Exception(f"Checkout creation failed: {e.user_message}")
 
+    async def create_payment_intent(
+        self,
+        amount: float,
+        currency: str,
+        payment_method_token: str,
+        metadata: Dict[str, Any] = None,
+        customer_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        try:
+            with self.tracer.start_as_current_span("stripe.create_payment_intent") as span:
+                span.set_attributes({
+                    "stripe.operation": "create_payment_intent",
+                    "stripe.amount": amount,
+                    "stripe.currency": currency,
+                    "stripe.mode": self.stripe_mode,
+                    "customer.id": customer_id or "none"
+                })
+                
+                self.logger.info(f"Creating payment intent for amount: {amount} {currency}")
+                
+                intent_data = {
+                    "amount": int(amount * 100),
+                    "currency": currency,
+                    "payment_method": payment_method_token,
+                    "confirm": False,
+                    "metadata": metadata or {},
+                    "payment_method_types": ["card"]
+                }
+                
+                if customer_id:
+                    intent_data["customer"] = customer_id
+                
+                payment_intent = stripe.PaymentIntent.create(**intent_data)
+                
+                self.logger.info(f"Payment intent created: {payment_intent.id}")
+                span.set_attributes({
+                    "stripe.payment_intent.id": payment_intent.id,
+                    "stripe.payment_intent.status": payment_intent.status
+                })
+                
+                return {
+                    "id": payment_intent.id,
+                    "status": payment_intent.status,
+                    "amount": payment_intent.amount / 100,
+                    "client_secret": payment_intent.client_secret
+                }
+                
+        except stripe.error.StripeError as e:
+            span = trace.get_current_span()
+            span.record_exception(e)
+            span.set_attribute("stripe.error", True)
+            span.set_attribute("stripe.error_type", type(e).__name__)
+            self.logger.error(f"Stripe error creating payment intent: {e}")
+            raise Exception(f"Stripe payment failed: {e.user_message if hasattr(e, 'user_message') else str(e)}")
+        except Exception as e:
+            span = trace.get_current_span()
+            span.record_exception(e)
+            self.logger.error(f"Unexpected error creating payment intent: {e}")
+            raise
+    
     async def create_payment(self, amount, currency, payment_method_token, metadata, checkout_mode=True, success_url=None, cancel_url=None):
         with self.tracer.start_as_current_span("stripe.create_payment") as span:
             span.set_attributes({

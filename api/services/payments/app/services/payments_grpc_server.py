@@ -12,7 +12,7 @@ class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
         self.payment_service = payment_service
         self.logger = logger
         self.tracer = trace.get_tracer(__name__)
-        
+
     @trace_service_operation("grpc_create_payment")
     async def CreatePayment(self, request, context):
         try:
@@ -54,21 +54,33 @@ class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
                         checkout_url=result.checkout_url or "" if hasattr(result, 'checkout_url') else ""
                     )
 
-                # Get optional fields with defaults
                 checkout_mode = request.checkout_mode if request.HasField("checkout_mode") else True
                 success_url = request.success_url if request.HasField("success_url") else None
                 cancel_url = request.cancel_url if request.HasField("cancel_url") else None
                 
-                payment_data = pydantic_models.PaymentCreate(
-                    order_id=request.order_id,
-                    amount=request.amount,
-                    user_id=request.user_id,
-                    payment_method_token=request.payment_method_token,
-                    currency=request.currency or "usd",
-                    checkout_mode=checkout_mode,
-                    success_url=success_url,
-                    cancel_url=cancel_url
-                )
+                referral_code = None
+                if request and "referral_code" in request:
+                    referral_code = request["referral_code"]
+                    span.set_attribute("referral.code", referral_code)
+                
+                payment_data_dict = {
+                    "order_id": request.order_id,
+                    "amount": request.amount,
+                    "user_id": request.user_id,
+                    "payment_method_token": request.payment_method_token,
+                    "currency": request.currency or "usd",
+                    "checkout_mode": checkout_mode,
+                    "success_url": success_url,
+                    "cancel_url": cancel_url,
+                    "metadata": dict(request.metadata) if request.metadata else None
+                }
+                self.logger.debug(f"Payment data for creation: {referral_code}")
+                self.logger.info(f"Payment data for creation: {referral_code}")
+                print(f"Payment data for creation: {referral_code}")
+                if referral_code:
+                    payment_data_dict["referral_code"] = referral_code
+                
+                payment_data = pydantic_models.PaymentCreate(**payment_data_dict)
                 
                 result = await self.payment_service.create_payment(payment_data)
                 span.set_attribute("payment.id", str(result.id))
@@ -96,7 +108,7 @@ class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
             span.set_attribute("grpc.error", True)
             self.logger.error(f"gRPC CreatePayment failed: {e}", exc_info=True)
             await context.abort(grpc.StatusCode.INTERNAL, str(e))
-    
+
     @trace_service_operation("grpc_get_payment")
     async def GetPayment(self, request, context):
         try:

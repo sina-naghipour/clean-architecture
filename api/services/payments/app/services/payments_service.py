@@ -41,7 +41,7 @@ class PaymentService:
 
         self.payment_orchestrator = PaymentOrchestrator(self.payment_repo, stripe_service, logger)
         self.payment_notification_service = PaymentNotificationService(notification_service, retry_service, logger)
-        self.webhook_handler = WebhookHandler(self.payment_repo, self.tracer, logger)
+        self.webhook_handler = WebhookHandler(self.payment_repo, self.tracer, logger, referral_service=self.referral_service)
         self.refund_processor = RefundProcessor(self.payment_repo, stripe_service, logger)
     
     def _to_payment_response(self, payment: PaymentDB) -> pydantic_models.PaymentResponse:
@@ -84,7 +84,7 @@ class PaymentService:
                 raise Exception(f"Payment not found: {payment_id}")
             
             return self._to_payment_response(payment)
-    
+
     @trace_service_operation("process_webhook")
     @invalidate_cache(pattern="cache:payment_by_id:*")
     async def process_webhook(self, request: Request, payload: bytes, sig_header: str):
@@ -122,19 +122,6 @@ class PaymentService:
                     checkout_url = getattr(payment, 'checkout_url', None)
                 
                     if payment:
-                        # ADDED: Call referral service on successful payment
-                        if result == "succeeded" and self.referral_service and payment.referral_code:
-                            try:
-                                await self.referral_service.accrue_commission(
-                                    order_id=payment.order_id,
-                                    customer_id=payment.user_id,
-                                    amount=payment.amount,
-                                    referral_code=payment.referral_code
-                                )
-                                self.logger.info(f"Referral commission accrued for order: {payment.order_id}")
-                            except Exception as e:
-                                self.logger.error(f"Failed to accrue referral commission: {e}", exc_info=True)
-                        
                         await self.payment_notification_service.notify_orders_service(payment, result, receipt_url, checkout_url)
                 
                 self.logger.info(f"Processed {event_type} for payment ID: {payment_id}")
@@ -145,7 +132,6 @@ class PaymentService:
                 operation=process_event,
                 ttl=7*86400
             )
-            
     @trace_service_operation("create_refund")
     @invalidate_cache(pattern="cache:payment_by_id:*")
     async def create_refund(self, payment_id: str, refund_data: pydantic_models.RefundRequest):
