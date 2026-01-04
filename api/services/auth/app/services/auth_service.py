@@ -8,6 +8,9 @@ from fastapi.responses import JSONResponse
 import hashlib
 import json
 import time
+import uuid
+from typing import Dict, Optional, Any
+from datetime import datetime
 
 from services.token_service import TokenService
 from services.password_service import PasswordService
@@ -39,12 +42,19 @@ class AuthService:
                 instance=str(request.url)
             )
         
+        referred_by_user = None
+        if register_data.referral_code:
+            referrer = await self.get_referrer_by_code(request, register_data.referral_code)
+            if referrer:
+                referred_by_user = uuid.UUID(referrer["referrer_id"])
+        
         hashed_password = self.password_service.encode_password(register_data.password)
         
         user_dict = {
             "email": register_data.email,
             "password": hashed_password,
-            "name": register_data.name
+            "name": register_data.name,
+            "referred_by": referred_by_user,
         }
         
         user = await self.user_repository.create_user(user_dict)
@@ -52,7 +62,10 @@ class AuthService:
         user_response = pydantic_models.UserResponse(
             id=str(user.id),
             email=user.email,
-            name=user.name
+            name=user.name,
+            referred_by=str(user.referred_by) if user.referred_by else None,
+            referral_code=user.referral_code,
+            referral_created_at=user.referral_created_at.isoformat() if user.referral_created_at else None
         )
         
         self.logger.info(f"User registered: {register_data.email}")
@@ -276,7 +289,7 @@ class AuthService:
         self.logger.info(f"🔴 CACHE MISS for user {user_id}")
         
         user = await self.user_repository.get_by_id(user_id)
-        
+        self.logger.info(f"USERRRRRRRRRRRRRRRR : {user}")
         if not user:
             self.logger.warning(f"User not found: {user_id}")
             return create_problem_response(
@@ -300,7 +313,11 @@ class AuthService:
         user_data = {
             "id": str(user.id),
             "email": user.email,
-            "name": user.name
+            "name": user.name,
+            "referral_code": user.referral_code,
+            "referral_created_at": user.referral_created_at.isoformat(),
+            "referred_by": user.referred_by
+            
         }
         
         await self.token_cache.cache_user_profile(user_id, user_data)
@@ -308,5 +325,69 @@ class AuthService:
         return pydantic_models.UserResponse(
             id=str(user.id),
             email=user.email,
-            name=user.name
+            name=user.name,
+            referred_by=str(user.referred_by) if user.referred_by else None,
+            referral_code=user.referral_code,
+            referral_created_at=user.referral_created_at.isoformat() if user.referral_created_at else None 
         )
+        
+    @handle_database_errors
+    @trace_service_operation("generate_referral_code")
+    async def generate_referral_code(self, request: Request, user_id: str) -> Dict[str, str]:
+        import time
+        user_uuid = uuid.UUID(user_id)
+        user = await self.user_repository.get_user_by_id(user_uuid)
+        
+        if not user:
+            return create_problem_response(
+                status_code=404,
+                error_type="not-found",
+                title="User not found",
+                detail="User not found",
+                instance=str(request.url)
+            )        
+        if user.referral_code:
+            return {"referral_code": user.referral_code, "message": "User already has referral code"}
+        
+        code = f"REF_{user.id.hex[:8].upper()}_{int(time.time()) % 10000:04d}"
+        
+        user.referral_code = code
+        user.referral_created_at = datetime.now()
+        await self.user_repository.update(
+            id=user_uuid,
+            obj_in={"referral_code": code, "referral_created_at": datetime.now()}
+        )        
+        return {"referral_code": code, "message": "Referral code generated"}
+
+    @handle_database_errors
+    @trace_service_operation("get_referrer_by_code")
+    async def get_referrer_by_code(self,request: Request, referral_code: str) -> Optional[Dict[str, Any]]:
+        user = await self.user_repository.get_user_by_referral_code(referral_code)
+        if not user:
+            return None
+        
+        return {
+            "referrer_id": str(user.id),
+            "referrer_email": user.email,
+            "referrer_name": user.name,
+            "referral_code": user.referral_code
+        }
+
+    @handle_database_errors
+    @trace_service_operation("get_user_referrals")
+    async def get_user_referrals(self,request: Request, user_id: str) -> Dict[str, Any]:
+        referrals = await self.user_repository.get_referrals_by_user(user_id)
+        
+        return {
+            "referrer_id": user_id,
+            "total_referrals": len(referrals),
+            "referrals": [
+                {
+                    "user_id": str(ref.id),
+                    "email": ref.email,
+                    "name": ref.name,
+                    "created_at": ref.created_at.isoformat()
+                }
+                for ref in referrals
+            ]
+        }

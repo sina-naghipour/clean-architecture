@@ -2,7 +2,9 @@ from functools import wraps
 from fastapi import Request, Depends, HTTPException, status
 from typing import Callable, Any
 from services.auth_service import AuthService
+import logging
 
+logger = logging.Logger(__name__)
 class AuthErrorDecorators:
     
     @staticmethod
@@ -17,6 +19,9 @@ class AuthErrorDecorators:
             try:
                 return await func(request, register_data, auth_service, *args, **kwargs)
             except Exception as e:
+                logger.info(f"error_str issssssssss : {e}")
+                print(f"error_str issssssssss : {e}")
+                logger.debug(f"error_str issssssssss : {e}")
                 AuthErrorDecorators._handle_register_exception(e, request)
         return wrapper
     

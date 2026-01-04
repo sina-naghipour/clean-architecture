@@ -54,10 +54,7 @@ def trace_service_operation(operation_name: str):
                     else:
                         continue
                     
-                    if param_name == "request":
-                        span.set_attribute("http.url", str(value.url))
-                        span.set_attribute("http.method", value.method)
-                    elif param_name == "user_id":
+                    if param_name == "user_id":
                         span.set_attribute("user.id", str(value))
                     elif param_name.endswith("_data"):
                         data_str = str(value)[:100]

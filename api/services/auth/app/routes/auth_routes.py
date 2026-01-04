@@ -12,7 +12,7 @@ from database.connection import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from cache.redis_manager import redis_manager
-
+from database.database_models import UserRole
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=['auth'])
@@ -53,7 +53,7 @@ async def get_token_from_header(authorization: str = Header(None)) -> str:
     status_code=201,
     summary="Register new user"
 )
-@rate_limiter.limit(max_requests=3, window_seconds=300, by_ip=True)
+# @rate_limiter.limit(max_requests=3, window_seconds=300, by_ip=True)
 @AuthErrorDecorators.handle_register_errors
 async def register_user(
     request: Request,
@@ -114,6 +114,57 @@ async def get_current_user(
     auth_service: AuthService = Depends(get_auth_service),
 ) -> pydantic_models.UserResponse:
     return await auth_service.get_current_user(request, token)
+
+@router.post(
+    '/users/{user_id}/generate-referral',
+    response_model=pydantic_models.ReferralCodeResponse,
+    summary="Generate referral code for user"
+)
+async def generate_referral_code(
+    request: Request,
+    user_id: str,
+    auth_service: AuthService = Depends(get_auth_service),
+    token: str = Depends(get_token_from_header)
+):
+    current_user = await auth_service.get_current_user(request, token)
+    if str(current_user.id) != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    referral_code = await auth_service.generate_referral_code(request, user_id)
+    return referral_code
+
+@router.get(
+    '/users/referrer/{referral_code}',
+    response_model=pydantic_models.ReferrerResponse,
+    summary="Get referrer info by referral code"
+)
+async def get_referrer_by_code(
+    request: Request,
+    referral_code: str,
+    auth_service: AuthService = Depends(get_auth_service)
+):
+    referrer = await auth_service.get_referrer_by_code(request, referral_code)
+    if not referrer:
+        raise HTTPException(status_code=404, detail="Referral code not found")
+    return referrer
+
+@router.get(
+    '/users/{user_id}/referrals',
+    response_model=pydantic_models.UserReferralsResponse,
+    summary="Get all users referred by this user"
+)
+async def get_user_referrals(
+    request: Request,
+    user_id: str,
+    auth_service: AuthService = Depends(get_auth_service),
+    token: str = Depends(get_token_from_header)
+):
+    current_user = await auth_service.get_current_user(request=request, token=token)
+    if str(current_user.id) != user_id and current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    referrals = await auth_service.get_user_referrals(request, user_id)
+    return referrals
 
 @router.delete(
     '/cleanup-test-data',

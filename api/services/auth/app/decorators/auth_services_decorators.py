@@ -17,7 +17,7 @@ def handle_database_errors(func):
                 error_type="conflict",
                 title="Conflict",
                 detail="Resource conflict occurred",
-                instance=str(request.url) if request else ""
+
             )
         except SQLAlchemyError as e:
             self = args[0]
@@ -29,7 +29,7 @@ def handle_database_errors(func):
                 error_type="internal_error",
                 title="Internal Server Error",
                 detail="Database operation failed",
-                instance=str(request.url) if request else ""
+
             )
     return wrapper
 
@@ -48,7 +48,7 @@ def handle_validation_errors(func):
                 error_type="bad_request",
                 title="Bad Request",
                 detail=str(e),
-                instance=str(request.url) if request else ""
+
             )
     return wrapper
 
@@ -67,7 +67,7 @@ def handle_unexpected_errors(func):
                 error_type="internal_error",
                 title="Internal Server Error",
                 detail="An unexpected error occurred",
-                instance=str(request.url) if request else ""
+
             )
     return wrapper
 

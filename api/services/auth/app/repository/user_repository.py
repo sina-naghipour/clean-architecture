@@ -131,3 +131,19 @@ class UserRepository(BaseRepository[UserModel]):
             .order_by(UserModel.created_at.desc())
         )
         return result.scalars().all()
+
+    @trace_repository_operation("get_user_by_referral_code")
+    async def get_user_by_referral_code(self, referral_code: str) -> Optional[UserModel]:
+        stmt = select(UserModel).where(UserModel.referral_code == referral_code)
+        result = await self.db_session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    @trace_repository_operation("get_referrals_by_user")
+    async def get_referrals_by_user(self, referrer_id: str) -> List[UserModel]:
+        stmt = select(UserModel).where(UserModel.referred_by == uuid.UUID(referrer_id))
+        result = await self.db_session.execute(stmt)
+        return list(result.scalars().all())
+
+    @trace_repository_operation("get_user_by_id")
+    async def get_user_by_id(self, user_id: uuid.UUID) -> Optional[UserModel]:
+        return await self.get_by_id(user_id)

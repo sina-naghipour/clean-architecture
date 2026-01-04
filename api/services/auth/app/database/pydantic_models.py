@@ -1,12 +1,13 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
-
+from .database_models import UserRole
 
 class User(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8, description="Password must be at least 8 characters long")
     name: str = Field(..., min_length=1, description="Name is required")
+    referral_code: Optional[str] = Field(None, description="Optional referral code for signup")
 
     @field_validator('password')
     def password_strength(cls, v):
@@ -57,7 +58,9 @@ class UserResponse(BaseModel):
     id: str
     email: EmailStr
     name: str
-
+    referred_by: Optional[str] = None
+    referral_code: Optional[str] = None
+    referral_created_at: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -74,7 +77,6 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     name: str
-
 
 class UserInDB(BaseModel):
     id: str
@@ -99,3 +101,25 @@ class ErrorResponse(BaseModel):
     status: int
     detail: str
     instance: Optional[str] = None
+    
+class ReferralCodeResponse(BaseModel):
+    referral_code: str
+    message: str = "Referral code generated"
+    share_url: Optional[str] = None
+
+class ReferrerResponse(BaseModel):
+    referrer_id: str
+    referrer_email: str
+    referrer_name: str
+    referral_code: str
+
+class ReferredUserResponse(BaseModel):
+    user_id: str
+    email: str
+    name: str
+    created_at: str
+
+class UserReferralsResponse(BaseModel):
+    referrer_id: str
+    total_referrals: int
+    referrals: List[ReferredUserResponse]
