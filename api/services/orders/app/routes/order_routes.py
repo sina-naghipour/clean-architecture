@@ -34,8 +34,8 @@ async def create_order(
     request: Request,
     order_data: pydantic_models.OrderCreate,
     order_service: OrderService = Depends(get_order_service),
-    x_referral_code: Optional[str] = Header(None, alias="X-Referral-Code")
 ) -> pydantic_models.OrderResponse:
+    x_referral_code = request.headers.get("X-Referral-Code")
     referral_code = x_referral_code
     if not referral_code and hasattr(request.state, 'user'):
         referral_code = request.state.user.get('referral_code') 
