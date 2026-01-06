@@ -7,6 +7,8 @@ from database import pydantic_models
 from decorators.order_routes_decorators import OrderErrorDecorators
 from database.connection import get_db
 from dotenv import load_dotenv
+from typing import Optional
+
 
 load_dotenv()
 
@@ -32,8 +34,12 @@ async def create_order(
     request: Request,
     order_data: pydantic_models.OrderCreate,
     order_service: OrderService = Depends(get_order_service),
-) -> pydantic_models.OrderResponse:   
-    return await order_service.create_order(request, order_data, request.state.user['id'])
+    x_referral_code: Optional[str] = Header(None, alias="X-Referral-Code")
+) -> pydantic_models.OrderResponse:
+    referral_code = x_referral_code
+    if not referral_code and hasattr(request.state, 'user'):
+        referral_code = request.state.user.get('referral_code') 
+    return await order_service.create_order(request, order_data, request.state.user['id'], referral_code)
 
 @router.get(
     '/',

@@ -29,7 +29,7 @@ class OrderService:
     
     @OrderServiceDecorators.handle_create_order_errors
     @trace_service_operation("create_order")
-    async def create_order(self, request, order_data, user_id):
+    async def create_order(self, request, order_data, user_id, referral_code):
         if not order_data.items:
             return create_problem_response(
                 status_code=400,
@@ -64,9 +64,6 @@ class OrderService:
         created_order = await self.order_repo.create_order(order_db)
         
         try:
-            referral_code = None
-            if hasattr(request.state, 'user') and 'referral_code' in request.state.user:
-                referral_code = request.state.user['referral_code']
             payment = await self._create_payment(
                 order_id=str(created_order.id),
                 amount=created_order.total,
