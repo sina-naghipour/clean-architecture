@@ -128,7 +128,7 @@ class AuthService:
             "email": user.email,
             "name": user.name,
             "role": user.role,
-            "referral_code" : user.referral_code
+            "referrer_id" : str(user.referred_by)
         }
         
         access_token = self.token_service.create_access_token(token_payload)

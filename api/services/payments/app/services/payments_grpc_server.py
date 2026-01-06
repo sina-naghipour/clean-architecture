@@ -23,7 +23,8 @@ class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
                     "order.id": str(request.order_id),
                     "user.id": str(request.user_id),
                     "amount": float(request.amount),
-                    "checkout.mode": request.checkout_mode if request.HasField("checkout_mode") else True
+                    "checkout.mode": request.checkout_mode if request.HasField("checkout_mode") else True,
+                    "referrer_id": request.referrer_id if request.HasField("referrer_id") else None
                 })
                 
                 self.logger.info(f"gRPC CreatePayment for order: {request.order_id}")
@@ -58,10 +59,6 @@ class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
                 success_url = request.success_url if request.HasField("success_url") else None
                 cancel_url = request.cancel_url if request.HasField("cancel_url") else None
                 
-                referral_code = None
-                if request and "referral_code" in request:
-                    referral_code = request["referral_code"]
-                    span.set_attribute("referral.code", referral_code)
                 
                 payment_data_dict = {
                     "order_id": request.order_id,
@@ -74,14 +71,8 @@ class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
                     "cancel_url": cancel_url,
                     "metadata": dict(request.metadata) if request.metadata else None
                 }
-                self.logger.debug(f"Payment data for creation: {referral_code}")
-                self.logger.info(f"Payment data for creation: {referral_code}")
-                print(f"Payment data for creation: {referral_code}")
-                if referral_code:
-                    payment_data_dict["referral_code"] = referral_code
-                
+                payment_data_dict["referrer_id"] = request.referrer_id
                 payment_data = pydantic_models.PaymentCreate(**payment_data_dict)
-                
                 result = await self.payment_service.create_payment(payment_data)
                 span.set_attribute("payment.id", str(result.id))
                 span.set_attribute("payment.status", str(result.status.value))
@@ -98,7 +89,7 @@ class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
                     payment_method_token=str(result.payment_method_token or ""),
                     currency=str(result.currency or "usd"),
                     client_secret=client_secret or "",
-                    checkout_url=checkout_url
+                    checkout_url=checkout_url,
                 )
                 return response
 

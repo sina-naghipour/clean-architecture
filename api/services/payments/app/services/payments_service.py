@@ -5,7 +5,6 @@ from fastapi import Request
 import httpx
 from opentelemetry import trace
 from optl.trace_decorator import trace_service_operation
-from datetime import datetime
 
 from database import pydantic_models
 from database.database_models import PaymentDB
@@ -20,18 +19,19 @@ from .refund_processor import RefundProcessor
 from cache.redis_cache import cached, invalidate_cache
 from database.pydantic_models import PaymentStatus
 from .idempotency_service import IdempotencyService
-from .referrals_service import ReferralService
+from .commissions_service import CommissionService
+
 class PaymentService:
     def __init__(self, 
                 logger: logging.Logger, 
                 db_session,
                 stripe_service: StripeService,
-                referral_service: Optional[ReferralService] = None,
+                commission_service: Optional[CommissionService] = None,
                 http_client: Optional[httpx.AsyncClient] = None, redis_cache = None):
         self.logger = logger
         self.tracer = trace.get_tracer(__name__)
         self.idempotency_service = IdempotencyService(redis_cache)
-        self.referral_service = referral_service
+        self.commission_service = commission_service
 
         self.payment_repo = PaymentRepository(db_session)
         self.stripe_service = stripe_service
@@ -39,9 +39,20 @@ class PaymentService:
         notification_service = NotificationService(http_client)
         retry_service = RetryService()
 
-        self.payment_orchestrator = PaymentOrchestrator(self.payment_repo, stripe_service, logger)
+        self.payment_orchestrator = PaymentOrchestrator(
+            self.payment_repo, 
+            stripe_service, 
+            logger
+        )
+        
+        self.webhook_handler = WebhookHandler(
+            self.payment_repo, 
+            self.tracer, 
+            logger,
+            commission_service=self.commission_service
+        )
+        
         self.payment_notification_service = PaymentNotificationService(notification_service, retry_service, logger)
-        self.webhook_handler = WebhookHandler(self.payment_repo, self.tracer, logger, referral_service=self.referral_service)
         self.refund_processor = RefundProcessor(self.payment_repo, stripe_service, logger)
     
     def _to_payment_response(self, payment: PaymentDB) -> pydantic_models.PaymentResponse:
@@ -117,6 +128,7 @@ class PaymentService:
                 result, receipt_url = await self.webhook_handler.handle_stripe_event(
                     event_type, event_data, UUID(payment_id)
                 )
+                
                 if result and result != "ignored":
                     payment = await self.payment_repo.get_payment_by_id(UUID(payment_id))
                     checkout_url = getattr(payment, 'checkout_url', None)
@@ -132,6 +144,7 @@ class PaymentService:
                 operation=process_event,
                 ttl=7*86400
             )
+    
     @trace_service_operation("create_refund")
     @invalidate_cache(pattern="cache:payment_by_id:*")
     async def create_refund(self, payment_id: str, refund_data: pydantic_models.RefundRequest):
@@ -157,9 +170,6 @@ class PaymentService:
     async def handle_checkout_success(self, request):
         return {"status": "success", "message": "Checkout success handled"}
 
-
     @trace_service_operation("handle_checkout_cancel")
     async def handle_checkout_cancel(self, request):
         return {"status": "cancelled", "message": "Checkout cancel handled"}
-            
-

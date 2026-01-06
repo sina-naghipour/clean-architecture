@@ -46,7 +46,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
                     "name": payload.get('name'),
                     "role": payload['role'],
                     "is_active": payload.get('is_active', True),
-                    "referral_code": payload.get('referral_code', None)
+                    "referrer_id": payload.get('referrer_id', None),
+                    "token": token
                 }
             }
             

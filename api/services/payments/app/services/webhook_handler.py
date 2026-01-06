@@ -6,11 +6,11 @@ from opentelemetry import trace
 import logging
 
 class WebhookHandler:
-    def __init__(self, payment_repo: PaymentRepository, tracer: trace.Tracer, logger: logging.Logger, referral_service=None):
+    def __init__(self, payment_repo: PaymentRepository, tracer: trace.Tracer, logger: logging.Logger, commission_service=None):
         self.payment_repo = payment_repo
         self.tracer = tracer
         self.logger = logger
-        self.referral_service = referral_service
+        self.commission_service = commission_service
     
     async def handle_stripe_event(self, event_type: str, event_data: dict, payment_id: UUID) -> Tuple[Optional[str], Optional[str]]:
         with self.tracer.start_as_current_span("handle_stripe_event") as span:
@@ -31,27 +31,45 @@ class WebhookHandler:
             
             if event_type.startswith("checkout.session"):
                 result = await self._handle_checkout_session(event_type, event_data, payment)
+                if result == "succeeded" and payment.referrer_id and self.commission_service:
+                    try:
+                        await self.commission_service.accrue_commission(
+                            order_id=payment.order_id,
+                            customer_id=payment.user_id,
+                            amount=payment.amount,
+                            referrer_id=payment.referrer_id
+                        )
+                        span.set_attribute("commission.attempted", True)
+                        span.set_attribute("commission.referrer_id", payment.referrer_id)
+                        self.logger.info(f"Commission accrued for referrer: {payment.referrer_id}, order: {payment.order_id}")
+                    except Exception as e:
+                        self.logger.error(f"Failed to accrue commission: {e}", exc_info=True)
+                        span.set_attribute("commission.error", str(e))
+                        span.set_attribute("commission.failed", True)
+
             elif event_type.startswith("payment_intent."):
                 result = await self._handle_payment_intent(event_type, event_data, payment)
             elif event_type.startswith("charge."):
                 result = await self._handle_charge(event_type, event_data, payment)
                 if result == "succeeded":
                     receipt_url = event_data.get("receipt_url")
-            
-            if result == "succeeded" and payment.referral_code and self.referral_service:
-                try:
-                    await self.referral_service.accrue_commission(
-                        order_id=payment.order_id,
-                        customer_id=payment.user_id,
-                        amount=payment.amount,
-                        referral_code=payment.referral_code
-                    )
-                    span.set_attribute("referral.commission_attempted", True)
-                    self.logger.info(f"Referral commission attempted for order: {payment.order_id}")
-                except Exception as e:
-                    self.logger.error(f"Failed to accrue referral commission: {e}", exc_info=True)
-                    span.set_attribute("referral.error", str(e))
-            
+
+                    if payment.referrer_id and self.commission_service:
+                        try:
+                            await self.commission_service.accrue_commission(
+                                order_id=payment.order_id,
+                                customer_id=payment.user_id,
+                                amount=payment.amount,
+                                referrer_id=payment.referrer_id
+                            )
+                            span.set_attribute("commission.attempted", True)
+                            span.set_attribute("commission.referrer_id", payment.referrer_id)
+                            self.logger.info(f"Commission accrued for referrer: {payment.referrer_id}, order: {payment.order_id}")
+                        except Exception as e:
+                            self.logger.error(f"Failed to accrue commission: {e}", exc_info=True)
+                            span.set_attribute("commission.error", str(e))
+                            span.set_attribute("commission.failed", True)
+                
             if result:
                 span.set_attribute("payment.new_status", result.upper())
                 self.logger.info(f"Payment {payment_id} updated to {result}")

@@ -16,12 +16,17 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExport
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from services.stripe_service import StripeService
 
-load_dotenv()
+from services.commissions_service import CommissionService
+from repositories.commissions_repository import CommissionRepository
+
 
 from routes.payments_routes import router as payment_router
 from services.payments_service import PaymentService
 from database.connection import get_db
 from services.payments_grpc_server import serve_grpc
+
+
+load_dotenv()
 
 HOST = os.getenv('HOST', '0.0.0.0')
 PORT = int(os.getenv('PORT', '8001'))
@@ -71,7 +76,9 @@ async def lifespan(app: FastAPI):
         redis_cache = None 
     async for session in get_db():
         stripe_service = StripeService(logger)
-        payment_service = PaymentService(logger, session,stripe_service=stripe_service, redis_cache=redis_cache)
+        commission_repository = CommissionRepository(session, logger)
+        commission_service = CommissionService(commission_repository, logger)
+        payment_service = PaymentService(logger, session,stripe_service=stripe_service, redis_cache=redis_cache, commission_service=commission_service)
         
         grpc_task = asyncio.create_task(
             serve_grpc(payment_service, port=GRPC_PORT)

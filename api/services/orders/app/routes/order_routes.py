@@ -35,11 +35,7 @@ async def create_order(
     order_data: pydantic_models.OrderCreate,
     order_service: OrderService = Depends(get_order_service),
 ) -> pydantic_models.OrderResponse:
-    x_referral_code = request.headers.get("X-Referral-Code")
-    referral_code = x_referral_code
-    if not referral_code and hasattr(request.state, 'user'):
-        referral_code = request.state.user.get('referral_code') 
-    return await order_service.create_order(request, order_data, request.state.user['id'], referral_code)
+    return await order_service.create_order(request, order_data, request.state.user['id'])
 
 @router.get(
     '/',

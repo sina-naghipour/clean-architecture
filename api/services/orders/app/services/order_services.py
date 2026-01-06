@@ -18,6 +18,11 @@ from opentelemetry import trace
 from optl.trace_decorator import trace_service_operation
 from cache.cache_service import cache_service
 
+import aiohttp
+import asyncio
+from typing import Optional
+
+
 class OrderService:
     def __init__(self, logger, db_session):
         self.logger = logger
@@ -29,7 +34,7 @@ class OrderService:
     
     @OrderServiceDecorators.handle_create_order_errors
     @trace_service_operation("create_order")
-    async def create_order(self, request, order_data, user_id, referral_code):
+    async def create_order(self, request, order_data, user_id):
         if not order_data.items:
             return create_problem_response(
                 status_code=400,
@@ -64,12 +69,13 @@ class OrderService:
         created_order = await self.order_repo.create_order(order_db)
         
         try:
+            referrer_id = request.state.user.get('referrer_id') if hasattr(request.state, 'user') else None
             payment = await self._create_payment(
                 order_id=str(created_order.id),
                 amount=created_order.total,
                 user_id=user_id,
                 payment_method_token=order_data.payment_method_token,
-                referral_code=referral_code
+                referrer_id=referrer_id
             )
             payment_id = payment.payment_id
             await self.order_repo.update_order_payment_id(created_order.id, payment_id)
@@ -123,7 +129,7 @@ class OrderService:
         
         return order_list
     
-    async def _create_payment(self, order_id, amount, user_id, payment_method_token, referral_code=None):
+    async def _create_payment(self, order_id, amount, user_id, payment_method_token, referrer_id=None):
         if self._circuit_open:
             raise Exception("Payment service unavailable (circuit breaker open)")
         
@@ -140,7 +146,7 @@ class OrderService:
                     checkout_mode=os.getenv("PAYMENT_CHECKOUT_MODE", "true").lower() == "true",
                     success_url=os.getenv("PAYMENT_SUCCESS_URL"),
                     cancel_url=os.getenv("PAYMENT_CANCEL_URL"),
-                    referral_code=referral_code
+                    referrer_id=referrer_id
                 )
                 self._payment_failure_count = 0
                 self._circuit_open = False
@@ -180,6 +186,8 @@ class OrderService:
         if not hasattr(self, '_processed_keys'):
             self._processed_keys = set()
         self._processed_keys.add(idempotency_key)
+
+
 
     def _build_order_response(self, order_dict):
         items_dict = order_dict.get('items', [])

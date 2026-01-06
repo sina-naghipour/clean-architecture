@@ -1,25 +1,16 @@
 from typing import Optional, List
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 import logging
 
-from database.database_models import ReferralDB, CommissionDB
+from database.database_models import CommissionDB
 
-class ReferralRepository:
+class CommissionRepository:
     def __init__(self, session: AsyncSession, logger: logging.Logger = None):
         self.session = session
         self.logger = logger or logging.getLogger(__name__)
-
-    async def get_referral_by_code(self, referral_code: str) -> Optional[ReferralDB]:
-        try:
-            stmt = select(ReferralDB).where(ReferralDB.referral_code == referral_code)
-            result = await self.session.execute(stmt)
-            return result.scalar_one_or_none()
-        except SQLAlchemyError as e:
-            self.logger.error(f"Error fetching referral: {e}")
-            raise
 
     async def get_commission_by_order_id(self, order_id: str) -> Optional[CommissionDB]:
         try:
@@ -49,8 +40,7 @@ class ReferralRepository:
         try:
             stmt = (
                 select(CommissionDB)
-                .join(ReferralDB)
-                .where(ReferralDB.referrer_id == referrer_id)
+                .where(CommissionDB.referrer_id == referrer_id)
                 .order_by(CommissionDB.created_at.desc())
             )
             result = await self.session.execute(stmt)
@@ -59,31 +49,19 @@ class ReferralRepository:
             self.logger.error(f"Error fetching commissions: {e}")
             raise
 
-    async def create_referral(self, referral: ReferralDB) -> ReferralDB:
+    async def update_commission_status(self, commission_id: UUID, status: str) -> Optional[CommissionDB]:
         try:
-            self.session.add(referral)
-            await self.session.flush()
-            await self.session.commit()
-            await self.session.refresh(referral)
-            return referral
-        except IntegrityError:
-            await self.session.rollback()
-            raise ValueError(f"Referral code already exists: {referral.referral_code}")
-        except SQLAlchemyError as e:
-            self.logger.error(f"Error creating referral: {e}")
-            await self.session.rollback()
-            raise
-
-    async def referral_exists(self, referrer_id: str, referred_id: str) -> bool:
-        try:
-            stmt = select(ReferralDB).where(
-                and_(
-                    ReferralDB.referrer_id == referrer_id,
-                    ReferralDB.referred_id == referred_id
-                )
-            )
+            stmt = select(CommissionDB).where(CommissionDB.id == commission_id)
             result = await self.session.execute(stmt)
-            return result.scalar_one_or_none() is not None
+            commission = result.scalar_one_or_none()
+            
+            if commission:
+                commission.status = status
+                await self.session.commit()
+                await self.session.refresh(commission)
+            
+            return commission
         except SQLAlchemyError as e:
-            self.logger.error(f"Error checking referral existence: {e}")
+            self.logger.error(f"Error updating commission: {e}")
+            await self.session.rollback()
             raise

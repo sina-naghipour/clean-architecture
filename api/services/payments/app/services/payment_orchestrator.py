@@ -4,13 +4,17 @@ from repositories.payments_repository import PaymentRepository
 from .stripe_service import StripeService
 from opentelemetry import trace
 import logging
+from .commissions_service import CommissionService
+from typing import Optional
+
 
 class PaymentOrchestrator:
-    def __init__(self, payment_repo: PaymentRepository, stripe_service: StripeService, logger: logging.Logger):
+    def __init__(self, payment_repo: PaymentRepository, stripe_service: StripeService, logger: logging.Logger, commission_service: Optional[CommissionService] = None,):
         self.payment_repo = payment_repo
         self.stripe_service = stripe_service
         self.logger = logger
-
+        self.commission_service = commission_service
+        
     async def create_and_process_payment(self, payment_data: pydantic_models.PaymentCreate, tracer: trace.Tracer, checkout_mode: bool = True) -> PaymentDB:
         with tracer.start_as_current_span("create_and_process_payment") as span:
             span.set_attributes({
@@ -26,9 +30,10 @@ class PaymentOrchestrator:
                 span.set_attribute("payment.exists", True)
                 return existing_payment
             
-            referral_code = payment_data.metadata.get('referral_code') if payment_data.metadata else None
-            if referral_code:
-                span.set_attribute("referral.code", referral_code)
+            referrer_id = payment_data.referrer_id
+            
+            if referrer_id:
+                span.set_attribute("referrer.id", referrer_id)
             
             payment = PaymentDB(
                 order_id=payment_data.order_id,
@@ -37,20 +42,24 @@ class PaymentOrchestrator:
                 payment_method_token=payment_data.payment_method_token,
                 currency=payment_data.currency,
                 status=PaymentStatus.CREATED,
-                referral_code=referral_code 
+                referrer_id=referrer_id
             )
             
             created_payment = await self.payment_repo.create_payment(payment)
             span.set_attribute("payment.id", str(created_payment.id))
             
             try:
+
                 metadata = {
                     'order_id': payment_data.order_id,
                     'user_id': payment_data.user_id,
                     'payment_id': str(created_payment.id),
                     'payment_type': 'checkout' if checkout_mode else 'payment_intent',
-                    'referral_code': referral_code if referral_code else ''
                 }
+
+                if referrer_id:
+                    metadata['referrer_id'] = referrer_id
+                
                 stripe_result = await self.stripe_service.create_payment(
                     amount=payment_data.amount,
                     currency=payment_data.currency,
@@ -60,6 +69,7 @@ class PaymentOrchestrator:
                     success_url=payment_data.success_url,
                     cancel_url=payment_data.cancel_url
                 )
+                
                 if checkout_mode:
                     created_payment.checkout_url = stripe_result.get("url")
                     await self.payment_repo.update_payment_checkout_url(created_payment.id, stripe_result.get("url"))
@@ -72,10 +82,10 @@ class PaymentOrchestrator:
                 
                 if stripe_id:
                     await self.payment_repo.update_payment_stripe_id(created_payment.id, stripe_id)
+                
                 if not checkout_mode:
                     payment_status = self.stripe_service.map_stripe_status_to_payment_status(stripe_result["status"])
                     created_payment.stripe_payment_intent_id = stripe_id
-                    
                 else:
                     if stripe_result["type"] == "checkout":
                         payment_status = PaymentStatus.PROCESSING

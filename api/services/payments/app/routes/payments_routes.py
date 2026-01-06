@@ -9,6 +9,9 @@ from services.stripe_service import StripeService
 from services.payments_service import PaymentService
 from typing import Optional
 
+from services.commissions_service import CommissionService
+from repositories.commissions_repository import CommissionRepository
+
 
 logger = logging.getLogger(__name__)
 
@@ -19,8 +22,10 @@ async def get_redis_cache(request: Request):
 
 
 def get_payment_service(db_session: AsyncSession = Depends(get_db), redis_cache = Depends(get_redis_cache)) -> PaymentService:
+    commission_repository = CommissionRepository(db_session, logger)
+    commission_service = CommissionService(commission_repository, logger)
     stripe_service = StripeService(logger)
-    return PaymentService(logger=logger, db_session=db_session, stripe_service=stripe_service, redis_cache=redis_cache)
+    return PaymentService(logger=logger, db_session=db_session, stripe_service=stripe_service, redis_cache=redis_cache, commission_service=commission_service)
 
 
 @router.get(
@@ -34,6 +39,7 @@ async def checkout_success(
 ):
     return await payment_service.handle_checkout_success(request)
 
+
 @router.get(
     '/checkout_cancel',
     summary="Handle cancelled Stripe Checkout redirect",
@@ -45,9 +51,7 @@ async def checkout_cancel(
 ):
     return await payment_service.handle_checkout_cancel(request)
 
-def get_payment_service(db_session: AsyncSession = Depends(get_db)) -> PaymentService:
-    stripe_service = StripeService(logger)
-    return PaymentService(logger=logger, db_session=db_session, stripe_service=stripe_service)
+
 @router.post(
     '/webhooks/stripe',
     summary="Stripe webhook endpoint"
