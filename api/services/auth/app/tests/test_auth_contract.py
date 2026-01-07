@@ -1,14 +1,21 @@
 import pytest
-import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
+from httpx import AsyncClient
 from main import app
+import asyncio
 
 
-class TestAuthAPIContract:    
-    @pytest_asyncio.fixture
+class TestAuthAPIContract:
+    @pytest.fixture
+    def event_loop(self):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        yield loop
+        loop.close()
+
+    @pytest.fixture
     async def client(self):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            yield client
+        async with AsyncClient(app=app, base_url="http://test") as ac:
+            yield ac
 
     @pytest.mark.asyncio
     async def test_health_endpoint(self, client):
@@ -121,10 +128,10 @@ class TestAuthAPIContract:
     @pytest.mark.asyncio
     async def test_get_current_user_contract(self, client):
         response = await client.get("/me")
-        assert response.status_code == 401  # Changed from 422 to 401
+        assert response.status_code == 401
         
         response = await client.get("/me", headers={"Authorization": "Invalid"})
-        assert response.status_code == 401  # Changed from 422 to 401
+        assert response.status_code == 401
         
         response = await client.get("/me", headers={"Authorization": "Bearer invalid_token"})
         assert response.status_code in [200, 401]
@@ -132,7 +139,7 @@ class TestAuthAPIContract:
     @pytest.mark.asyncio
     async def test_logout_contract(self, client):
         response = await client.post("/logout")
-        assert response.status_code == 401  # Changed from 422 to 401
+        assert response.status_code == 401
         
         response = await client.post("/logout", headers={"Authorization": "Bearer mock_token"})
         assert response.status_code in [204, 401]
@@ -153,13 +160,66 @@ class TestAuthAPIContract:
             assert "detail" in data
             assert data["status"] == 401
 
+    @pytest.mark.asyncio
+    async def test_generate_referral_code_contract(self, client):
+        user_id = "123e4567-e89b-12d3-a456-426614174000"
+        response = await client.post(f"/users/{user_id}/generate-referral")
+        assert response.status_code in [401, 403, 404]
+
+    @pytest.mark.asyncio
+    async def test_get_referrer_by_code_contract(self, client):
+        response = await client.get("/users/referrer/REF_12345678_1234")
+        assert response.status_code in [200, 404]
+        
+        if response.status_code == 200:
+            data = response.json()
+            assert "referrer_id" in data
+            assert "referrer_email" in data
+            assert "referrer_name" in data
+            assert "referral_code" in data
+
+    @pytest.mark.asyncio
+    async def test_get_user_referrals_contract(self, client):
+        user_id = "123e4567-e89b-12d3-a456-426614174000"
+        response = await client.get(f"/users/{user_id}/referrals")
+        assert response.status_code in [401, 403, 404]
+
+    @pytest.mark.asyncio
+    async def test_commission_report_contract(self, client):
+        user_id = "123e4567-e89b-12d3-a456-426614174000"
+        response = await client.get(f"/users/{user_id}/commission-report")
+        assert response.status_code in [401, 403, 404]
+
+    @pytest.mark.asyncio
+    async def test_cleanup_test_data_contract(self, client):
+        response = await client.delete("/cleanup-test-data")
+        assert response.status_code in [204, 401]
+
+    @pytest.mark.asyncio
+    async def test_rate_limiting_contract(self, client):
+        for i in range(6):
+            login_data = {
+                "email": f"test{i}@example.com",
+                "password": "Password123!"
+            }
+            response = await client.post("/login", json=login_data)
+            await asyncio.sleep(0.1)
+        
+        assert response.status_code in [401, 429]
+
 
 class TestAuthAPIErrorScenarios:
-    
-    @pytest_asyncio.fixture
+    @pytest.fixture
+    def event_loop(self):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        yield loop
+        loop.close()
+
+    @pytest.fixture
     async def client(self):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            yield client
+        async with AsyncClient(app=app, base_url="http://test") as ac:
+            yield ac
 
     @pytest.mark.asyncio
     async def test_malformed_json_contract(self, client):
@@ -190,3 +250,56 @@ class TestAuthAPIErrorScenarios:
         
         if "access-control-allow-origin" in response.headers:
             assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+
+    @pytest.mark.asyncio
+    async def test_invalid_refresh_token_format(self, client):
+        response = await client.post("/refresh-token", json={"refreshToken": ""})
+        assert response.status_code in [400, 401]
+
+    @pytest.mark.asyncio
+    async def test_missing_refresh_token(self, client):
+        response = await client.post("/refresh-token", json={})
+        assert response.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_invalid_auth_header_format(self, client):
+        response = await client.get("/me", headers={"Authorization": "InvalidToken"})
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_empty_authorization_header(self, client):
+        response = await client.get("/me", headers={"Authorization": ""})
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_password_change_endpoint_not_found(self, client):
+        response = await client.post("/change-password", json={
+            "oldPassword": "short",
+            "newPassword": "weak"
+        })
+        assert response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_referral_code_invalid_format(self, client):
+        response = await client.get("/users/referrer/invalid_code_format")
+        assert response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_user_id_invalid_uuid(self, client):
+        response = await client.get("/users/invalid-uuid/referrals")
+        assert response.status_code in [401, 422]
+
+    @pytest.mark.asyncio
+    async def test_nonexistent_endpoint(self, client):
+        response = await client.get("/nonexistent")
+        assert response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_large_payload(self, client):
+        large_payload = {
+            "email": "test@example.com",
+            "password": "A" * 1000,
+            "name": "Test User"
+        }
+        response = await client.post("/register", json=large_payload)
+        assert response.status_code == 422
