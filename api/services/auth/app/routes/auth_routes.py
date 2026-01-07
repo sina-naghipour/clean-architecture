@@ -1,6 +1,7 @@
 import logging
 from fastapi import APIRouter, Request, Depends, Header, status, HTTPException
-from typing import Dict
+from typing import Dict, Any
+from datetime import datetime
 from services.token_service import TokenService
 from services.password_service import PasswordService
 from services.auth_service import AuthService
@@ -14,9 +15,22 @@ from sqlalchemy import text
 from cache.redis_manager import redis_manager
 from database.database_models import UserRole
 logger = logging.getLogger(__name__)
+from services.payments_grpc_client import PaymentGRPCClient
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 router = APIRouter(tags=['auth'])
 rate_limiter = RateLimiter(redis_manager)
+
+async def get_payments_client() -> PaymentGRPCClient:
+    return PaymentGRPCClient(
+        logger=logger,
+        host=os.getenv('COMMISSION_GRPC_HOST', 'payments'),
+        port=int(os.getenv('COMMISSION_GRPC_PORT', '50051'))
+    )
 
 def get_token_service() -> TokenService:
     return TokenService()
@@ -31,12 +45,14 @@ async def get_auth_service(
     user_repository: UserRepository = Depends(get_user_repository),
     password_service: PasswordService = Depends(get_password_service),
     token_service: TokenService = Depends(get_token_service),
+    payments_client: PaymentGRPCClient = Depends(get_payments_client), 
 ) -> AuthService:
     return AuthService(
         logger=logger, 
         user_repository=user_repository,
         password_service=password_service,
-        token_service=token_service
+        token_service=token_service,
+        payments_grpc_client=payments_client
     )
 
 async def get_token_from_header(authorization: str = Header(None)) -> str:
@@ -165,6 +181,38 @@ async def get_user_referrals(
     
     referrals = await auth_service.get_user_referrals(request, user_id)
     return referrals
+
+@router.get(
+    '/users/{user_id}/commission-report',
+    response_model=Dict[str, Any],
+    summary="Get commission report for a user",
+    responses={
+        200: {"description": "Commission report retrieved successfully"},
+        403: {"description": "Not authorized to view this report"},
+        404: {"description": "User not found"}
+    }
+)
+async def get_user_commission_report(
+    request: Request,
+    user_id: str,
+    auth_service: AuthService = Depends(get_auth_service),
+    token: str = Depends(get_token_from_header)
+):
+    current_user = await auth_service.get_current_user(request, token)
+    
+    if str(current_user.id) != user_id and current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to view this report"
+        )
+    
+    report = await auth_service.get_commission_report(request, user_id)
+    
+    report['requested_by'] = str(current_user.id)
+    report['requested_at'] = datetime.utcnow().isoformat()
+    # report['is_admin_request'] = current_user.role == UserRole.ADMIN
+    
+    return report
 
 @router.delete(
     '/cleanup-test-data',

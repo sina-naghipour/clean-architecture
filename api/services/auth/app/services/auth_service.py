@@ -16,15 +16,18 @@ from services.token_service import TokenService
 from services.password_service import PasswordService
 from database import pydantic_models
 from repository.user_repository import UserRepository
+from .payments_grpc_client import PaymentGRPCClient
+
 
 class AuthService:
-    def __init__(self, logger, user_repository: UserRepository, password_service: PasswordService, token_service: TokenService):
+    def __init__(self, logger, user_repository: UserRepository, password_service: PasswordService, token_service: TokenService, payments_grpc_client: PaymentGRPCClient):
         self.logger = logger
         self.user_repository = user_repository
         self.password_service = password_service
         self.token_service = token_service
         self.token_cache = TokenCacheService(redis_manager)
-
+        self.payments_grpc_client = payments_grpc_client
+        
     @handle_database_errors
     @handle_validation_errors
     @trace_service_operation("register_user")
@@ -391,3 +394,37 @@ class AuthService:
                 for ref in referrals
             ]
         }
+
+    async def get_commission_report(self, request, referrer_id: str) -> Dict[str, Any]:
+        if not self.payments_grpc_client:
+            self.logger.error("Commission client not initialized")
+            return {
+                'referrer_id': referrer_id,
+                'total_commissions': 0,
+                'total_amount': 0.0,
+                'pending_amount': 0.0,
+                'paid_amount': 0.0,
+                'commissions': [],
+                'error': 'Commission service not configured'
+            }
+        
+        try:
+            self.logger.info(f"Getting commission report for referrer: {referrer_id}")
+            report = await self.payments_grpc_client.get_commission_report(referrer_id)
+            
+            if report.get('service_unavailable'):
+                self.logger.warning(f"Commission service unavailable, returning empty report for {referrer_id}")
+            
+            return report
+            
+        except Exception as e:
+            self.logger.error(f"Failed to get commission report: {str(e)}")
+            return {
+                'referrer_id': referrer_id,
+                'total_commissions': 0,
+                'total_amount': 0.0,
+                'pending_amount': 0.0,
+                'paid_amount': 0.0,
+                'commissions': [],
+                'error': str(e)
+            }
