@@ -11,10 +11,14 @@ servers:
 tags:
   - name: Auth
     description: Authentication & token endpoints
+  - name: Users
+    description: User management endpoints
   - name: Health
     description: Service health endpoints
   - name: Root
     description: Root information
+  - name: Testing
+    description: Testing endpoints
 
 paths:
   /health:
@@ -33,10 +37,19 @@ paths:
                     type: string
                   service:
                     type: string
+                  redis:
+                    type: string
                   timestamp:
                     type: string
+                    format: date-time
                   environment:
                     type: string
+                required:
+                  - status
+                  - service
+                  - redis
+                  - timestamp
+                  - environment
 
   /info:
     get:
@@ -60,8 +73,14 @@ paths:
                     type: string
                   health:
                     type: string
+                required:
+                  - message
+                  - version
+                  - environment
+                  - docs
+                  - health
 
-  /auth/register:
+  /register:
     post:
       tags: [Auth]
       summary: Register new user
@@ -70,13 +89,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/RegisterRequest"
-            examples:
-              example:
-                value:
-                  email: "alice@example.com"
-                  password: "SecurePass123!"
-                  name: "Alice"
+              $ref: "#/components/schemas/User"
       responses:
         "201":
           description: User created
@@ -99,7 +112,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /auth/login:
+  /login:
     post:
       tags: [Auth]
       summary: Login user (returns access + refresh tokens)
@@ -109,11 +122,6 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/LoginRequest"
-            examples:
-              example:
-                value:
-                  email: "alice@example.com"
-                  password: "SecurePass123!"
       responses:
         "200":
           description: Tokens returned
@@ -121,16 +129,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TokenResponse"
-        "400":
-          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "422":
           $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          description: Rate limit exceeded
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /auth/refresh-token:
+  /refresh-token:
     post:
       tags: [Auth]
       summary: Refresh access token using refresh token
@@ -140,10 +148,6 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/RefreshTokenRequest"
-            examples:
-              example:
-                value:
-                  refreshToken: "rft_abcdef"
       responses:
         "200":
           description: New access token
@@ -160,23 +164,21 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /auth/logout:
+  /logout:
     post:
       tags: [Auth]
-      summary: Logout user
+      summary: Logout user (revoke refresh token)
       security:
         - bearerAuth: []
       responses:
         "204":
           description: Logged out
-        "400":
-          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /auth/me:
+  /me:
     get:
       tags: [Auth]
       summary: Get current user profile
@@ -198,6 +200,163 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /users/{user_id}/generate-referral:
+    post:
+      tags: [Users]
+      summary: Generate referral code for user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Referral code generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReferralCodeResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /users/referrer/{referral_code}:
+    get:
+      tags: [Users]
+      summary: Get referrer info by referral code
+      parameters:
+        - name: referral_code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Referrer information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReferrerResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /users/{user_id}/referrals:
+    get:
+      tags: [Users]
+      summary: Get all users referred by this user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: User referrals
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserReferralsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /users/{user_id}/commission-report:
+    get:
+      tags: [Users]
+      summary: Get commission report for a user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Commission report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  referrer_id:
+                    type: string
+                  total_commissions:
+                    type: integer
+                  total_amount:
+                    type: number
+                    format: float
+                  pending_amount:
+                    type: number
+                    format: float
+                  paid_amount:
+                    type: number
+                    format: float
+                  commissions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        order_id:
+                          type: string
+                        amount:
+                          type: number
+                        status:
+                          type: string
+                        created_at:
+                          type: string
+                required:
+                  - referrer_id
+                  - total_commissions
+                  - total_amount
+                  - pending_amount
+                  - paid_amount
+                  - commissions
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /cleanup-test-data:
+    delete:
+      tags: [Testing]
+      summary: Cleanup test data (for k6 testing)
+      responses:
+        "204":
+          description: Test data cleaned up
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -206,7 +365,7 @@ components:
       bearerFormat: JWT
 
   schemas:
-    RegisterRequest:
+    User:
       type: object
       properties:
         email:
@@ -219,6 +378,10 @@ components:
         name:
           type: string
           minLength: 1
+        referral_code:
+          type: string
+          nullable: true
+          description: Optional referral code for signup
       required:
         - email
         - password
@@ -244,6 +407,18 @@ components:
       required:
         - refreshToken
 
+    PasswordChangeRequest:
+      type: object
+      properties:
+        oldPassword:
+          type: string
+        newPassword:
+          type: string
+          minLength: 8
+      required:
+        - oldPassword
+        - newPassword
+
     UserResponse:
       type: object
       properties:
@@ -254,6 +429,20 @@ components:
           format: email
         name:
           type: string
+        referred_by:
+          type: string
+          nullable: true
+        referral_code:
+          type: string
+          nullable: true
+        referral_created_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - email
+        - name
 
     TokenResponse:
       type: object
@@ -262,12 +451,85 @@ components:
           type: string
         refreshToken:
           type: string
+      required:
+        - accessToken
+        - refreshToken
 
     AccessTokenResponse:
       type: object
       properties:
         accessToken:
           type: string
+      required:
+        - accessToken
+
+    ReferralCodeResponse:
+      type: object
+      properties:
+        referral_code:
+          type: string
+        message:
+          type: string
+          default: "Referral code generated"
+        share_url:
+          type: string
+          nullable: true
+      required:
+        - referral_code
+        - message
+
+    ReferrerResponse:
+      type: object
+      properties:
+        referrer_id:
+          type: string
+        referrer_email:
+          type: string
+          format: email
+        referrer_name:
+          type: string
+        referral_code:
+          type: string
+      required:
+        - referrer_id
+        - referrer_email
+        - referrer_name
+        - referral_code
+
+    ReferredUserResponse:
+      type: object
+      properties:
+        user_id:
+          type: string
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - user_id
+        - email
+        - name
+        - created_at
+
+    UserReferralsResponse:
+      type: object
+      properties:
+        referrer_id:
+          type: string
+        total_referrals:
+          type: integer
+        referrals:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReferredUserResponse"
+      required:
+        - referrer_id
+        - total_referrals
+        - referrals
 
     ProblemDetails:
       type: object
@@ -284,10 +546,12 @@ components:
         instance:
           type: string
           format: uri
+          nullable: true
       required:
         - type
         - title
         - status
+        - detail
 
   responses:
     BadRequest:
