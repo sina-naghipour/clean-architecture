@@ -81,7 +81,7 @@ async def lifespan(app: FastAPI):
         payment_service = PaymentService(logger, session,stripe_service=stripe_service, redis_cache=redis_cache, commission_service=commission_service)
         
         grpc_task = asyncio.create_task(
-            serve_grpc(payment_service, port=GRPC_PORT)
+            serve_grpc(payment_service, commission_service, port=GRPC_PORT)
         )
         
         # Store for shutdown

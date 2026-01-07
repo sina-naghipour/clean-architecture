@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package commissions;
+
+service CommissionService {
+  rpc GetCommissionReport(CommissionRequest) returns (CommissionReport);
+}
+
+message CommissionRequest {
+  string referrer_id = 1;
+}
+
+message CommissionReport {
+  string referrer_id = 1;
+  int32 total_commissions = 2;
+  double total_amount = 3;
+  double pending_amount = 4;
+  double paid_amount = 5;
+  repeated Commission commissions = 6;
+}
+
+message Commission {
+  string id = 1;
+  string order_id = 2;
+  double amount = 3;
+  string status = 4;
+  string created_at = 5;
+}

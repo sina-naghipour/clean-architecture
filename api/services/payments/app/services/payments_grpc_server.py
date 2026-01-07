@@ -7,9 +7,12 @@ from database import pydantic_models
 from optl.trace_decorator import trace_service_operation
 from opentelemetry import trace
 
-class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
-    def __init__(self, payment_service, logger: logging.Logger):
+from protos import commissions_pb2, commissions_pb2_grpc
+
+class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer, commissions_pb2_grpc.CommissionServiceServicer):
+    def __init__(self, payment_service, commission_service, logger: logging.Logger):
         self.payment_service = payment_service
+        self.commission_service = commission_service
         self.logger = logger
         self.tracer = trace.get_tracer(__name__)
 
@@ -176,16 +179,58 @@ class PaymentGRPCServer(payments_pb2_grpc.PaymentServiceServicer):
             self.logger.error(f"gRPC ProcessRefund failed: {e}", exc_info=True)
             await context.abort(grpc.StatusCode.INTERNAL, str(e))
 
+    @trace_service_operation("grpc_get_commission_report")
+    async def GetCommissionReport(self, request, context):
+        try:
+            with self.tracer.start_as_current_span("grpc.GetCommissionReport") as span:
+                span.set_attributes({
+                    "grpc.method": "GetCommissionReport",
+                    "grpc.service": "CommissionService",
+                    "referrer.id": str(request.referrer_id)
+                })
+                
+                self.logger.info(f"gRPC GetCommissionReport for referrer: {request.referrer_id}")
+                
+                report_dict = await self.commission_service.get_report(request.referrer_id)
+                
+                return commissions_pb2.CommissionReport(
+                    referrer_id=report_dict['referrer_id'],
+                    total_commissions=report_dict['total_commissions'],
+                    total_amount=report_dict['total_amount'],
+                    pending_amount=report_dict['pending_amount'],
+                    paid_amount=report_dict['paid_amount'],
+                    commissions=[
+                        commissions_pb2.Commission(
+                            id=c['id'],
+                            order_id=c['order_id'],
+                            amount=c['amount'],
+                            status=c['status'],
+                            created_at=c['created_at']
+                        ) for c in report_dict['commissions']
+                    ]
+                )
+                
+        except Exception as e:
+            span = trace.get_current_span()
+            span.record_exception(e)
+            span.set_attribute("grpc.error", True)
+            self.logger.error(f"gRPC GetCommissionReport failed: {e}", exc_info=True)
+            await context.abort(grpc.StatusCode.INTERNAL, str(e))
 
 @trace_service_operation("serve_grpc")
-async def serve_grpc(payment_service, host: str = "0.0.0.0", port: int = 50051):
+async def serve_grpc(payment_service, commission_service, host: str = "0.0.0.0", port: int = 50051):
     logger = logging.getLogger(__name__)
     
     server = grpc.aio.server()
     
-    payments_pb2_grpc.add_PaymentServiceServicer_to_server(
-        PaymentGRPCServer(payment_service, logger), server
-    )
+    server.add_generic_rpc_handlers((
+        payments_pb2_grpc.add_PaymentServiceServicer_to_server(
+            PaymentGRPCServer(payment_service, commission_service, logger), server
+        ),
+        commissions_pb2_grpc.add_CommissionServiceServicer_to_server(
+            PaymentGRPCServer(payment_service, commission_service, logger), server
+        )
+    ))
     
     server_address = f"{host}:{port}"
     server.add_insecure_port(server_address)
