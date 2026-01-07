@@ -50,11 +50,12 @@ def product_service(mock_logger, mock_repository, mock_image_client):
 def mock_request():
     request = Mock(spec=Request)
     request.url = "http://testserver/api/products"
+    request.state = Mock()
+    request.state.token = "test_token"
     return request
 
 @pytest.fixture
 def sample_upload_file():
-    """Create a mock UploadFile for testing"""
     mock_file = MagicMock(spec=UploadFile)
     mock_file.filename = "test.jpg"
     mock_file.file = BytesIO(b"fake image content")
@@ -88,7 +89,6 @@ class TestProductService:
             images=[]
         )
         
-        # Use actual datetime objects
         created_at = datetime(2024, 1, 1, 0, 0, 0)
         updated_at = datetime(2024, 1, 1, 0, 0, 0)
         
@@ -145,7 +145,6 @@ class TestProductService:
             UploadResult(success=True, url="http://test.com/static/img/img2.jpg")
         ]
         
-        # Create mock upload files properly
         file1 = MagicMock(spec=UploadFile)
         file1.filename = "img1.jpg"
         file1.file = BytesIO(b"content1")
@@ -201,7 +200,6 @@ class TestProductService:
             UploadResult(success=False, error="Upload failed")
         ]
         
-        # Create mock upload files properly
         file1 = MagicMock(spec=UploadFile)
         file1.filename = "img1.jpg"
         file1.file = BytesIO(b"content1")
@@ -225,8 +223,8 @@ class TestProductService:
         assert len(result.images) == 1
         assert "http://test.com/static/img/img1.jpg" in result.images
         
-        # Should create product even if some images fail
         product_service.product_repository.create_product.assert_called_once()
+        
     async def test_get_product_success_with_valid_images(self, product_service, mock_request, mock_product):
         product_service.product_repository.get_product_by_id.return_value = mock_product
         product_service.image_client.validate_image.return_value = True
@@ -238,7 +236,8 @@ class TestProductService:
         assert result.name == "Test Product"
         product_service.product_repository.get_product_by_id.assert_called_once_with("test_id_123")
         product_service.image_client.validate_image.assert_called_once_with(
-            "http://test.com/static/img/img1.jpg"
+            "http://test.com/static/img/img1.jpg",
+            token="test_token"
         )
         product_service.product_repository.update_product_images.assert_not_called()
 
@@ -249,7 +248,10 @@ class TestProductService:
         result = await product_service.get_product(mock_request, "test_id_123")
         
         assert result.id == "test_id_123"
-        product_service.image_client.validate_image.assert_called_once()
+        product_service.image_client.validate_image.assert_called_once_with(
+            "http://test.com/static/img/img1.jpg",
+            token="test_token"
+        )
         product_service.product_repository.update_product_images.assert_called_once_with(
             "test_id_123", []
         )
@@ -259,7 +261,6 @@ class TestProductService:
         
         result = await product_service.get_product(mock_request, "non_existent_id")
         
-        # Returns a problem response
         assert hasattr(result, 'status_code')
         assert result.status_code == 404
         assert "Not Found" in result.body.decode()
@@ -349,7 +350,7 @@ class TestProductService:
         
         assert result is None
         product_service.product_repository.delete_product.assert_called_once_with("test_id_123")
-        product_service.image_client.delete_image.assert_called_once_with("img1")
+        product_service.image_client.delete_image.assert_called_once_with("img1", token="test_token")
         product_service.logger.info.assert_called()
 
     async def test_delete_product_no_images(self, product_service, mock_request, mock_product):
@@ -370,7 +371,6 @@ class TestProductService:
         ]
         product_service.product_repository.update_product_images.return_value = True
         
-        # Create mock upload files properly
         file1 = MagicMock(spec=UploadFile)
         file1.filename = "new1.jpg"
         file1.file = BytesIO(b"content1")
@@ -392,14 +392,13 @@ class TestProductService:
         assert result["product_id"] == "test_id_123"
         assert result["added_count"] == 2
         assert result["failed_count"] == 0
-        assert result["total_images"] == 3  # original 1 + new 2
+        assert result["total_images"] == 3
         product_service.image_client.upload_images.assert_called_once()
         product_service.product_repository.update_product_images.assert_called_once()
 
     async def test_add_product_images_product_not_found(self, product_service, mock_request):
         product_service.product_repository.get_product_by_id.return_value = None
         
-        # Create mock upload file properly
         file = MagicMock(spec=UploadFile)
         file.filename = "test.jpg"
         file.file = BytesIO(b"content")
@@ -430,7 +429,7 @@ class TestProductService:
         assert result["product_id"] == "test_id_123"
         assert result["removed_image"] == "http://test.com/static/img/img1.jpg"
         product_service.product_repository.update_product_images.assert_called_once()
-        product_service.image_client.delete_image.assert_called_once_with("img1")
+        product_service.image_client.delete_image.assert_called_once_with("img1", token="test_token")
 
     async def test_remove_product_image_not_in_product(self, product_service, mock_request, mock_product):
         product_service.product_repository.get_product_by_id.return_value = mock_product
@@ -517,14 +516,12 @@ class TestImageClientIntegration:
     async def test_get_image_client_from_env(self, MockImageClient):
         with patch.dict('os.environ', {
             'STATIC_SERVICE_URL': 'http://localhost:8005/api/static',
-            'IMAGE_CLIENT_TIMEOUT': '60.0',
             'IMAGE_CLIENT_MAX_CONCURRENT': '5'
         }):
             client = get_image_client()
             MockImageClient.assert_called_once()
             call_kwargs = MockImageClient.call_args.kwargs
             assert call_kwargs['base_url'] == 'http://localhost:8005/api/static'
-            assert call_kwargs['timeout'] == 60.0
             assert call_kwargs['max_concurrent'] == 5
 
     @patch('services.product_services.ProductImageClient')
@@ -534,7 +531,6 @@ class TestImageClientIntegration:
             MockImageClient.assert_called_once()
             call_kwargs = MockImageClient.call_args.kwargs
             assert call_kwargs['base_url'] == 'http://localhost:8005/api/static'
-            assert call_kwargs['timeout'] == 30.0
             assert call_kwargs['max_concurrent'] == 10
 
 @pytest.mark.asyncio

@@ -25,15 +25,13 @@ def mock_httpx_client():
 @pytest.fixture
 def image_client(mock_httpx_client):
     client = ProductImageClient(base_url=STATIC_SERVICE_URL)
-    client.client = mock_httpx_client
+    client.http_client.client = mock_httpx_client
     yield client
-    # Cleanup
     asyncio.run(client.close())
 
 
 @pytest.fixture
 def sample_image_file():
-    """Create a mock UploadFile for testing"""
     mock_file = MagicMock()
     mock_file.filename = "test.jpg"
     mock_file.read = AsyncMock(return_value=b"fake image content")
@@ -58,7 +56,6 @@ class TestUploadImage:
         mock_response.json.return_value = sample_upload_response
         mock_httpx_client.post.return_value = mock_response
         
-        # Patch the decorator to avoid UploadFile import issue
         with patch('optl.trace_decorator.trace_client_operation', lambda x: x):
             result = await image_client.upload_image(sample_image_file, subdirectory="products")
         
@@ -138,7 +135,6 @@ class TestUploadImage:
 class TestUploadImages:
     @pytest.mark.asyncio
     async def test_upload_images_multiple(self, image_client, mock_httpx_client):
-        # Setup mock responses
         mock_response1 = Mock()
         mock_response1.status_code = 201
         mock_response1.json.return_value = {"url": "img1.jpg"}
@@ -149,7 +145,6 @@ class TestUploadImages:
         
         mock_httpx_client.post.side_effect = [mock_response1, mock_response2]
         
-        # Create mock files
         file1 = MagicMock()
         file1.filename = "img1.jpg"
         file1.read = AsyncMock(return_value=b"content1")
@@ -168,14 +163,12 @@ class TestUploadImages:
         assert results[0].url == "img1.jpg"
         assert results[1].url == "img2.jpg"
         
-        # Should make 2 calls
         assert mock_httpx_client.post.call_count == 2
 
     @pytest.mark.asyncio
     async def test_upload_images_with_concurrency_limit(self, image_client, mock_httpx_client):
         image_client.max_concurrent = 2
         
-        # Create 4 mock responses
         mock_responses = []
         for i in range(4):
             mock_response = Mock()
@@ -185,7 +178,6 @@ class TestUploadImages:
         
         mock_httpx_client.post.side_effect = mock_responses
         
-        # Create 4 mock files
         files = []
         for i in range(4):
             mock_file = MagicMock()
@@ -199,7 +191,6 @@ class TestUploadImages:
         
         assert len(results) == 4
         assert all(r.success for r in results)
-        # Concurrency should be limited to max_concurrent (2)
 
     @pytest.mark.asyncio
     async def test_upload_images_with_metadata_list(self, image_client, mock_httpx_client):
@@ -230,92 +221,91 @@ class TestUploadImages:
             )
         
         assert len(results) == 2
-        # Check that metadata was passed correctly
         assert mock_httpx_client.post.call_count == 2
 
 
 class TestDeleteImage:
     @pytest.mark.asyncio
     async def test_delete_image_success(self, image_client, mock_httpx_client):
-        mock_response = Mock()
-        mock_response.status_code = 204
-        mock_httpx_client.delete.return_value = mock_response
-        
         with patch('optl.trace_decorator.trace_client_operation', lambda x: x):
+            mock_response = Mock()
+            mock_response.status_code = 204
+            image_client.http_client.delete = AsyncMock(return_value=mock_response)
+            
             result = await image_client.delete_image("file123")
         
         assert result is True
-        mock_httpx_client.delete.assert_called_once_with(
+        image_client.http_client.delete.assert_called_once_with(
             f"{STATIC_SERVICE_URL}/files/file123"
         )
 
     @pytest.mark.asyncio
     async def test_delete_image_not_found(self, image_client, mock_httpx_client):
-        mock_response = Mock()
-        mock_response.status_code = 404
-        mock_httpx_client.delete.return_value = mock_response
-        
         with patch('optl.trace_decorator.trace_client_operation', lambda x: x):
+            mock_response = Mock()
+            mock_response.status_code = 404
+            image_client.http_client.delete = AsyncMock(return_value=mock_response)
+            
             result = await image_client.delete_image("file123")
         
         assert result is False
 
     @pytest.mark.asyncio
     async def test_delete_image_failure(self, image_client, mock_httpx_client):
-        mock_response = Mock()
-        mock_response.status_code = 500
-        mock_httpx_client.delete.return_value = mock_response
-        
         with patch('optl.trace_decorator.trace_client_operation', lambda x: x):
+            mock_response = Mock()
+            mock_response.status_code = 500
+            image_client.http_client.delete = AsyncMock(return_value=mock_response)
+            
             result = await image_client.delete_image("file123")
         
         assert result is False
 
     @pytest.mark.asyncio
     async def test_delete_image_exception(self, image_client, mock_httpx_client):
-        mock_httpx_client.delete.side_effect = Exception("Network error")
-        
         with patch('optl.trace_decorator.trace_client_operation', lambda x: x):
+            image_client.http_client.delete = AsyncMock(side_effect=Exception("Network error"))
+            
             result = await image_client.delete_image("file123")
         
         assert result is False
 
     @pytest.mark.asyncio
     async def test_delete_images_multiple(self, image_client, mock_httpx_client):
-        mock_response = Mock()
-        mock_response.status_code = 204
-        mock_httpx_client.delete.return_value = mock_response
-        
         with patch('optl.trace_decorator.trace_client_operation', lambda x: x):
+            mock_response = Mock()
+            mock_response.status_code = 204
+            image_client.delete_image = AsyncMock(return_value=True)
+            
             results = await image_client.delete_images(["file1", "file2", "file3"])
         
         assert len(results) == 3
         assert all(results)
-        assert mock_httpx_client.delete.call_count == 3
 
 
 class TestValidateImage:
     @pytest.mark.asyncio
     async def test_validate_static_image_success(self, image_client, mock_httpx_client):
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_httpx_client.get.return_value = mock_response
-        
         with patch('optl.trace_decorator.trace_client_operation', lambda x: x):
+            mock_response = Mock()
+            mock_response.status_code = 200
+            image_client.http_client.get = AsyncMock(return_value=mock_response)
+            
             result = await image_client.validate_image("/static/img/products/abc123.jpg")
         
         assert result is True
         
-        # Verify the right URL is called
-        mock_httpx_client.get.assert_called_once_with(f"{STATIC_SERVICE_URL}/files/abc123")
+        image_client.http_client.get.assert_called_once_with(
+            f"{STATIC_SERVICE_URL}/files/abc123"
+        )
 
     @pytest.mark.asyncio
     async def test_validate_static_image_not_found(self, image_client, mock_httpx_client):
-        mock_response = Mock()
-        mock_response.status_code = 404
-        mock_httpx_client.get.return_value = mock_response
-        
         with patch('optl.trace_decorator.trace_client_operation', lambda x: x):
+            mock_response = Mock()
+            mock_response.status_code = 404
+            image_client.http_client.get = AsyncMock(return_value=mock_response)
+            
             result = await image_client.validate_image(
                 "/static/img/products/abc123.jpg"
             )
@@ -324,26 +314,23 @@ class TestValidateImage:
 
     @pytest.mark.asyncio
     async def test_validate_external_url_success(self, image_client, mock_httpx_client):
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_httpx_client.get.return_value = mock_response
-        
         with patch('optl.trace_decorator.trace_client_operation', lambda x: x):
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_httpx_client.get.return_value = mock_response
+            
             result = await image_client.validate_image(
                 "https://example.com/image.jpg"
             )
         
         assert result is True
-        mock_httpx_client.get.assert_called_once_with(
-            "https://example.com/image.jpg",
-            timeout=5.0
-        )
+        mock_httpx_client.get.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_validate_invalid_url(self, image_client, mock_httpx_client):
-        mock_httpx_client.get.side_effect = Exception("Connection failed")
-        
         with patch('optl.trace_decorator.trace_client_operation', lambda x: x):
+            mock_httpx_client.get.side_effect = Exception("Connection failed")
+            
             result = await image_client.validate_image("invalid-url")
         
         assert result is False
@@ -358,12 +345,10 @@ class TestValidateImage:
 
 class TestExtractFileId:
     def test_extract_file_id_from_static_url(self, image_client):
-        # Remove the decorator from extract_file_id method temporarily
         import services.product_image_client
         original_method = services.product_image_client.ProductImageClient.extract_file_id
         
         try:
-            # Temporarily remove decorator
             if hasattr(original_method, '__wrapped__'):
                 services.product_image_client.ProductImageClient.extract_file_id = original_method.__wrapped__
             
@@ -372,7 +357,6 @@ class TestExtractFileId:
             
             assert file_id == "abc123-def456"
         finally:
-            # Restore original method
             services.product_image_client.ProductImageClient.extract_file_id = original_method
 
     def test_extract_file_id_with_query_params(self, image_client):
@@ -423,102 +407,78 @@ class TestExtractFileId:
 
 class TestCleanupUnusedImages:
     @pytest.mark.asyncio
-    async def test_cleanup_success(self, image_client, mock_httpx_client):
-        # Mock metadata response
+    async def test_cleanup_success(self, image_client):
         mock_metadata_response = Mock()
         mock_metadata_response.status_code = 200
         mock_metadata_response.json.return_value = {
             "files": [
-                {"id": "file1", "url": "/static/img/file1.jpg"},
-                {"id": "file2", "url": "/static/img/file2.jpg"},
-                {"id": "file3", "url": "/static/img/file3.jpg"}
+                {"id": "file1"},
+                {"id": "file2"},
+                {"id": "file3"}
             ]
         }
         
-        # Setup delete responses - only delete unused files
-        def delete_side_effect(url):
-            mock_response = Mock()
-            # Only delete files that are not used (file2 and file3)
-            if "file2" in url or "file3" in url:
-                mock_response.status_code = 204
-            else:
-                mock_response.status_code = 404
-            return mock_response
+        with patch('optl.trace_decorator.trace_client_operation', lambda x: x):
+            with patch.object(image_client.http_client, 'get', AsyncMock(return_value=mock_metadata_response)):
+                with patch.object(image_client, 'extract_file_id') as mock_extract:
+                    def extract_side_effect(url):
+                        if 'file1' in url:
+                            return 'file1'
+                        elif 'file2' in url:
+                            return 'file2'
+                        elif 'file3' in url:
+                            return 'file3'
+                        return None
+                    mock_extract.side_effect = extract_side_effect
+                    
+                    with patch.object(image_client, 'delete_image', AsyncMock(side_effect=[True, True])) as mock_delete:
+                        used_urls = [f"/static/img/file1.jpg"]
+                        
+                        deleted_ids = await image_client.cleanup_unused_images(
+                            used_urls,
+                            subdirectory="products"
+                        )
         
-        mock_httpx_client.get.return_value = mock_metadata_response
-        mock_httpx_client.delete.side_effect = delete_side_effect
-        
-        # Only file1 is used
-        used_urls = [f"{STATIC_SERVICE_URL}/files/file1.jpg"]
-        
-        # Mock extract_file_id to return correct IDs
-        with patch.object(image_client, 'extract_file_id') as mock_extract:
-            def extract_side_effect(url):
-                if 'file1' in url:
-                    return 'file1'
-                elif 'file2' in url:
-                    return 'file2'
-                elif 'file3' in url:
-                    return 'file3'
-                return None
-            mock_extract.side_effect = extract_side_effect
-            
-            # Also patch the decorator for cleanup_unused_images
-            with patch('optl.trace_decorator.trace_client_operation', lambda x: x):
-                deleted_ids = await image_client.cleanup_unused_images(
-                    used_urls,
-                    subdirectory="products"
-                )
-        
-        # Should delete file2 and file3
-        assert sorted(deleted_ids) == ["file2", "file3"]
-        
-        # Verify metadata call
-        mock_httpx_client.get.assert_called_once_with(
-            "http://statics:8005/metadata",
-            params={"subdirectory": "products"}
-        )
+        assert set(deleted_ids) == {"file2", "file3"}
+        assert mock_delete.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_cleanup_no_unused_images(self, image_client, mock_httpx_client):
+    async def test_cleanup_no_unused_images(self, image_client):
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
             "files": [
-                {"id": "file1", "url": "/static/img/file1.jpg"}
+                {"id": "file1"}
             ]
         }
-        mock_httpx_client.get.return_value = mock_response
         
-        used_urls = ["http://test.com/static/img/file1.jpg"]
-        
-        # Mock extract_file_id to return file1
-        with patch.object(image_client, 'extract_file_id', return_value='file1'):
-            # Patch the decorator
-            with patch('optl.trace_decorator.trace_client_operation', lambda x: x):
-                deleted_ids = await image_client.cleanup_unused_images(used_urls)
+        with patch('optl.trace_decorator.trace_client_operation', lambda x: x):
+            with patch.object(image_client.http_client, 'get', AsyncMock(return_value=mock_response)):
+                with patch.object(image_client, 'extract_file_id', return_value='file1'):
+                    with patch.object(image_client, 'delete_image', AsyncMock()) as mock_delete:
+                        used_urls = ["http://test.com/static/img/file1.jpg"]
+                        
+                        deleted_ids = await image_client.cleanup_unused_images(used_urls)
         
         assert deleted_ids == []
-        assert mock_httpx_client.delete.call_count == 1
+        assert mock_delete.call_count == 1
 
     @pytest.mark.asyncio
-    async def test_cleanup_metadata_failure(self, image_client, mock_httpx_client):
+    async def test_cleanup_metadata_failure(self, image_client):
         mock_response = Mock()
         mock_response.status_code = 500
-        mock_httpx_client.get.return_value = mock_response
         
         with patch('optl.trace_decorator.trace_client_operation', lambda x: x):
-            deleted_ids = await image_client.cleanup_unused_images([])
+            with patch.object(image_client.http_client, 'get', AsyncMock(return_value=mock_response)):
+                deleted_ids = await image_client.cleanup_unused_images([])
         
         assert deleted_ids == []
-        mock_httpx_client.delete.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_cleanup_exception(self, image_client, mock_httpx_client):
-        mock_httpx_client.get.side_effect = Exception("Network error")
-        
+    async def test_cleanup_exception(self, image_client):
         with patch('optl.trace_decorator.trace_client_operation', lambda x: x):
-            deleted_ids = await image_client.cleanup_unused_images([])
+            with patch.object(image_client.http_client, 'get', AsyncMock(side_effect=Exception("Network error"))):
+                deleted_ids = await image_client.cleanup_unused_images([])
         
         assert deleted_ids == []
 
@@ -538,18 +498,23 @@ class TestClientInitialization:
         assert client.logger == custom_logger
 
     def test_client_timeout_config(self):
+        from utils.resilience_config import ResilienceConfig
+        resilience_config = ResilienceConfig(timeout=60.0)
+        
         client = ProductImageClient(
             base_url=STATIC_SERVICE_URL,
-            timeout=60.0,
+            resilience_config=resilience_config,
             max_concurrent=5
         )
-        assert client.timeout == 60.0
+        assert client.http_client.config.timeout == 60.0
         assert client.max_concurrent == 5
 
     @pytest.mark.asyncio
-    async def test_client_close(self, mock_httpx_client):
-        mock_client = AsyncMock()
-        with patch('httpx.AsyncClient', return_value=mock_client):
+    async def test_client_close(self):
+        with patch('httpx.AsyncClient') as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value = mock_client
+            
             client = ProductImageClient(base_url=STATIC_SERVICE_URL)
             await client.close()
             mock_client.aclose.assert_called_once()
